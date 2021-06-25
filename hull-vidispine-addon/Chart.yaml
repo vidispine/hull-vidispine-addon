@@ -1,0 +1,6 @@
+# Basic chart description and version
+apiVersion: v1
+appVersion: 1.21.0
+description: hull-vidispine-addon
+name: hull-vidispine-addon
+version: 1.21.0

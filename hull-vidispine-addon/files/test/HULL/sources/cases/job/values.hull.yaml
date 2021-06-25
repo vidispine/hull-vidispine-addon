@@ -1,0 +1,63 @@
+################################ 
+### Example values.yaml with all features applied
+################################
+
+###################################################
+### CONFIG
+hull: 
+  objects:
+    job:
+      disabled:
+        pod:
+          containers: {}
+        
+      static_name:
+        pod:
+          containers: {}
+        
+      metadata_merge:
+        pod:
+          containers: {}
+        
+      metadata_overwrite:
+        pod:
+          containers: {}
+        
+      image_name_empty_registry:
+        pod:
+          containers: 
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
+
+      image_name_registry:
+        pod:
+          containers:
+            main:
+              image:
+                registry: local.registry
+                repository: my/image/repo
+
+      image_name_tag:
+        pod:
+          containers:
+            main:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
+
+      removal_test:
+        pod:
+          containers:
+            remove: null
+            keep:
+              ports:
+                remove: null
+                
+      volume_test:
+        pod:
+          volumes:
+            to_be_removed: null
+
+  ###################################################
