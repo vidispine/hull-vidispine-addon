@@ -16,7 +16,7 @@ steps:
       set -euo pipefail
       echo installing gauge
       sudo curl -SsL https://downloads.gauge.org/stable | sh
-      cd hull/files/test/HULL
+      cd hull-vidispine-addon/files/test/HULL
       sudo pip install -r requirements.txt
       gauge
   displayName: 'install gauge'
