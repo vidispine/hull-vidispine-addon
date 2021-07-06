@@ -136,7 +136,8 @@ hull:
           containers:
             installation:
               image: 
-                repository: vpms3.azurecr.io/vpms/powershellcore-yaml
+                registry: vpms3.azurecr.io
+                repository: vpms/powershellcore-yaml
                 tag: "7.0.3-ubuntu-18.04-20200928"
               command: 
               - "pwsh"
