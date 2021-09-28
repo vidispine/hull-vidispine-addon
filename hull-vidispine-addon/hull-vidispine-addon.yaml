@@ -2,19 +2,19 @@
 hull:
   config:
     general:
-      data: 
+      data:
         installation:
-          endpoints: 
+          endpoints:
             10_vidispine:
               auth:
                 basic:
                   env:
                     username: VIDISPINE_ADMIN_USERNAME
                     password: VIDISPINE_ADMIN_PASSWORD
-              endpoint: 
+              endpoint:
                 _HULL_TRANSFORMATION_:
                   NAME: hull.vidispine.addon.generalendpoint
-                  ENTRY: vidispine 
+                  ENTRY: vidispine
                   ENDPOINT: api
               subresources:
                 10_metadatafields:
@@ -22,23 +22,23 @@ hull:
                   typeDescription: "MetadataField"
                   identifierQueryParam: ""
                   _DEFAULTS_:
-                    register: true 
+                    register: true
                     putInsteadOfPost: true
                 20_metadatafieldgroups:
                   apiPath: "metadata-field/field-group"
                   typeDescription: "MetadataFieldGroup"
                   identifierQueryParam: ""
                   _DEFAULTS_:
-                    register: true 
-                    putInsteadOfPost: true    
-            20_authenticationService: 
+                    register: true
+                    putInsteadOfPost: true
+            20_authenticationService:
               auth:
                 token:
-                  authenticationServiceEndpoint: 
+                  authenticationServiceEndpoint:
                     _HULL_TRANSFORMATION_:
                       NAME: hull.vidispine.addon.generalendpoint
-                      ENTRY: authenticationService 
-                      ENDPOINT: api  
+                      ENTRY: authenticationService
+                      ENDPOINT: api
                   env:
                     clientId: AUTHSERVICE_TOKEN_INSTALLER_CLIENT_ID
                     clientSecret: AUTHSERVICE_TOKEN_INSTALLER_CLIENT_SECRET
@@ -48,8 +48,8 @@ hull:
               endpoint:
                 _HULL_TRANSFORMATION_:
                   NAME: hull.vidispine.addon.generalendpoint
-                  ENTRY: authenticationService 
-                  ENDPOINT: api  
+                  ENTRY: authenticationService
+                  ENDPOINT: api
               data:
                 productUris:
               subresources:
@@ -58,14 +58,14 @@ hull:
                   typeDescription: "Scope"
                   identifierQueryParam: "resourceName"
                   _DEFAULTS_:
-                    register: true               
-                    putUriExcludeIdentifier: true               
+                    register: true
+                    putUriExcludeIdentifier: true
                 20_clients:
                   apiPath: "v1/Client"
                   typeDescription: "Client"
                   identifierQueryParam: "clientId"
                   _DEFAULTS_:
-                    register: true                
+                    register: true
                     putUriExcludeIdentifier: true
                 30_roles:
                   apiPath: "v1/Roles"
@@ -73,16 +73,16 @@ hull:
                   identifierQueryParam: "id"
                   _DEFAULTS_:
                     register: true
-                    remove: false                  
+                    remove: false
 
             30_configPortal:
               auth:
-                token:                   
-                  authenticationServiceEndpoint: 
+                token:
+                  authenticationServiceEndpoint:
                     _HULL_TRANSFORMATION_:
                       NAME: hull.vidispine.addon.generalendpoint
-                      ENTRY: authenticationService 
-                      ENDPOINT: api  
+                      ENTRY: authenticationService
+                      ENDPOINT: api
                   env:
                     clientId: AUTHSERVICE_TOKEN_PRODUCT_CLIENT_ID
                     clientSecret: AUTHSERVICE_TOKEN_PRODUCT_CLIENT_SECRET
@@ -93,7 +93,7 @@ hull:
               endpoint:
                 _HULL_TRANSFORMATION_:
                   NAME: hull.vidispine.addon.generalendpoint
-                  ENTRY: configPortal 
+                  ENTRY: configPortal
                   ENDPOINT: api
               subresources:
                 10_product:
@@ -116,7 +116,20 @@ hull:
 ###################################################
 
   objects:
-    
+    registry:
+      _HULL_OBJECT_TYPE_DEFAULT_:
+        annotations:
+          "helm.sh/hook": pre-install,pre-upgrade
+          "helm.sh/hook-weight": "-90"
+          "helm.sh/hook-delete-policy": before-hook-creation
+
+    serviceaccount:
+      default:
+        annotations:
+          "helm.sh/hook": pre-install,pre-upgrade
+          "helm.sh/hook-weight": "-100"
+          "helm.sh/hook-delete-policy": before-hook-creation
+
     job:
       'hull-install':
         annotations:
@@ -135,11 +148,11 @@ hull:
                 name: hull-install
           containers:
             installation:
-              image: 
+              image:
                 registry: vpms3.azurecr.io
                 repository: vpms/powershellcore-yaml
                 tag: "7.0.3-ubuntu-18.04-20200928"
-              command: 
+              command:
               - "pwsh"
               - "-c"
               - "/script/Installer.ps1"
@@ -155,7 +168,7 @@ hull:
                   valueFrom:
                     secretKeyRef:
                       name: authservice-token-secret
-                      key: installerClientSecret 
+                      key: installerClientSecret
                 'AUTHSERVICE_TOKEN_PRODUCT_CLIENT_ID':
                   valueFrom:
                     secretKeyRef:
@@ -165,7 +178,7 @@ hull:
                   valueFrom:
                     secretKeyRef:
                       name: authservice-token-secret
-                      key: productClientSecret 
+                      key: productClientSecret
                 'VIDISPINE_ADMIN_USERNAME':
                   valueFrom:
                     secretKeyRef:
@@ -180,36 +193,36 @@ hull:
                 'installation':
                   name: 'installation'
                   mountPath: /script
-    
+
     secret:
       'vidispine-secret':
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
           "helm.sh/hook-weight": "-80"
           "helm.sh/hook-delete-policy": before-hook-creation
-        data: 
-          adminUsername: 
+        data:
+          adminUsername:
             inline: ""
-          adminPassword: 
+          adminPassword:
             inline: ""
-          username: 
+          username:
             inline: ""
-          password: 
+          password:
             inline: ""
-          
+
       'authservice-token-secret':
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
           "helm.sh/hook-weight": "-80"
           "helm.sh/hook-delete-policy": before-hook-creation
-        data: 
-          installerClientId: 
+        data:
+          installerClientId:
             inline: ""
-          installerClientSecret: 
+          installerClientSecret:
             inline: ""
-          productClientId: 
+          productClientId:
             inline: ""
-          productClientSecret: 
+          productClientSecret:
             inline: ""
 
     configmap:
@@ -253,11 +266,11 @@ hull:
                           {{- end }}
                       {{- else -}}
                           {{- $configScopeEndpoints = unset $configScopeEndpoints $endpoint -}}
-                      {{- end }}        
+                      {{- end }}
                   {{- end }}
               {{ toYaml $configScope | indent 4 }}
               {{ end }}
-          Installer.ps1: 
+          Installer.ps1:
             inline: |-
               <#
               .SYNOPSIS
@@ -289,7 +302,7 @@ hull:
                       [Console]::Error.WriteLine($message)
                       [Console]::ResetColor()
                   }
-                  
+
                   # Invoke-WebRequest (GET, POST, PUT, DELETE) with retries and error handling
                   hidden [PSCustomObject] InvokeWebRequest(
                       [string] $url,
@@ -359,7 +372,7 @@ hull:
                   hidden [string] GetAccessToken([PSCustomObject] $tokenRequest)
                   {
                       Write-Host "++++ Getting access token."
-                  
+
                       $tokenRequest.authenticationServiceEndpoint = $tokenRequest.authenticationServiceEndpoint.Trim('/')
                       $this.PingAuthServiceApi($tokenRequest.authenticationServiceEndpoint)
 
@@ -369,14 +382,14 @@ hull:
                       $headers.Add("Authorization", "Basic $([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes([environment]::GetEnvironmentVariable($tokenRequest.env.clientId,"Process") + ":" + [environment]::GetEnvironmentVariable($tokenRequest.env.clientSecret,"Process"))))")
                       $scope = [String]::Join(" ", $tokenRequest.scopes)
                       $request = @{ "client_id" = "installerClient"; "client_secret" = "575810cd-cc43-4deb-8a6c-478e71d51427"; "grant_type" = $tokenRequest.grantType ; "scope" = "$($scope)" }
-                      
+
                       try
                       {
                           Write-Host "++++ Getting access token with grant_type '$($tokenRequest.grantType)' and scope '$($scope)' with headers:"
                           foreach ($key in $headers.Keys)
                           {
                               Write-Host "++++   Key: $key Value: $($headers[$key])"
-                          } 
+                          }
                           $response = Invoke-WebRequest -Uri "$($tokenRequest.authenticationServiceEndpoint)/connect/token" -Method Post -Body $request -Headers $headers -UseBasicParsing -SkipCertificateCheck
                           $this.AssertResponse($response)
                           $token = ($response | ConvertFrom-Json).access_token
@@ -402,7 +415,7 @@ hull:
                       # Check for custom script
                       if (![String]::IsNullOrWhitespace($script))
                       {
-                          $config = $this._config 
+                          $config = $this._config
                           Write-Host "** Invoking script at step '$step': $([System.Environment]::NewLine) $($script)"
                           $scriptblock = [Scriptblock]::Create($script)
                           Write-Host "[- Start Script -]"
@@ -451,20 +464,20 @@ hull:
                   # Handles all operations on a subresource of an endpoint
                   hidden [void] Subresource([string] $name, [PSCustomObject] $subresource, [string] $endpoint, [PSCustomObject] $auth)
                   {
-                      $endpoint = $endpoint.Trim('/') 
+                      $endpoint = $endpoint.Trim('/')
                       foreach($entityKey in $subresource.entities.Keys)
                       {
                           $value = $subresource.entities[$entityKey]
-                          
+
                           # Either register or remove needs to be enabled
                           if ($value.register -eq $true -or $value.remove -eq $true)
                           {
                               $name = if ([string]::IsNullOrWhiteSpace($value.identifier)) {$entityKey} else {$value.identifier }
-                              
+
                               Write-Host "*** $(if ($value.remove -eq $true) {"Removing"} else {"Registering"}) Entity $($name)"
-                      
+
                               $this.ReadConfigValueFromFile($value)
-                              
+
                               $this.CheckEntity(
                                   "$($endpoint)/$($subresource.apiPath)",
                                   $name,
@@ -481,13 +494,13 @@ hull:
                           {
                               Write-Host "*** Neither 'register' nor 'remove' is enabled for Subresource $($name) and element $($entityKey), not processing entity."
                           }
-                      }      
+                      }
                   }
-                  
-                  # Read config value from file content 
-                  [void] ReadConfigValueFromFile([PSCustomObject] $value) 
+
+                  # Read config value from file content
+                  [void] ReadConfigValueFromFile([PSCustomObject] $value)
                   {
-                      if ($value.configValueFromFile -ne $null) 
+                      if ($value.configValueFromFile -ne $null)
                       {
                           foreach($entityKey in $value.configValueFromFile.Keys)
                           {
@@ -498,28 +511,28 @@ hull:
                               {
                                   Write-Host "File not exist"
                               }
-                              else 
+                              else
                               {
                                   $fileContent = Get-Content -Path $filePath | Out-String
                                   $fileContentJson = $fileContent | ConvertFrom-Json
-                                  
+
                                   Write-Host "Config file found : " $fileContentJson
-                                  
+
                                   $configs = $value.configValueFromFile[$entityKey]
-                                  
+
                                   foreach($configEntityKey in $configs.Keys) {
-                                      
+
                                       $configEntityValue = $configs[$configEntityKey]
                                       $configValue = $fileContentJson.$($configEntityValue.key)
                                       $value.config[$configEntityKey] = $configValue
                                   }
-                              
-                          
+
+
                               }
                           }
                       }
                   }
-                  
+
                   # Checks entities and performs required operations (DELETE/PUT/POST)
                   hidden [void] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $bodyParams, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting)
                   {
@@ -527,7 +540,7 @@ hull:
                       $apiEndpoint = $apiEndpoint.Trim('/')
                       $uri = "$apiEndpoint/$identifier"
                       $uriPut = if ($putUriExcludeIdentifier) { $apiEndpoint } else { $uri }
-                      
+
                       try
                       {
                           Write-Host "**** GETting uri '$($uri)''"
@@ -558,11 +571,11 @@ hull:
                                 Write-Host "**** '$entityType' entry '$identifier' already exists, not overwriting due to flag 'overwriteExisting' not being set."
                               }
                           }
-                          
+
                       }
                       elseif ($statusCode -eq 404)
                       {
-                          if($toBeDeleted) { 
+                          if($toBeDeleted) {
                               Write-Host "**** '$entityType' entry '$identifier' does not exist but should be deleted, nothing will be done."
                           }
                           else
@@ -572,11 +585,11 @@ hull:
                               {
                                   $this.PutEntity($uriPut, $bodyParams, $auth)
                               }
-                              else 
+                              else
                               {
-                                  $this.PostEntity($apiEndpoint, $bodyParams, $auth)    
+                                  $this.PostEntity($apiEndpoint, $bodyParams, $auth)
                               }
-                              
+
                           }
                       }
                       else
@@ -607,7 +620,7 @@ hull:
                   hidden [PSCustomObject] DeleteEntity([string] $deleteUrl, [string] $identifier, [string] $identifierQueryParam, [PSCustomObject] $auth)
                   {
                       $headers = $this.GetJsonHttpHeaders($auth)
-                      $url = "$($deleteUrl.TrimEnd('/'))$(if ([string]::IsNullOrWhitespace($identifierQueryParam)) { [string]::Empty } else { "?$identifierQueryParam=$identifier" })"	
+                      $url = "$($deleteUrl.TrimEnd('/'))$(if ([string]::IsNullOrWhitespace($identifierQueryParam)) { [string]::Empty } else { "?$identifierQueryParam=$identifier" })"
 
                       return $this.InvokeWebRequest($url, "DELETE", "", $headers)
                   }
@@ -631,7 +644,7 @@ hull:
 
                       # The health check URI of AuthService. Does not require any authentication.
                       $authenticationServiceEndpoint = $authenticationServiceEndpoint.Trim('/')
-                      $healthCheckUri = $authenticationServiceEndpoint + "/v1/HealthCheck?showDetail=false" 
+                      $healthCheckUri = $authenticationServiceEndpoint + "/v1/HealthCheck?showDetail=false"
                       Write-Host "**** Pinging authentication service at '$($healthCheckUri)'"
 
                       while ($retryCount -lt $retryLimit)
@@ -648,7 +661,7 @@ hull:
                           }
                           catch [Exception]
                           {
-                              Write-Host "**** Failed to contact authentication service. " + $_.Exception.Message + "$(if ($_.Exception.InnerException -ne $null) {$_.Exception.InnerException.Message} else {''})" 
+                              Write-Host "**** Failed to contact authentication service. " + $_.Exception.Message + "$(if ($_.Exception.InnerException -ne $null) {$_.Exception.InnerException.Message} else {''})"
                           }
 
                           $retryCount++;
@@ -657,4 +670,4 @@ hull:
 
                       throw "Failed to contact authentication service after $($retryLimit) retry/retries."
                   }
-              }    
+              }
