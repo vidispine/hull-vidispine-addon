@@ -6,7 +6,7 @@ Test creation of objects and features.
 
 ## Render and Validate
 * Render
-* Expected number of "14" objects were rendered
+* Expected number of "15" objects were rendered
 * Validate
 
 ## Metadata
@@ -19,6 +19,15 @@ Test creation of objects and features.
 ## Installation Job
 * Render
 * Set test object to "release-name-hull-test-hull-install"
+
+
+* Prepare default test case for this kind including suites "pod,imagepullsecretsfromfirstregistry"
+* Render
+
+* Set test object to "release-name-hull-test-hull-install"
+* Test Object has key "spec§template§spec§containers§0§image" with value "example.cr.io/vpms/powershellcore-yaml:7.0.3-ubuntu-18.04-20200928"
+
+
 ___
 
 

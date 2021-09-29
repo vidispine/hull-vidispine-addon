@@ -149,7 +149,6 @@ hull:
           containers:
             installation:
               image:
-                registry: vpms3.azurecr.io
                 repository: vpms/powershellcore-yaml
                 tag: "7.0.3-ubuntu-18.04-20200928"
               command:

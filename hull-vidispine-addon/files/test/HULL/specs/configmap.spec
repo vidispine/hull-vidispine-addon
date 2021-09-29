@@ -10,6 +10,7 @@ Test creation of objects and features.
 * Validate
 
 ## Metadata
+* Render
 * Check basic metadata functionality
 
 ## Default ConfigMap
