@@ -4,6 +4,8 @@ hull:
     general:
       data:
         installation:
+          config:
+            productUris: null
           endpoints:
             10_vidispine:
               auth:
@@ -50,8 +52,6 @@ hull:
                   NAME: hull.vidispine.addon.generalendpoint
                   ENTRY: authenticationService
                   ENDPOINT: api
-              data:
-                productUris:
               subresources:
                 10_resources:
                   apiPath: "v1/Resource/ApiResource"
