@@ -106,8 +106,8 @@ hull:
                         clientId: *SwaggerClient
                         clientUri:
                           _HULL_TRANSFORMATION_:
-                              NAME: hull.util.transformation.get
-                              REFERENCE: hull.config.general.data.endpoints.configPortal.uri.api
+                            NAME: hull.util.transformation.get
+                            REFERENCE: hull.config.general.data.endpoints.configPortal.uri.api
                         alwaysIncludeUserClaimsInIdToken: true
                         allowedGrantTypes:
                         - 'implicit'
