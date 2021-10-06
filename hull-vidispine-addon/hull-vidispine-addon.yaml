@@ -4,8 +4,6 @@ hull:
     general:
       data:
         installation:
-          config:
-            productUris: null
           endpoints:
             10_vidispine:
               auth:
