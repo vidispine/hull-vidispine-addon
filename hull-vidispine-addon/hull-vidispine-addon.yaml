@@ -155,6 +155,73 @@ hull:
               - "/script/Installer.ps1"
               - "-ConfigFilePath"
               - "/script/installation.yaml"
+              - "-Stage"
+              - "pre-install"
+              env:
+                'AUTHSERVICE_TOKEN_INSTALLER_CLIENT_ID':
+                  valueFrom:
+                    secretKeyRef:
+                      name: authservice-token-secret
+                      key: installerClientId
+                'AUTHSERVICE_TOKEN_INSTALLER_CLIENT_SECRET':
+                  valueFrom:
+                    secretKeyRef:
+                      name: authservice-token-secret
+                      key: installerClientSecret
+                'AUTHSERVICE_TOKEN_PRODUCT_CLIENT_ID':
+                  valueFrom:
+                    secretKeyRef:
+                      name: authservice-token-secret
+                      key: productClientId
+                'AUTHSERVICE_TOKEN_PRODUCT_CLIENT_SECRET':
+                  valueFrom:
+                    secretKeyRef:
+                      name: authservice-token-secret
+                      key: productClientSecret
+                'VIDISPINE_ADMIN_USERNAME':
+                  valueFrom:
+                    secretKeyRef:
+                      name: vidispine-secret
+                      key: adminUsername
+                'VIDISPINE_ADMIN_PASSWORD':
+                  valueFrom:
+                    secretKeyRef:
+                      name: vidispine-secret
+                      key: adminPassword
+              volumeMounts:
+                'installation':
+                  name: 'installation'
+                  mountPath: /script
+
+      'hull-configure':
+        enabled: true 
+        annotations:
+          "helm.sh/hook": post-install,post-upgrade
+          "helm.sh/hook-delete-policy": before-hook-creation
+          "helm.sh/hook-weight": '50'
+        parallelism: 1
+        completions: 1
+        backoffLimit: 6
+        pod:
+          restartPolicy: OnFailure
+          serviceAccountName: default
+          volumes:
+            installation:
+              configMap:
+                name: hull-install
+          containers:
+            installation:
+              image:
+                repository: vpms/powershellcore-yaml
+                tag: "7.0.3-ubuntu-18.04-20200928"
+              command:
+              - "pwsh"
+              - "-c"
+              - "/script/Installer.ps1"
+              - "-ConfigFilePath"
+              - "/script/installation.yaml"
+              - "-Stage"
+              - "post-install"
               env:
                 'AUTHSERVICE_TOKEN_INSTALLER_CLIENT_ID':
                   valueFrom:
@@ -276,22 +343,31 @@ hull:
                   This should run first before product is installed to create the necessary prerequisites.
               .PARAMETER ConfigFilePath
                   Path to config file in YAML holding the tasks to perform
+              .PARAMETER Stage
+                  Stage of execution in overal installation, valid options are 'pre-install' and 'post-install'. Defaults to 'pre-install'.
               .EXAMPLE
                   C:\PS> .\Register.ps1 -ConfigFile "C:\\test.yaml"
+                  C:\PS> .\Register.ps1 -ConfigFile "C:\\test.yaml" -Stage "post-install"
               #>
               Param(
-                  [string]$ConfigFilePath
+                  [string]$ConfigFilePath,
+                  [string]$Stage = 'pre-install'
               )
               Import-Module powershell-yaml
 
               $installer = New-Object Installer
-              $installer.LoadConfiguration($ConfigFilePath)
+              $installer.LoadConfiguration($ConfigFilePath, $Stage)
               $installer.Start()
               Write-Host "----------- Installer finished processing all endpoints ----------"
 
               Class Installer
               {
                   hidden [PSCustomObject] $_config
+                  hidden [string] $_stage
+
+                  hidden [void] WriteLog($message) {
+                      "$(get-date -format "yyyy-MM-dd HH:mm:ss"): $($message)" | Write-Host
+                  }
 
                   # Override the built-in cmdlet with a custom version
                   hidden [void] WriteError($message) {
@@ -313,19 +389,14 @@ hull:
 
                       do {
                           try {
-                              Write-Host "***** $($method.ToUpper()) content '$($jsonBody)' to '$($url)'"
+                              $this.WriteLog("***** $($method.ToUpper()) content '$($jsonBody)' to '$($url)'")
 
                               $response = Invoke-WebRequest -Uri $url -Method $method -Body $jsonBody -headers $headers -UseBasicParsing -SkipCertificateCheck
                               $this.AssertResponse($response)
                               return $response
                           }
-                          catch [Microsoft.PowerShell.Commands.HttpResponseException] {
-                              $this.WriteError("***** Failed $($method.ToUpper()) '$($url)': $($_.Exception.Message)")
-                              $response = $_.Exception.Response;
-                              return $response;
-                          }
                           catch {
-                              Write-Host "***** Error $($method.ToUpper()) to service. Url '$($url)'. $($_.Exception.ToString())"
+                              $this.WriteLog("***** Error $($method.ToUpper()) to service. Url '$($url)'. $($_.Exception.ToString())")
 
                               if ($retryCount -lt $retryLimit) {
                                   $this.WriteError("***** Retrying in 5 seconds.  Retry count $($retryCount) of $($retryLimit)")
@@ -361,14 +432,14 @@ hull:
                       }
 
                       $headers.Add("Authorization", $authHeader)
-                      Write-Host "++++ Authorization header: $authHeader"
+                      $this.WriteLog("++++ Authorization header: $authHeader")
                       return $headers
                   }
 
                   # Gets an access token for the OAuth2 authentication.
                   hidden [string] GetAccessToken([PSCustomObject] $tokenRequest)
                   {
-                      Write-Host "++++ Getting access token."
+                      $this.WriteLog("++++ Getting access token.")
 
                       $tokenRequest.authenticationServiceEndpoint = $tokenRequest.authenticationServiceEndpoint.Trim('/')
                       $this.PingAuthServiceApi($tokenRequest.authenticationServiceEndpoint)
@@ -382,15 +453,15 @@ hull:
 
                       try
                       {
-                          Write-Host "++++ Getting access token with grant_type '$($tokenRequest.grantType)' and scope '$($scope)' with headers:"
+                          $this.WriteLog("++++ Getting access token with grant_type '$($tokenRequest.grantType)' and scope '$($scope)' with headers:")
                           foreach ($key in $headers.Keys)
                           {
-                              Write-Host "++++   Key: $key Value: $($headers[$key])"
+                              $this.WriteLog("++++   Key: $key Value: $($headers[$key])")
                           }
                           $response = Invoke-WebRequest -Uri "$($tokenRequest.authenticationServiceEndpoint)/connect/token" -Method Post -Body $request -Headers $headers -UseBasicParsing -SkipCertificateCheck
                           $this.AssertResponse($response)
                           $token = ($response | ConvertFrom-Json).access_token
-                          Write-Host "++++ Got access token: $token"
+                          $this.WriteLog("++++ Got access token: $token")
                           return  $token
                       }
                       catch
@@ -399,11 +470,47 @@ hull:
                       }
                   }
 
+                  # Ping authentication service
+                  hidden [void] PingAuthServiceApi([string] $authenticationServiceEndpoint)
+                  {
+                      $retryCount = 0;
+                      $retryLimit = 30;
+
+                      # The health check URI of AuthService. Does not require any authentication.
+                      $authenticationServiceEndpoint = $authenticationServiceEndpoint.Trim('/')
+                      $healthCheckUri = $authenticationServiceEndpoint + "/v1/HealthCheck?showDetail=false"
+                      $this.WriteLog("++++ Pinging authentication service at '$($healthCheckUri)'")
+
+                      while ($retryCount -lt $retryLimit)
+                      {
+                          try
+                          {
+                              $this.WriteLog("++++ Attempting to contact authenticatiun service. Retry count: " + $retryCount + " of " + $retryLimit)
+                              $response = Invoke-WebRequest -URI ($healthCheckUri) -Method Get -UseBasicParsing -SkipCertificateCheck
+                              if($response.StatusCode -ge 200 -And $response.StatusCode -lt 300)
+                              {
+                                  $this.WriteLog("++++ Successfully connected to authentication service")
+                                  return
+                              }
+                          }
+                          catch [Exception]
+                          {
+                              $this.WriteLog("**** Failed to contact authentication service. " + $_.Exception.Message + "$(if ($_.Exception.InnerException -ne $null) {$_.Exception.InnerException.Message} else {''})")
+                          }
+
+                          $retryCount++;
+                          Start-Sleep -s 5
+                      }
+
+                      throw "Failed to contact authentication service after $($retryLimit) retry/retries."
+                  }
+
                   # Load the config
-                  [void] LoadConfiguration($ConfigFilePath)
+                  [void] LoadConfiguration($ConfigFilePath, $Stage)
                   {
                       # Load File
                       $this._config = (Get-Content $ConfigFilePath | Out-String | ConvertFrom-Yaml -Ordered)
+                      $this._stage = $Stage
                   }
 
                   # Execute a Powershell script
@@ -413,33 +520,37 @@ hull:
                       if (![String]::IsNullOrWhitespace($script))
                       {
                           $config = $this._config
-                          Write-Host "** Invoking script at step '$step': $([System.Environment]::NewLine) $($script)"
+                          $this.WriteLog("** Invoking script at step '$step': $([System.Environment]::NewLine) $($script)")
                           $scriptblock = [Scriptblock]::Create($script)
-                          Write-Host "[- Start Script -]"
+                          $this.WriteLog("[- Start Script -]")
                           & $scriptblock
-                          Write-Host "[- End Script -]"
+                          $this.WriteLog("[- End Script -]")
                       }
                       else
                       {
-                          Write-Host "** No scripts to invoke found for step '$step'"
+                          $this.WriteLog("** No scripts to invoke found for step '$step'")
                       }
                   }
 
                   # Start processing
                   [void] Start()
                   {
-                      Write-Host "---------- Starting all installations ----------"
+                      $this.WriteLog("---------- Starting all installations ----------")
                       $this.ExecuteScript("pre-install", $this._config.preScript)
                       foreach($apiKey in $this._config.endpoints.Keys)
                       {
                           $value = $this._config.endpoints[$apiKey]
                           if ([string]::IsNullOrWhitespace($value.endpoint))
                           {
-                              Write-Host "* Ignoring Endpoint $($apiKey) because it does not have an active endpoint set."
+                              $this.WriteLog("")
+                              $this.WriteLog("* Ignoring Endpoint $($apiKey) because it does not have an active endpoint set.")
+                              $this.WriteLog("")
                           }
                           else
                           {
-                              Write-Host "* Starting installation for Endpoint '$($apiKey)'"
+                              $this.WriteLog("")
+                              $this.WriteLog("* Starting installation for Endpoint '$($apiKey)'")
+                              $this.WriteLog("")
                               $this.Endpoint($apiKey, $value)
                           }
                       }
@@ -452,15 +563,23 @@ hull:
                       foreach($subresourceKey in $config.subresources.Keys)
                       {
                           $value = $config.subresources[$subresourceKey]
-                          Write-Host "** Starting installation for Subresource '$($subresourceKey)'"
+                          $this.WriteLog("** Starting installation for Subresource '$($subresourceKey)'")
 
                           $this.Subresource($subresourceKey, $value, $config.endpoint, $config.auth)
+                          
+                          $this.WriteLog("** Finished installation for Subresource '$($subresourceKey)'")
+                          $this.WriteLog("")
                       }
                   }
 
                   # Handles all operations on a subresource of an endpoint
                   hidden [void] Subresource([string] $name, [PSCustomObject] $subresource, [string] $endpoint, [PSCustomObject] $auth)
                   {
+                    $processSubresource = $true
+                    $stageSubresource = if ($subresource.Contains("stage")) { $subresource.stage } else { "pre-install" }
+                    $this.WriteLog("*** Subresource stage is '$($stageSubresource)', global stage is '$($this._stage)'")
+                    if ($stageSubresource.Equals($this._stage))
+                    {                       
                       $endpoint = $endpoint.Trim('/')
                       foreach($entityKey in $subresource.entities.Keys)
                       {
@@ -471,7 +590,7 @@ hull:
                           {
                               $name = if ([string]::IsNullOrWhiteSpace($value.identifier)) {$entityKey} else {$value.identifier }
 
-                              Write-Host "*** $(if ($value.remove -eq $true) {"Removing"} else {"Registering"}) Entity $($name)"
+                              $this.WriteLog("*** $(if ($value.remove -eq $true) {"Starting to remove"} else {"Starting to register"}) Entity $($name) for entity key '$($entityKey)'")
 
                               $this.ReadConfigValueFromFile($value)
 
@@ -489,9 +608,14 @@ hull:
                           }
                           else
                           {
-                              Write-Host "*** Neither 'register' nor 'remove' is enabled for Subresource $($name) and element $($entityKey), not processing entity."
+                              $this.WriteLog("*** Skipping subresource because neither 'register' nor 'remove' is set to true.")
                           }
                       }
+                    }
+                    else
+                    {
+                      $this.WriteLog("*** Subresource stage '$($stageSubresource)' does not match global stage '$($this._stage)', skip processing.")
+                    }
                   }
 
                   # Read config value from file content
@@ -506,14 +630,14 @@ hull:
 
                               if (!(Test-Path $filePath))
                               {
-                                  Write-Host "File not exist"
+                                  $this.WriteLog("File not exist")
                               }
                               else
                               {
                                   $fileContent = Get-Content -Path $filePath | Out-String
                                   $fileContentJson = $fileContent | ConvertFrom-Json
 
-                                  Write-Host "Config file found : " $fileContentJson
+                                  $this.WriteLog("Config file found: " + $fileContentJson)
 
                                   $configs = $value.configValueFromFile[$entityKey]
 
@@ -540,32 +664,33 @@ hull:
 
                       try
                       {
-                          Write-Host "**** GETting uri '$($uri)''"
+                          $this.WriteLog("**** Checking if entity exists, GETting uri '$($uri)''")
                           $response = Invoke-WebRequest -Uri $uri -Method "GET" -headers $headers -UseBasicParsing -SkipCertificateCheck
                           $statusCode = $response.StatusCode
+                          $this.WriteLog("**** SUCCESS --> StatusCode: $($statusCode)")
                       }
                       catch
                       {
                           $statusCode = $_.Exception.Response.StatusCode.Value__
-                          Write-Host "**** StatusCode: $($_.Exception.Response.StatusCode.Value__) Exception: $($_.Exception.Message)"
+                          $this.WriteLog("**** ERROR --> StatusCode: $($_.Exception.Response.StatusCode.Value__) Exception: $($_.Exception.Message)")
                       }
 
                       if ($statusCode -eq 200)
                       {
                           if($toBeDeleted) {
-                              Write-Host "**** '$entityType' entry '$identifier' already exists and it will be deleted"
+                              $this.WriteLog("**** '$entityType' entry '$identifier' already exists and ia going to be deleted now")
                               $this.DeleteEntity($apiEndpoint, $identifier, $identifierQueryParam, $auth)
                           }
                           else
                           {
                               if ($overwriteExisting)
                               {
-                                  Write-Host "**** '$entityType' entry '$identifier' already exists, hence PUTing instead of POSTing"
+                                  $this.WriteLog("**** '$entityType' entry '$identifier' already exists, hence PUTing instead of POSTing to update entity")
                                   $this.PutEntity($uriPut, $bodyParams, $auth)
                               }
                               else
                               {
-                                Write-Host "**** '$entityType' entry '$identifier' already exists, not overwriting due to flag 'overwriteExisting' not being set."
+                                $this.WriteLog("**** '$entityType' entry '$identifier' already exists, not overwriting due to flag 'overwriteExisting' not being set")
                               }
                           }
 
@@ -573,17 +698,19 @@ hull:
                       elseif ($statusCode -eq 404)
                       {
                           if($toBeDeleted) {
-                              Write-Host "**** '$entityType' entry '$identifier' does not exist but should be deleted, nothing will be done."
+                              $this.WriteLog("**** '$entityType' entry '$identifier' does not exist but should be deleted, nothing will be done")
                           }
                           else
                           {
-                              Write-Host "**** '$entityType' entry '$identifier' does not exist and will be created now."
+                              $this.WriteLog("**** '$entityType' entry '$identifier' does not exist and will be created now")
                               if ($putInsteadOfPost)
                               {
+                                  $this.WriteLog("**** PUTting '$entityType' entry '$identifier' to create it since 'putInsteadOfPost' is set to true")
                                   $this.PutEntity($uriPut, $bodyParams, $auth)
                               }
                               else
                               {
+                                  $this.WriteLog("**** POSTing '$entityType' entry '$identifier' to create it")
                                   $this.PostEntity($apiEndpoint, $bodyParams, $auth)
                               }
 
@@ -591,7 +718,7 @@ hull:
                       }
                       else
                       {
-                        throw [Exception]::new("Unexpected StatusCode: $($_.Exception.Response.StatusCode.Value__). Exception was: $($_.Exception.Response)")
+                        throw [Exception]::new("ERROR --> Unexpected StatusCode: $($_.Exception.Response.StatusCode.Value__). Exception was: $($_.Exception.Response)")
                       }
                   }
 
@@ -633,38 +760,5 @@ hull:
                       return $true
                   }
 
-                  # Ping authentication service
-                  hidden [void] PingAuthServiceApi([string] $authenticationServiceEndpoint)
-                  {
-                      $retryCount = 0;
-                      $retryLimit = 30;
-
-                      # The health check URI of AuthService. Does not require any authentication.
-                      $authenticationServiceEndpoint = $authenticationServiceEndpoint.Trim('/')
-                      $healthCheckUri = $authenticationServiceEndpoint + "/v1/HealthCheck?showDetail=false"
-                      Write-Host "**** Pinging authentication service at '$($healthCheckUri)'"
-
-                      while ($retryCount -lt $retryLimit)
-                      {
-                          try
-                          {
-                              Write-Host "**** Attempting to contact configuration service. Retry count: " + $retryCount + " of " + $retryLimit
-                              $response = Invoke-WebRequest -URI ($healthCheckUri) -Method Get -UseBasicParsing -SkipCertificateCheck
-                              if($response.StatusCode -ge 200 -And $response.StatusCode -lt 300)
-                              {
-                                  Write-Host "**** Successfully connected to authentication service"
-                                  return
-                              }
-                          }
-                          catch [Exception]
-                          {
-                              Write-Host "**** Failed to contact authentication service. " + $_.Exception.Message + "$(if ($_.Exception.InnerException -ne $null) {$_.Exception.InnerException.Message} else {''})"
-                          }
-
-                          $retryCount++;
-                          Start-Sleep -s 5
-                      }
-
-                      throw "Failed to contact authentication service after $($retryLimit) retry/retries."
-                  }
               }
+
