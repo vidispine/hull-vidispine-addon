@@ -37,10 +37,22 @@
 {{- $key := (index . "KEY") -}}
 {{- $appends := (index . "APPENDS") -}}
 {{- $c := list -}}
+{{- $field := "" }}
+{{- if (hasKey (index $parent.Values "hull").config.general.data.installation.config "productUris") -}}
+{{- $field = "productUris" -}}
+{{- end -}}
+{{- if (ne $field "") -}}
+{{- $uris := list -}}
 {{ $key }}:
-{{- range $u := (index $parent.Values "hull").config.general.data.installation.productUris }}
+{{- range $u := (index ((index $parent.Values "hull").config.general.data.installation.config) $field) }}
 {{- range $a := $appends }}
-- {{ printf "%s%s" $u $a -}}
+{{- $entry := printf "%s%s" $u $a }}
+{{- if (has $entry $uris) -}}
+{{- else -}}
+{{- $uris = append $uris $entry }}
+- {{ $entry }}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
@@ -49,9 +61,21 @@
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $key := (index . "KEY") -}}
 {{- $c := list -}}
+{{- $field := "" }}
+{{- if (hasKey (index $parent.Values "hull").config.general.data.installation.config "productUris") -}}
+{{- $field = "productUris" -}}
+{{- end -}}
+{{- if (ne $field "") -}}
+{{- $origins := list -}}
 {{ $key }}:
-{{- range (index $parent.Values "hull").config.general.data.installation.productUris }}
-- {{ printf "%s://%s"  (index (. | urlParse) "scheme") (index (. | urlParse) "host") }}
+{{- range (index ((index $parent.Values "hull").config.general.data.installation.config) $field) }}
+{{- $entry := printf "%s://%s"  (index (. | urlParse) "scheme") (index (. | urlParse) "host") }}
+{{- if (has $entry $origins) -}}
+{{- else -}}
+{{- $origins = append $origins $entry }}
+- {{ $entry }}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 
