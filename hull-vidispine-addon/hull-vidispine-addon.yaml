@@ -95,7 +95,7 @@ hull:
                   ENDPOINT: api
               subresources:
                 10_product:
-                  apiPath: "Products"
+                  apiPath: "v2/Products"
                   typeDescription: "Product"
                   identifierQueryParam: "Guid"
                   _DEFAULTS_:
@@ -103,8 +103,32 @@ hull:
                     remove: false
                     putUriExcludeIdentifier: true
                 20_usecasedefinitions:
-                  apiPath: "UseCaseDefinitions"
+                  apiPath: "v2/UseCaseDefinitions"
                   typeDescription: "UseCaseDefinitions"
+                  identifierQueryParam: "Guid"
+                  _DEFAULTS_:
+                    register: true
+                    remove: false
+                    putUriExcludeIdentifier: true
+                30_usecaseconfiguration:
+                  apiPath: "v2/UseCaseConfigurations"
+                  typeDescription: "UseCaseConfigurations"
+                  identifierQueryParam: "Guid"
+                  _DEFAULTS_:
+                    register: true
+                    remove: false
+                    putUriExcludeIdentifier: true
+                40_metadata:
+                  apiPath: "v2/Metadata"
+                  typeDescription: "Metadata"
+                  identifierQueryParam: "Guid"
+                  _DEFAULTS_:
+                    register: true
+                    remove: false
+                    putUriExcludeIdentifier: true
+                50_roles:
+                  apiPath: "v2/RoleRightsMapping/Mapping"
+                  typeDescription: RoleRightsMapping
                   identifierQueryParam: "Guid"
                   _DEFAULTS_:
                     register: true
