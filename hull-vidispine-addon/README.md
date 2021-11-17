@@ -2,9 +2,9 @@
 
 This helm chart is used to provide Vidispine specific functionality to Helm charts that are built upon the HULL library.
 
-## The installation job
+## The hull-install and hull-configure job
 
-The `installation` job is a special Kubernetes job included in this addon chart values.yaml which can be enabled via configuration. It can communicate with custom APIs to create entities which are needed for the product to function fully in the given system.
+The `hull-install` job is a special Kubernetes job included in this addon chart `hull-vidispine-addon.yaml` which can be enabled via configuration. It can communicate with custom APIs to create entities which are needed for the product to function fully in the given system.
 
 Typically there are two general scenarios for installing a Vidispine product:
 - installation in a Vidispine only environment (e.g. VidiNet, MediaLogger standalone) with
@@ -13,11 +13,13 @@ Typically there are two general scenarios for installing a Vidispine product:
   - registration in Authentication Service
   - registration in ConfigPortal
 
-Technically the `installation` job runs as a so-called Helm hook, this means that the whole installation process pauses while the `installation` job runs initially. Only on successful execution the remaining objects are created abd the installation itself becomes successful. 
+Technically the `hull-install` job runs as a so-called Helm hook, this means that the whole installation process pauses while the `hull-install` job runs initially **before the main pods of the application start up**. Only on successful execution the remaining objects are created abd the installation itself becomes successful. 
+
+The `hull-configure` job is the counterpart of the `hull-install` job since it is executed **after the main pods of the application have start up successfully**. It's main purpose is therefore to communicate with APIs that the product provides to apply initial configuration, the most prominent use is to add default metadata to a ConfigPortal installation that was created within the same Helm Chart. Technically it is the same process as running the `hull-isntall` job, the only difference is that it will only apply configuration of `subresources` that are tagged with `stage: post-install`. If no `stage` tag or `stage: pre-install` is given for a subresource it will be handled by the `hull-install` job.
 
 ### Execution and Configuration
 
-The `installation` job runs as a PowershellCore container and executes a pre-configured Powershell script. The configuration for the script is derived from the configuration specified in `hull-vidispine-addon.values.yaml` at 
+The `hull-install` and `hull-configure` job runs as a PowershellCore container and executes a pre-configured Powershell script. The configuration for the script is derived from the configuration specified in `hull-vidispine-addon.values.yaml` at 
 
 ```yaml
 hull:
@@ -26,7 +28,7 @@ hull:
       data:
         installation:
 ```
-The configuration section `installation` has the following structure:
+The configuration section `hull-install` has the following structure:
 
 | Parameter                       | Description                                                     | Defaults                 |                  Example |
 | ------------------------------- | ----------------------------------------------------------------| -----------------------------| -----------------------------------------|
@@ -88,10 +90,10 @@ Describes a particular entity on a subresource on an endpoint which is communica
 #### Activation and Preconfiguration
 Execution of Jobs can generally be selectively enabled or not by setting the `hull.objects.job.<jobKey>.enabled` field to `true` or `false`. 
 
-By default the `installation` job is not enabled but already pre-configured so that after enabling it not all information needs to be set. Pre-configuration means that:
+By default the `hull-install` job is not enabled but already pre-configured so that after enabling it not all information needs to be set. Pre-configuration means that:
 - the container needed to run the job is defined so that it 
   - automatically loads the configuration section from `hull.config.general.data.installation`
-  - mounts sensitive data as environment variables from secrets (which by default are created with the respective keys but without values). If you use the `installation` job in product installation you need to set the appropriate values in the secrets:
+  - mounts sensitive data as environment variables from secrets (which by default are created with the respective keys but without values). If you use the `hull-install` job in product installation you need to set the appropriate values in the secrets:
     - from `vidispine-secret` the `data` keys 
       - `adminUsername` to env var `VIDISPINE_ADMIN_USERNAME` 
       - `adminPassword` to env var `VIDISPINE_ADMIN_PASSWORD` 
@@ -114,5 +116,8 @@ By default the `installation` job is not enabled but already pre-configured so t
     - subresources are configured so that creating specific entities works out of the box for them
       - key `10_product` for inserting products into ConfigPortal
       - key `20_usecasedefinitions` for inserting use-case definitions into ConfigPortal
+      - key `30_usecaseconfiguration` for inserting use-case configurations into ConfigPortal
+      - key `40_metadata` for inserting metadata definitions into ConfigPortal
+      - key `50_roles` for inserting roles into ConfigPortal
   
 Some of the keys have a numerical prefix which guarantees the order of execution is in ascending alphanumeric form. This is needed because the Go dict structure used here to store data has all keys ordered this way when retrieving them one by one. If you overwrite one of the keys you need to make sure the name including prefix is identical.
