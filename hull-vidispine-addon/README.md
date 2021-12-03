@@ -33,7 +33,7 @@ The configuration section `hull-install` has the following structure:
 | Parameter                       | Description                                                     | Defaults                 |                  Example |
 | ------------------------------- | ----------------------------------------------------------------| -----------------------------| -----------------------------------------|
 | `config` | Additional configuration options.<br><br>Key: <br>One of the allowed options defined in <br>`<configSpec>`<br><br>Value: <br>The configuration options value | `preScript`<br>`postScript`<br>`productUris`
-| `endpoints` | Dictionary of endpoints to communicate with.<br><br>Key: <br>Key for entry in dictionary `endpoints`<br><br>Value: <br>The endpoint definition in form of a `<endpointSpec>` | `10_vidispine:`<br>`20_authenticationService:`<br>`30_configPortal:`
+| `endpoints` | Dictionary of endpoints to communicate with.<br><br>Key: <br>Key for entry in dictionary `endpoints`<br><br>Value: <br>The endpoint definition in form of a `<endpointSpec>` | `10_vidicore:`<br>`20_authservice:`<br>`30_configportal:`
 
 #### ConfigSpec
 Describes configuration options. <br>Has exclusively the following sub-fields: <br><br>`preScript`<br>`postScript`<br>`productUris`
@@ -42,7 +42,7 @@ Describes configuration options. <br>Has exclusively the following sub-fields: <
 | ------------------------------- | ----------------------------------------------------------------| -----------------------------| -----------------------------------------|
 | `preScript` | A Powershell script to be executed before the installation jobs endpoints are processed. 
 | `postScript` | A Powershell script to be executed after the installation jobs endpoints are processed. 
-| `productUris` | Product URIs that are can be used in conjunction with the transformations that populate authentication client data such as `hull.vidispine.addon.coruris` and `hull.vidispine.addon.producturis`. <br><br>When populated the entries here will be manipulated according to the transformation and are added to the fields where the transformation is applied. <br><br>Note that this can be automatically populated by a `hull.util.transformation.tpl` from the `hull.config.general.data.endpoints` fields like in the example. | `[]` | `productUris:`<br>`-`&#160;`https://myapp`<br>`-`&#160;`https://myappalternativehost`<br><br>or<br><br>`productUris:`<br>&#160;&#160;`_HULL_TRANSFORMATION_:`<br>&#160;&#160;&#160;&#160;`NAME:`&#160;`hull.util.transformation.tpl`<br>&#160;&#160;&#160;&#160;`CONTENT:`&#160;`"`<br>&#160;&#160;&#160;&#160;&#160;&#160;`[`<br>&#160;&#160;&#160;&#160;&#160;&#160;`{{-`&#160;`(index`&#160;`.`&#160;`\"PARENT\").Values.hull.config.general.data.endpoints.configPortal.uri.api`&#160;`-}},`<br>&#160;&#160;&#160;&#160;&#160;&#160;`{{-`&#160;`(index`&#160;`.`&#160;`\"PARENT\").Values.hull.config.general.data.endpoints.configPortal.uri.ui`&#160;`-}}`<br>&#160;&#160;&#160;&#160;&#160;&#160;`]"`
+| `productUris` | Product URIs that are can be used in conjunction with the transformations that populate authentication client data such as `hull.vidispine.addon.coruris` and `hull.vidispine.addon.producturis`. <br><br>When populated the entries here will be manipulated according to the transformation and are added to the fields where the transformation is applied. <br><br>Note that this can be automatically populated by a `hull.util.transformation.tpl` from the `hull.config.general.data.endpoints` fields like in the example. | `[]` | `productUris:`<br>`-`&#160;`https://myapp`<br>`-`&#160;`https://myappalternativehost`<br><br>or<br><br>`productUris:`<br>&#160;&#160;`_HULL_TRANSFORMATION_:`<br>&#160;&#160;&#160;&#160;`NAME:`&#160;`hull.util.transformation.tpl`<br>&#160;&#160;&#160;&#160;`CONTENT:`&#160;`"`<br>&#160;&#160;&#160;&#160;&#160;&#160;`[`<br>&#160;&#160;&#160;&#160;&#160;&#160;`{{-`&#160;`(index`&#160;`.`&#160;`\"PARENT\").Values.hull.config.general.data.endpoints.configportal.uri.api`&#160;`-}},`<br>&#160;&#160;&#160;&#160;&#160;&#160;`{{-`&#160;`(index`&#160;`.`&#160;`\"PARENT\").Values.hull.config.general.data.endpoints.configportal.uri.ui`&#160;`-}}`<br>&#160;&#160;&#160;&#160;&#160;&#160;`]"`
 
 #### EndpointSpec
 Describes an endpoint which is communicated with. <br>Has exclusively the following sub-fields: <br><br>`endpoint`<br>`auth`<br>`subresources`
@@ -51,7 +51,7 @@ Describes an endpoint which is communicated with. <br>Has exclusively the follow
 | ------------------------------- | ----------------------------------------------------------------| -----------------------------| -----------------------------------------|
 | `endpoint` | The HTTP/HTTPS path to the endpoint API <br><br>If this is not defined, nothing will be attempted to be written to this endpoint | | `https://vpms3testsystem.westeurope.cloudapp.azure.com:19081/Authentication/Core`<br>or<br>`http://dv-ndr-plat4.s4m.de:31060` 
 | `auth` | Defines how to authenticate at the given endpoint<br><br>Has one of following keys:<br>`basic`<br>`token` |
-| `auth.basic` | Defines basic authentication for connecting to API | | `env:`<br>&#160;&#160;`username:`&#160;`VIDISPINE_ADMIN_USERNAME`<br>&#160;&#160;`password:`&#160;`VIDISPINE_ADMIN_PASSWORD`
+| `auth.basic` | Defines basic authentication for connecting to API | | `env:`<br>&#160;&#160;`username:`&#160;`VIDICORE_ADMIN_USERNAME`<br>&#160;&#160;`password:`&#160;`VIDICORE_ADMIN_PASSWORD`
 | `auth.basic.env.username` | Defines the environment variable that holds the username for basic auth.<br><br>Note:<br>A secret must be mounted to the container which populates the `username` environment variable
 | `auth.basic.env.password` | Defines the environment variable that holds the password for basic auth.<br><br>Note:<br>A secret must be mounted to the container which populates the `password` environment variable
 | `auth.token` | Defines token authentication for connecting to API | | `authenticationServiceEndpoint:`&#160;`"https://vpms3testsystem.westeurope.cloudapp.azure.com:19081/Authentication/Core"`<br>`env:`<br>&#160;&#160;`clientId:`&#160;`AUTHSERVICE_TOKEN_PRODUCT_CLIENT_ID`<br>&#160;&#160;`clientSecret:`&#160;`AUTHSERVICE_TOKEN_PRODUCT_CLIENT_SECRET`<br>`grantType:`&#160;`"client_credentials"`<br>`scopes:`<br>`- 'configportalscope'`<br>`- 'identityscope'`
@@ -94,25 +94,25 @@ By default the `hull-install` job is not enabled but already pre-configured so t
 - the container needed to run the job is defined so that it 
   - automatically loads the configuration section from `hull.config.general.data.installation`
   - mounts sensitive data as environment variables from secrets (which by default are created with the respective keys but without values). If you use the `hull-install` job in product installation you need to set the appropriate values in the secrets:
-    - from `vidispine-secret` the `data` keys 
-      - `adminUsername` to env var `VIDISPINE_ADMIN_USERNAME` 
-      - `adminPassword` to env var `VIDISPINE_ADMIN_PASSWORD` 
+    - from `vidicore-secret` the `data` keys 
+      - `adminUsername` to env var `VIDICORE_ADMIN_USERNAME` 
+      - `adminPassword` to env var `VIDICORE_ADMIN_PASSWORD` 
     - from `authservice-token-secret` the `data` keys
       - `installerClientId` to env var `AUTHSERVICE_TOKEN_INSTALLER_CLIENT_ID` 
       - `installerClientSecret` to env var `AUTHSERVICE_TOKEN_INSTALLER_CLIENT_SECRET` 
       - `productClientId` to env var `AUTHSERVICE_TOKEN_PRODUCT_CLIENT_ID` 
       - `productClientSecret` to env var `AUTHSERVICE_TOKEN_PRODUCT_CLIENT_SECRET`
 - typical endpoints and subresources are predefined so that only entities need to be specified. The predefined subresources for the endpoints are skipped in case the endpoint is not defined. 
-  - endpoint with key `10_vidispine` is set up to do basic authentication on the vidispine endpoint defined in `hull.config.general.data.endpoints.vidispine.uri.api` using the `admin` credentials from secret `vidispine-secret`
+  - endpoint with key `10_vidicore` is set up to do basic authentication on the vidispine endpoint defined in `hull.config.general.data.endpoints.vidicore.uri.api` using the `admin` credentials from secret `vidicore-secret`
     - subresources are configured so that creating specific entities works out of the box for them
       - key `10_metadatafields` for inserting metadatafields into Vidispine
       - key `20_metadatafieldgroups` for inserting metadatafieldgroups into Vidispine  
-  - endpoint with key `20_authenticationService` is set up to do token authentication on the authentication service endpoint defined in `hull.config.general.data.endpoints.authenticationService.uri.api` using the `installer` credentials from secret `authservice-token-secret`
+  - endpoint with key `20_authservice` is set up to do token authentication on the authentication service endpoint defined in `hull.config.general.data.endpoints.authservice.uri.api` using the `installer` credentials from secret `authservice-token-secret`
     - subresources are configured so that creating specific entities works out of the box for them
       - key `10_resources` for inserting scopes into authentication service
       - key `20_clients` for inserting clients into authentication service
       - key `30_roles` for inserting roles into authentication service
-  - endpoint with key `30_configPortal` is set up to do token authentication on the ConfigPortal  endpoint defined in `hull.config.general.data.endpoints.configPortal.uri.api` using the `product` credentials from secret `authservice-token-secret`
+  - endpoint with key `30_configportal` is set up to do token authentication on the ConfigPortal  endpoint defined in `hull.config.general.data.endpoints.configportal.uri.api` using the `product` credentials from secret `authservice-token-secret`
     - subresources are configured so that creating specific entities works out of the box for them
       - key `10_product` for inserting products into ConfigPortal
       - key `20_usecasedefinitions` for inserting use-case definitions into ConfigPortal
