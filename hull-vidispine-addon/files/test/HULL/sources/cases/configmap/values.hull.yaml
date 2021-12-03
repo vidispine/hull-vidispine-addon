@@ -13,10 +13,10 @@ hull:
           vidicore:
             uri:
               api: ""
-          authenticationService:
+          authservice:
             uri:
               api: "https://au"
-          configPortal:
+          configportal:
             uri:
               api: "https://cp/api"
               ui: "https://cp/ui"
@@ -32,12 +32,12 @@ hull:
                 NAME: hull.util.transformation.tpl
                 CONTENT: "
                   [
-                  {{- (index . \"PARENT\").Values.hull.config.general.data.endpoints.configPortal.uri.api -}},
-                  {{- (index . \"PARENT\").Values.hull.config.general.data.endpoints.configPortal.uri.ui -}}
+                  {{- (index . \"PARENT\").Values.hull.config.general.data.endpoints.configportal.uri.api -}},
+                  {{- (index . \"PARENT\").Values.hull.config.general.data.endpoints.configportal.uri.ui -}}
                   ]"
           endpoints: 
             # Register Clients in AuthenticationService
-            20_authenticationService:
+            20_authservice:
               subresources:
                 10_resources:
                   entities:
@@ -107,7 +107,7 @@ hull:
                         clientUri:
                           _HULL_TRANSFORMATION_:
                             NAME: hull.util.transformation.get
-                            REFERENCE: hull.config.general.data.endpoints.configPortal.uri.api
+                            REFERENCE: hull.config.general.data.endpoints.configportal.uri.api
                         alwaysIncludeUserClaimsInIdToken: true
                         allowedGrantTypes:
                         - 'implicit'

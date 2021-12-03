@@ -5,16 +5,16 @@ hull:
       data:
         installation:
           endpoints:
-            10_vidispine:
+            10_vidicore:
               auth:
                 basic:
                   env:
-                    username: VIDISPINE_ADMIN_USERNAME
-                    password: VIDISPINE_ADMIN_PASSWORD
+                    username: VIDICORE_ADMIN_USERNAME
+                    password: VIDICORE_ADMIN_PASSWORD
               endpoint:
                 _HULL_TRANSFORMATION_:
                   NAME: hull.vidispine.addon.generalendpoint
-                  ENTRY: vidispine
+                  ENTRY: vidicore
                   ENDPOINT: api
               subresources:
                 10_metadatafields:
@@ -31,13 +31,13 @@ hull:
                   _DEFAULTS_:
                     register: true
                     putInsteadOfPost: true
-            20_authenticationService:
+            20_authservice:
               auth:
                 token:
                   authenticationServiceEndpoint:
                     _HULL_TRANSFORMATION_:
                       NAME: hull.vidispine.addon.generalendpoint
-                      ENTRY: authenticationService
+                      ENTRY: authservice
                       ENDPOINT: api
                   env:
                     clientId: AUTHSERVICE_TOKEN_INSTALLER_CLIENT_ID
@@ -48,7 +48,7 @@ hull:
               endpoint:
                 _HULL_TRANSFORMATION_:
                   NAME: hull.vidispine.addon.generalendpoint
-                  ENTRY: authenticationService
+                  ENTRY: authservice
                   ENDPOINT: api
               subresources:
                 10_resources:
@@ -73,13 +73,13 @@ hull:
                     register: true
                     remove: false
 
-            30_configPortal:
+            30_configportal:
               auth:
                 token:
                   authenticationServiceEndpoint:
                     _HULL_TRANSFORMATION_:
                       NAME: hull.vidispine.addon.generalendpoint
-                      ENTRY: authenticationService
+                      ENTRY: authservice
                       ENDPOINT: api
                   env:
                     clientId: AUTHSERVICE_TOKEN_PRODUCT_CLIENT_ID
@@ -91,7 +91,7 @@ hull:
               endpoint:
                 _HULL_TRANSFORMATION_:
                   NAME: hull.vidispine.addon.generalendpoint
-                  ENTRY: configPortal
+                  ENTRY: configportal
                   ENDPOINT: api
               subresources:
                 10_product:
@@ -202,15 +202,15 @@ hull:
                     secretKeyRef:
                       name: authservice-token-secret
                       key: productClientSecret
-                'VIDISPINE_ADMIN_USERNAME':
+                'VIDICORE_ADMIN_USERNAME':
                   valueFrom:
                     secretKeyRef:
-                      name: vidispine-secret
+                      name: vidicore-secret
                       key: adminUsername
-                'VIDISPINE_ADMIN_PASSWORD':
+                'VIDICORE_ADMIN_PASSWORD':
                   valueFrom:
                     secretKeyRef:
-                      name: vidispine-secret
+                      name: vidicore-secret
                       key: adminPassword
               volumeMounts:
                 'installation':
@@ -267,15 +267,15 @@ hull:
                     secretKeyRef:
                       name: authservice-token-secret
                       key: productClientSecret
-                'VIDISPINE_ADMIN_USERNAME':
+                'VIDICORE_ADMIN_USERNAME':
                   valueFrom:
                     secretKeyRef:
-                      name: vidispine-secret
+                      name: vidicore-secret
                       key: adminUsername
-                'VIDISPINE_ADMIN_PASSWORD':
+                'VIDICORE_ADMIN_PASSWORD':
                   valueFrom:
                     secretKeyRef:
-                      name: vidispine-secret
+                      name: vidicore-secret
                       key: adminPassword
               volumeMounts:
                 'installation':
@@ -283,7 +283,7 @@ hull:
                   mountPath: /script
 
     secret:
-      'vidispine-secret':
+      'vidicore-secret':
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
           "helm.sh/hook-weight": "-80"
@@ -785,4 +785,3 @@ hull:
                   }
 
               }
-
