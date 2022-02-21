@@ -4,7 +4,8 @@ hull:
     general:
       data:
         installation:
-          customCaCertificates: {}
+          config:
+            customCaCertificates: {}
           endpoints:
             10_vidicore:
               auth:
@@ -165,10 +166,6 @@ hull:
         pod:
           restartPolicy: OnFailure
           serviceAccountName: default
-          volumes:
-            installation:
-              configMap:
-                name: hull-install
           containers:
             installation:
               image:
@@ -176,7 +173,7 @@ hull:
                 tag: "7.0.3-ubuntu-18.04-20200928"
               command: ["/bin/sh", "-c"]
               args: _HT![
-                {{ if (index . "$").Values.hull.config.general.data.installation.customCaCertificates }}
+                {{ if (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates }}
                 echo Updating Certificates;
                 update-ca-certificates;
                 {{ end }}
@@ -219,20 +216,23 @@ hull:
                   name: 'installation'
                   mountPath: /script
                 certs:
-                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.customCaCertificates
+                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
                   name: certs
                   mountPath: '/usr/local/share/ca-certificates/'
                 etcssl:
-                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.customCaCertificates
+                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
                   name: etcssl
                   mountPath: '/etc/ssl/certs'
           volumes:
+            installation:
+              configMap:
+                name: hull-install
             certs:
-              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.customCaCertificates
+              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
               secret:
                 secretName: "custom-ca-certificates"
             etcssl:
-              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.customCaCertificates
+              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
               emptyDir: {}
 
       'hull-configure':
@@ -258,7 +258,7 @@ hull:
                 tag: "7.0.3-ubuntu-18.04-20200928"
               command: ["/bin/sh", "-c"]
               args: _HT![
-                {{ if (index . "$").Values.hull.config.general.data.installation.customCaCertificates }}
+                {{ if (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates }}
                 echo Updating Certificates;
                 update-ca-certificates;
                 {{ end }}
@@ -301,20 +301,23 @@ hull:
                   name: 'installation'
                   mountPath: /script
                 certs:
-                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.customCaCertificates
+                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
                   name: certs
                   mountPath: '/usr/local/share/ca-certificates/'
                 etcssl:
-                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.customCaCertificates
+                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
                   name: etcssl
                   mountPath: '/etc/ssl/certs'
           volumes:
+            installation:
+              configMap:
+                name: hull-install
             certs:
-              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.customCaCertificates
+              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
               secret:
                 secretName: "custom-ca-certificates"
             etcssl:
-              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.customCaCertificates
+              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
               emptyDir: {}
 
     secret:
@@ -349,10 +352,10 @@ hull:
             inline: ""
 
       'custom-ca-certificates':
-        enabled: _HT?(index . "$").Values.hull.config.general.data.installation.customCaCertificates
+        enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
         data: |-
           _HT!{
-            {{ range $key,$value :=  (index . "$").Values.hull.config.general.data.installation.customCaCertificates }}
+            {{ range $key,$value :=  (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates }}
             {{ $key }}: { inline: {{ $value | quote }} },
             {{ end }}
           }
