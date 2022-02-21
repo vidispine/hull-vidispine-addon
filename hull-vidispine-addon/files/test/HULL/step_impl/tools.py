@@ -90,6 +90,7 @@ def copy_the_suite_source_folder_for_case_and_chart_and_suite_to_TEST_EXECUTION_
         with open(src_path, 'r') as file:
             data = file.read()
             data = data.replace("<OBJECT_TYPE>",case)
+            data = data.replace("helm.sh/hook", "safe")
             if not os.path.isdir(dst_path):
                 os.makedirs(dst_path)
             dst_file = open(os.path.join(dst_path, suite + ".values.hull.yaml"), "w")
@@ -345,9 +346,21 @@ def copytree(src, dst, symlinks=False, ignore=None):
                 shutil.copy2(s, d)
 
 def copyfile(src_dir, src_filename, dst_dir):
-    if not os.path.isdir(dst_dir):
-        os.makedirs(dst_dir)
-    shutil.copyfile(os.path.join(src_dir, src_filename), os.path.join(dst_dir, src_filename))
+    try:
+        src_path = os.path.join(src_dir, src_filename)
+        dst_path =  os.path.join(dst_dir, src_filename)
+        with open(src_path, 'r') as file:
+            data = file.read()
+            data = data.replace("helm.sh/hook", "safe")
+            if not os.path.isdir(dst_dir):
+                os.makedirs(dst_dir)
+            dst_file = open(dst_path, "w")
+            dst_file.write(data)
+            dst_file.close()
+
+    except Exception as e:
+        print("Oops!", e.__str__, "occurred.")
+        assert False
 
 def get_objects(case, chart):
     dir_path = os.path.dirname(os.path.realpath(__file__))

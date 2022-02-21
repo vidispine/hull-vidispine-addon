@@ -4,6 +4,135 @@
 
 ###################################################
 ### CONFIG
-{}
+hull:
+  config:
+    general:
+      defaultImageRegistryToFirstRegistrySecretServer: true
+      data:
+        endpoints:
+          vidicore:
+            uri:
+              api: ""
+          authservice:
+            uri:
+              api: "https://au"
+          configportal:
+            uri:
+              api: "https://cp/api"
+              ui: "https://cp/ui"
+              notification: ""
+        installation:
+          config:
+            preScript: |-
+              # Test prescript
+            postScript: |-
+              # Test postscript
+            productUris:
+              _HULL_TRANSFORMATION_:
+                NAME: hull.util.transformation.tpl
+                CONTENT: "
+                  [
+                  {{- (index . \"PARENT\").Values.hull.config.general.data.endpoints.configportal.uri.api -}},
+                  {{- (index . \"PARENT\").Values.hull.config.general.data.endpoints.configportal.uri.ui -}}
+                  ]"
+          endpoints: 
+            # Register Clients in AuthenticationService
+            20_authservice:
+              subresources:
+                10_resources:
+                  entities:
+                    &ConfigPortalScope configportalscope:
+                      register: true
+                      config:
+                        scopes:
+                        - displayName: 'Access to ConfigPortal API'
+                          name: *ConfigPortalScope
+                          showInDiscoveryDocument: true
+                        enabled: true
+                        name: *ConfigPortalScope
+                        displayName: 'Access to ConfigPortal API'
+                        description: 'ConfigPortal API for VPMS3 products'
+                    &IdentityScope identityscope: {}
+                20_clients: 
+                  _DEFAULTS_:
+                    config:
+                      protocolType: 'oidc'
+                      requireConsent: false
+                      allowRememberConsent: true
+                      allowAccessTokensViaBrowser: true
+                      allowOfflineAccess: true
+                      alwaysIncludeUserClaimsInIdToken: true
+                      identityTokenLifetime: 3600
+                      accessTokenLifetime: 10800
+                      authorizationCodeLifetime: 30800
+                      absoluteRefreshTokenLifetime: 2592000
+                      slidingRefreshTokenLifetime: 86400
+                      refreshTokenUsage: 1
+                      updateAccessTokenClaimsOnRefresh: true
+                      refreshTokenExpiration: 1
+                      accessTokenType: 0
+                      includeJwtId: false
+                      alwaysSendClientClaims: true
+                      clientClaimsPrefix: ''
+                  entities:
+                    &CPInstallerClient cpInstallerClient:
+                      overwriteExisting: true
+                      register: true
+                      config:
+                        clientName: 'ConfigPortal Installer Client'
+                        clientId: cpClientId                           
+                        requireClientSecret: true
+                        clientSecrets:
+                        - description: 'ConfigPortal Client'
+                          value: blabla                            
+                          type: "SharedSecret"
+                        alwaysIncludeUserClaimsInIdToken: true
+                        allowedGrantTypes:
+                        - 'client_credentials'
+                        allowedScopes: 
+                        - 'identityscope'
+                        - *ConfigPortalScope
+                        claims:
+                        - type: client_role
+                          value: 'CP_API_ADMIN'
+                        - type: vidispine_user
+                          value: 'admin'
+                        - type: sub
+                          value: 'admin'
+                    &SwaggerClient swaggerClient:
+                      overwriteExisting: true
+                      config:
+                        clientName: 'ConfigPortal Swagger UI'
+                        clientId: *SwaggerClient
+                        clientUri:
+                          _HULL_TRANSFORMATION_:
+                            NAME: hull.util.transformation.get
+                            REFERENCE: hull.config.general.data.endpoints.configportal.uri.api
+                        alwaysIncludeUserClaimsInIdToken: true
+                        allowedGrantTypes:
+                        - 'implicit'
+                        allowedScopes: 
+                        - 'openid'
+                        - 'identityscope'
+                        - 'profile'
+                        - *ConfigPortalScope
+                        claims:
+                        - type: client_role
+                          value: 'CP_API_ADMIN'
+                        allowedCorsOrigins:
+                          _HULL_TRANSFORMATION_:
+                            NAME: hull.vidispine.addon.coruris
+                        redirectUris:
+                          _HULL_TRANSFORMATION_:
+                            NAME: hull.vidispine.addon.producturis
+                            APPENDS: 
+                            - "/swagger/oauth2-redirect.html"
+                            - "/swagger/oauth2-redirect.html?urls.primaryName=1"
+                            - "/swagger/oauth2-redirect.html?urls.primaryName=2"
+                        postLogoutRedirectUris:
+                          _HULL_TRANSFORMATION_:
+                            NAME: hull.vidispine.addon.producturis
+                            APPENDS: 
+                            - "/"
       
 ###################################################
