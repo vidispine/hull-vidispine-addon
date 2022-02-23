@@ -28,18 +28,19 @@ hull:
       data:
         installation:
 ```
-The configuration section `hull-install` has the following structure:
+The configuration section `installation` has the following structure:
 
 | Parameter                       | Description                                                     | Defaults                 |                  Example |
 | ------------------------------- | ----------------------------------------------------------------| -----------------------------| -----------------------------------------|
-| `config` | Additional configuration options.<br><br>Key: <br>One of the allowed options defined in <br>`<configSpec>`<br><br>Value: <br>The configuration options value | `preScript`<br>`postScript`<br>`productUris`
+| `config` | Additional configuration options.<br><br>Key: <br>One of the allowed options defined in <br>`<configSpec>`<br><br>Value: <br>The configuration options value | `customCaCertificates`<br>`preScript`<br>`postScript`<br>`productUris`
 | `endpoints` | Dictionary of endpoints to communicate with.<br><br>Key: <br>Key for entry in dictionary `endpoints`<br><br>Value: <br>The endpoint definition in form of a `<endpointSpec>` | `10_vidicore:`<br>`20_authservice:`<br>`30_configportal:`
 
 #### ConfigSpec
-Describes configuration options. <br>Has exclusively the following sub-fields: <br><br>`preScript`<br>`postScript`<br>`productUris`
+Describes configuration options. <br>Has exclusively the following sub-fields: <br><br>`customCaCertificates`<br>`preScript`<br>`postScript`<br>`productUris`
 
 | Parameter                       | Description                                                     | Defaults                 |                  Example |
 | ------------------------------- | ----------------------------------------------------------------| -----------------------------| -----------------------------------------|
+| `customCaCertificates` | An optional dictionary of custom ca certificates that are being mounted into the`hull-install` and `hull-configure` pods. Presence of certificates may be required for proper communication with the authentication service.
 | `preScript` | A Powershell script to be executed before the installation jobs endpoints are processed. 
 | `postScript` | A Powershell script to be executed after the installation jobs endpoints are processed. 
 | `productUris` | Product URIs that are can be used in conjunction with the transformations that populate authentication client data such as `hull.vidispine.addon.coruris` and `hull.vidispine.addon.producturis`. <br><br>When populated the entries here will be manipulated according to the transformation and are added to the fields where the transformation is applied. <br><br>Note that this can be automatically populated by a `hull.util.transformation.tpl` from the `hull.config.general.data.endpoints` fields like in the example. | `[]` | `productUris:`<br>`-`&#160;`https://myapp`<br>`-`&#160;`https://myappalternativehost`<br><br>or<br><br>`productUris:`<br>&#160;&#160;`_HULL_TRANSFORMATION_:`<br>&#160;&#160;&#160;&#160;`NAME:`&#160;`hull.util.transformation.tpl`<br>&#160;&#160;&#160;&#160;`CONTENT:`&#160;`"`<br>&#160;&#160;&#160;&#160;&#160;&#160;`[`<br>&#160;&#160;&#160;&#160;&#160;&#160;`{{-`&#160;`(index`&#160;`.`&#160;`\"PARENT\").Values.hull.config.general.data.endpoints.configportal.uri.api`&#160;`-}},`<br>&#160;&#160;&#160;&#160;&#160;&#160;`{{-`&#160;`(index`&#160;`.`&#160;`\"PARENT\").Values.hull.config.general.data.endpoints.configportal.uri.ui`&#160;`-}}`<br>&#160;&#160;&#160;&#160;&#160;&#160;`]"`
