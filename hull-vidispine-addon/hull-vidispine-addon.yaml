@@ -236,7 +236,7 @@ hull:
               emptyDir: {}
 
       'hull-configure':
-        enabled: true 
+        enabled: false
         annotations:
           "helm.sh/hook": post-install,post-upgrade
           "helm.sh/hook-delete-policy": before-hook-creation
