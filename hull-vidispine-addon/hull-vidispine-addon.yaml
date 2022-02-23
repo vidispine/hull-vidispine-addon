@@ -4,6 +4,8 @@ hull:
     general:
       data:
         installation:
+          config:
+            customCaCertificates: {}
           endpoints:
             10_vidicore:
               auth:
@@ -164,23 +166,20 @@ hull:
         pod:
           restartPolicy: OnFailure
           serviceAccountName: default
-          volumes:
-            installation:
-              configMap:
-                name: hull-install
           containers:
             installation:
               image:
                 repository: vpms/powershellcore-yaml
                 tag: "7.0.3-ubuntu-18.04-20200928"
-              command:
-              - "pwsh"
-              - "-c"
-              - "/script/Installer.ps1"
-              - "-ConfigFilePath"
-              - "/script/installation.yaml"
-              - "-Stage"
-              - "pre-install"
+              command: ["/bin/sh", "-c"]
+              args: _HT![
+                {{ if (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates }}
+                echo Updating Certificates;
+                update-ca-certificates;
+                {{ end }}
+                echo Run Scipt;
+                pwsh /script/Installer.ps1 -ConfigFilePath /script/installation.yaml -Stage pre-install;
+                ]
               env:
                 'AUTHSERVICE_TOKEN_INSTALLER_CLIENT_ID':
                   valueFrom:
@@ -216,9 +215,28 @@ hull:
                 'installation':
                   name: 'installation'
                   mountPath: /script
+                certs:
+                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+                  name: certs
+                  mountPath: '/usr/local/share/ca-certificates/'
+                etcssl:
+                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+                  name: etcssl
+                  mountPath: '/etc/ssl/certs'
+          volumes:
+            installation:
+              configMap:
+                name: hull-install
+            certs:
+              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+              secret:
+                secretName: "custom-ca-certificates"
+            etcssl:
+              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+              emptyDir: {}
 
       'hull-configure':
-        enabled: true 
+        enabled: false
         annotations:
           "helm.sh/hook": post-install,post-upgrade
           "helm.sh/hook-delete-policy": before-hook-creation
@@ -238,14 +256,15 @@ hull:
               image:
                 repository: vpms/powershellcore-yaml
                 tag: "7.0.3-ubuntu-18.04-20200928"
-              command:
-              - "pwsh"
-              - "-c"
-              - "/script/Installer.ps1"
-              - "-ConfigFilePath"
-              - "/script/installation.yaml"
-              - "-Stage"
-              - "post-install"
+              command: ["/bin/sh", "-c"]
+              args: _HT![
+                {{ if (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates }}
+                echo Updating Certificates;
+                update-ca-certificates;
+                {{ end }}
+                echo Run Scipt;
+                pwsh /script/Installer.ps1 -ConfigFilePath /script/installation.yaml -Stage pre-install;
+                ]
               env:
                 'AUTHSERVICE_TOKEN_INSTALLER_CLIENT_ID':
                   valueFrom:
@@ -281,6 +300,25 @@ hull:
                 'installation':
                   name: 'installation'
                   mountPath: /script
+                certs:
+                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+                  name: certs
+                  mountPath: '/usr/local/share/ca-certificates/'
+                etcssl:
+                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+                  name: etcssl
+                  mountPath: '/etc/ssl/certs'
+          volumes:
+            installation:
+              configMap:
+                name: hull-install
+            certs:
+              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+              secret:
+                secretName: "custom-ca-certificates"
+            etcssl:
+              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+              emptyDir: {}
 
     secret:
       'vidicore-secret':
@@ -312,6 +350,18 @@ hull:
             inline: ""
           productClientSecret:
             inline: ""
+      'custom-ca-certificates':
+        enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+        annotations:
+          "helm.sh/hook": pre-install,pre-upgrade
+          "helm.sh/hook-weight": "-80"
+          "helm.sh/hook-delete-policy": before-hook-creation
+        data: |-
+          _HT!{
+            {{ range $key,$value :=  (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates }}
+            {{ $key }}: { inline: {{ $value | quote }} },
+            {{ end }}
+          }
 
     configmap:
       'hull-install':
