@@ -84,8 +84,8 @@ hull:
                       ENTRY: authservice
                       ENDPOINT: api
                   env:
-                    clientId: AUTHSERVICE_TOKEN_PRODUCT_CLIENT_ID
-                    clientSecret: AUTHSERVICE_TOKEN_PRODUCT_CLIENT_SECRET
+                    clientId: AUTHSERVICE_TOKEN_INSTALLER_CLIENT_ID
+                    clientSecret: AUTHSERVICE_TOKEN_INSTALLER_CLIENT_SECRET
                   grantType: client_credentials
                   scopes:
                   - 'configportalscope'
@@ -350,6 +350,7 @@ hull:
             inline: ""
           productClientSecret:
             inline: ""
+
       'custom-ca-certificates':
         enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
         annotations:
@@ -521,9 +522,8 @@ hull:
                       $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
                       $headers.Add("Content-Type", "application/x-www-form-urlencoded")
                       $headers.Add("Accept", "application/json")
-                      $headers.Add("Authorization", "Basic $([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes([environment]::GetEnvironmentVariable($tokenRequest.env.clientId,"Process") + ":" + [environment]::GetEnvironmentVariable($tokenRequest.env.clientSecret,"Process"))))")
                       $scope = [String]::Join(" ", $tokenRequest.scopes)
-                      $request = @{ "client_id" = "installerClient"; "client_secret" = "575810cd-cc43-4deb-8a6c-478e71d51427"; "grant_type" = $tokenRequest.grantType ; "scope" = "$($scope)" }
+                      $request = @{ "client_id" = [environment]::GetEnvironmentVariable($tokenRequest.env.clientId,"Process"); "client_secret" = [environment]::GetEnvironmentVariable($tokenRequest.env.clientSecret,"Process"); "grant_type" = $tokenRequest.grantType ; "scope" = "$($scope)" }
 
                       try
                       {
@@ -610,7 +610,7 @@ hull:
                   [void] Start()
                   {
                       $this.WriteLog("---------- Starting all installations ----------")
-                      $this.ExecuteScript("pre-install", $this._config.preScript)
+                      $this.ExecuteScript("pre-install", $this._config.config.preScript)
                       foreach($apiKey in $this._config.endpoints.Keys)
                       {
                           $value = $this._config.endpoints[$apiKey]
@@ -628,7 +628,7 @@ hull:
                               $this.Endpoint($apiKey, $value)
                           }
                       }
-                      $this.ExecuteScript("post-install", $this._config.postScript)
+                      $this.ExecuteScript("post-install", $this._config.config.postScript)
                   }
 
                   # Handles all operations for a given endpoint/API
@@ -653,7 +653,7 @@ hull:
                     $stageSubresource = if ($subresource.Contains("stage")) { $subresource.stage } else { "pre-install" }
                     $this.WriteLog("*** Subresource stage is '$($stageSubresource)', global stage is '$($this._stage)'")
                     if ($stageSubresource.Equals($this._stage))
-                    {                       
+                    {
                       $endpoint = $endpoint.Trim('/')
                       foreach($entityKey in $subresource.entities.Keys)
                       {
@@ -704,7 +704,7 @@ hull:
 
                               if (!(Test-Path $filePath))
                               {
-                                  $this.WriteLog("File not exist")
+                                  $this.WriteLog("File '$($filePath)' does not exist")
                               }
                               else
                               {
