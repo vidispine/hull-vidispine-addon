@@ -120,6 +120,15 @@ entries:
     version: 1.22.0
   - apiVersion: v1
     appVersion: 1.21.0
+    created: "2022-04-25T10:56:10.079029566Z"
+    description: hull-vidispine-addon
+    digest: 4e7dab4662fc2b8c71bde776e3b0f218ec612ce633aecfaa319be3d1120a6974
+    name: hull-vidispine-addon
+    urls:
+    - https://github.com/vidispine/hull-vidispine-addon/releases/download/hull-vidispine-addon-1.21.10/hull-vidispine-addon-1.21.10.tgz
+    version: 1.21.10
+  - apiVersion: v1
+    appVersion: 1.21.0
     created: "2022-02-23T11:28:36.439836757Z"
     description: hull-vidispine-addon
     digest: ec03e75f1fde5b989b240d4afb0d58b5fa16eaf1d9adcda0028e3b62ff986c8b
