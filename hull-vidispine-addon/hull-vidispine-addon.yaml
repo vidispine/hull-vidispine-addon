@@ -47,6 +47,7 @@ hull:
                   grantType: client_credentials
                   scopes:
                   - 'identityscope'
+                  - 'configportalscope'
               endpoint:
                 _HULL_TRANSFORMATION_:
                   NAME: hull.vidispine.addon.generalendpoint
@@ -430,6 +431,37 @@ hull:
               )
               Import-Module powershell-yaml
 
+              function ParseErrorForResponseBody($Error)
+              {
+                  try
+                  {
+                      if ($PSVersionTable.PSVersion.Major -lt 6)
+                      {
+                          if ($Error.Exception.Response)
+                          {
+                              $Reader = New-Object System.IO.StreamReader($Error.Exception.Response.GetResponseStream())
+                              $Reader.BaseStream.Position = 0
+                              $Reader.DiscardBufferedData()
+                              $ResponseBody = $Reader.ReadToEnd()
+                              if ($ResponseBody.StartsWith('{')) {
+                                  $ResponseBody = $ResponseBody | ConvertFrom-Json
+                              }
+                              return $ResponseBody
+                          }
+                          return "<error getting body: Error.Exception.Response does not exist>"
+                      }
+                      else
+                      {
+                          return $Error.ErrorDetails.Message
+                      }
+                  }
+                  catch
+                  {
+                    return "<error getting body: $($_.Exception.Message)"
+                  }
+              }
+
+              [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
               $installer = New-Object Installer
               $installer.LoadConfiguration($ConfigFilePath, $Stage)
               $installer.Start()
@@ -449,6 +481,18 @@ hull:
                       [Console]::ForegroundColor = 'red'
                       [Console]::Error.WriteLine($message)
                       [Console]::ResetColor()
+                  }
+
+                  hidden [void] LogInvokeWebRequestError($uri, $method)
+                  {
+                      $this.WriteError("***** ERROR $($method.ToUpper()) to service: StatusCode: $($_.Exception.Response.StatusCode.Value__)")
+                      $this.WriteError("***** ERROR -> Url: '$($uri)'. $($_.Exception.ToString())")
+                      $this.WriteError("***** ERROR -> Exception Message: $($_.Exception.Message)")
+                      if ($_.Exception.InnerException -ne $null)
+                      {
+                          $this.WriteError("****** ERROR -> Inner Exception Message: $($_.Exception.InnerException.Message)")
+                      }
+                      $this.WriteError("***** ERROR -> Body: $(ParseErrorForResponseBody($_))")
                   }
 
                   # Invoke-WebRequest (GET, POST, PUT, DELETE) with retries and error handling
@@ -471,7 +515,8 @@ hull:
                               return $response
                           }
                           catch {
-                              $this.WriteLog("***** Error $($method.ToUpper()) to service. Url '$($url)'. $($_.Exception.ToString())")
+
+                              $this.LogInvokeWebRequestError($url, $method)
 
                               if ($retryCount -lt $retryLimit) {
                                   $this.WriteError("***** Retrying in 5 seconds.  Retry count $($retryCount) of $($retryLimit)")
@@ -640,7 +685,7 @@ hull:
                           $this.WriteLog("** Starting installation for Subresource '$($subresourceKey)'")
 
                           $this.Subresource($subresourceKey, $value, $config.endpoint, $config.auth)
-                          
+
                           $this.WriteLog("** Finished installation for Subresource '$($subresourceKey)'")
                           $this.WriteLog("")
                       }
@@ -721,8 +766,6 @@ hull:
                                       $configValue = $fileContentJson.$($configEntityValue.key)
                                       $value.config[$configEntityKey] = $configValue
                                   }
-
-
                               }
                           }
                       }
@@ -746,7 +789,7 @@ hull:
                       catch
                       {
                           $statusCode = $_.Exception.Response.StatusCode.Value__
-                          $this.WriteLog("**** ERROR --> StatusCode: $($_.Exception.Response.StatusCode.Value__) Exception: $($_.Exception.Message)")
+                          $this.LogInvokeWebRequestError($uri, "GET")
                       }
 
                       if ($statusCode -eq 200)
@@ -792,7 +835,7 @@ hull:
                       }
                       else
                       {
-                        throw [Exception]::new("ERROR --> Unexpected StatusCode: $($_.Exception.Response.StatusCode.Value__). Exception was: $($_.Exception.Response)")
+                          throw [Exception]::new("ERROR --> Unexpected StatusCode: $($_.Exception.Response.StatusCode.Value__). Exception was: $($_.Exception.Response)")
                       }
                   }
 
@@ -833,5 +876,4 @@ hull:
                       }
                       return $true
                   }
-
               }
