@@ -47,6 +47,7 @@ hull:
                   grantType: client_credentials
                   scopes:
                   - 'identityscope'
+                  - 'configportalscope'
               endpoint:
                 _HULL_TRANSFORMATION_:
                   NAME: hull.vidispine.addon.generalendpoint
@@ -107,6 +108,14 @@ hull:
                 20_usecasedefinitions:
                   apiPath: "v2/UseCaseDefinitions"
                   typeDescription: "UseCaseDefinitions"
+                  identifierQueryParam: "Guid"
+                  _DEFAULTS_:
+                    register: true
+                    remove: false
+                    putUriExcludeIdentifier: true
+                25_migrate:
+                  apiPath: "v2/UseCaseDefinitions/Migrate"
+                  typeDescription: UseCaseDefinitionsMigrate
                   identifierQueryParam: "Guid"
                   _DEFAULTS_:
                     register: true
@@ -430,6 +439,37 @@ hull:
               )
               Import-Module powershell-yaml
 
+              function ParseErrorForResponseBody($Error)
+              {
+                  try
+                  {
+                      if ($PSVersionTable.PSVersion.Major -lt 6)
+                      {
+                          if ($Error.Exception.Response)
+                          {
+                              $Reader = New-Object System.IO.StreamReader($Error.Exception.Response.GetResponseStream())
+                              $Reader.BaseStream.Position = 0
+                              $Reader.DiscardBufferedData()
+                              $ResponseBody = $Reader.ReadToEnd()
+                              if ($ResponseBody.StartsWith('{')) {
+                                  $ResponseBody = $ResponseBody | ConvertFrom-Json
+                              }
+                              return $ResponseBody
+                          }
+                          return "<error getting body: Error.Exception.Response does not exist>"
+                      }
+                      else
+                      {
+                          return $Error.ErrorDetails.Message
+                      }
+                  }
+                  catch
+                  {
+                    return "<error getting body: $($_.Exception.Message)"
+                  }
+              }
+
+              [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
               $installer = New-Object Installer
               $installer.LoadConfiguration($ConfigFilePath, $Stage)
               $installer.Start()
@@ -449,6 +489,18 @@ hull:
                       [Console]::ForegroundColor = 'red'
                       [Console]::Error.WriteLine($message)
                       [Console]::ResetColor()
+                  }
+
+                  hidden [void] LogInvokeWebRequestError($uri, $method)
+                  {
+                      $this.WriteError("***** ERROR $($method.ToUpper()) to service: StatusCode: $($_.Exception.Response.StatusCode.Value__)")
+                      $this.WriteError("***** ERROR -> Url: '$($uri)'. $($_.Exception.ToString())")
+                      $this.WriteError("***** ERROR -> Exception Message: $($_.Exception.Message)")
+                      if ($_.Exception.InnerException -ne $null)
+                      {
+                          $this.WriteError("****** ERROR -> Inner Exception Message: $($_.Exception.InnerException.Message)")
+                      }
+                      $this.WriteError("***** ERROR -> Body: $(ParseErrorForResponseBody($_))")
                   }
 
                   # Invoke-WebRequest (GET, POST, PUT, DELETE) with retries and error handling
@@ -471,7 +523,8 @@ hull:
                               return $response
                           }
                           catch {
-                              $this.WriteLog("***** Error $($method.ToUpper()) to service. Url '$($url)'. $($_.Exception.ToString())")
+
+                              $this.LogInvokeWebRequestError($url, $method)
 
                               if ($retryCount -lt $retryLimit) {
                                   $this.WriteError("***** Retrying in 5 seconds.  Retry count $($retryCount) of $($retryLimit)")
@@ -640,7 +693,7 @@ hull:
                           $this.WriteLog("** Starting installation for Subresource '$($subresourceKey)'")
 
                           $this.Subresource($subresourceKey, $value, $config.endpoint, $config.auth)
-                          
+
                           $this.WriteLog("** Finished installation for Subresource '$($subresourceKey)'")
                           $this.WriteLog("")
                       }
@@ -678,7 +731,8 @@ hull:
                                   $auth,
                                   $value.putInsteadOfPost -eq $true,
                                   $value.putUriExcludeIdentifier -eq $true,
-                                  $value.overwriteExisting -eq $true)
+                                  $value.overwriteExisting -eq $true,
+                                  $value.postQueryParams)
                           }
                           else
                           {
@@ -721,15 +775,13 @@ hull:
                                       $configValue = $fileContentJson.$($configEntityValue.key)
                                       $value.config[$configEntityKey] = $configValue
                                   }
-
-
                               }
                           }
                       }
                   }
 
                   # Checks entities and performs required operations (DELETE/PUT/POST)
-                  hidden [void] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $bodyParams, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting)
+                  hidden [void] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $bodyParams, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting, [PSCustomObject] $postQueryParams)
                   {
                       $headers = $this.GetJsonHttpHeaders($auth)
                       $apiEndpoint = $apiEndpoint.Trim('/')
@@ -746,7 +798,7 @@ hull:
                       catch
                       {
                           $statusCode = $_.Exception.Response.StatusCode.Value__
-                          $this.WriteLog("**** ERROR --> StatusCode: $($_.Exception.Response.StatusCode.Value__) Exception: $($_.Exception.Message)")
+                          $this.LogInvokeWebRequestError($uri, "GET")
                       }
 
                       if ($statusCode -eq 200)
@@ -785,22 +837,37 @@ hull:
                               else
                               {
                                   $this.WriteLog("**** POSTing '$entityType' entry '$identifier' to create it")
-                                  $this.PostEntity($apiEndpoint, $bodyParams, $auth)
+                                  $this.PostEntity($apiEndpoint, $bodyParams, $auth, $postQueryParams)
                               }
 
                           }
                       }
                       else
                       {
-                        throw [Exception]::new("ERROR --> Unexpected StatusCode: $($_.Exception.Response.StatusCode.Value__). Exception was: $($_.Exception.Response)")
+                          throw [Exception]::new("ERROR --> Unexpected StatusCode: $($_.Exception.Response.StatusCode.Value__). Exception was: $($_.Exception.Response)")
                       }
                   }
 
                   # Post an entity
-                  hidden [PSCustomObject] PostEntity([string] $postUrl, [string] $json, [PSCustomObject] $auth)
+                  hidden [PSCustomObject] PostEntity([string] $postUrl, [string] $json, [PSCustomObject] $auth, [PSCustomObject] $postQueryParams)
                   {
                       $headers = $this.GetJsonHttpHeaders($auth)
                       $url = "$($postUrl)"
+
+                      if ($postQueryParams -ne $null)
+                      {
+                          $count = 0
+                          $start = "?"
+                          foreach($key in $postQueryParams.Keys)
+                          {
+                              if ($count -gt 0)
+                              {
+                                  $start = "&"
+                              }
+                              $url += "$($start)$($key)=$($postQueryParams[$key])"
+                              $count = $count + 1
+                          }
+                      }
 
                       return $this.InvokeWebRequest($url, "POST", $json, $headers)
                   }
@@ -833,5 +900,4 @@ hull:
                       }
                       return $true
                   }
-
               }
