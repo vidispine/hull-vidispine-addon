@@ -113,6 +113,14 @@ hull:
                     register: true
                     remove: false
                     putUriExcludeIdentifier: true
+                25_migrate:
+                  apiPath: "v2/UseCaseDefinitions/Migrate"
+                  typeDescription: UseCaseDefinitionsMigrate
+                  identifierQueryParam: "Guid"
+                  _DEFAULTS_:
+                    register: true
+                    remove: false
+                    putUriExcludeIdentifier: true
                 30_usecaseconfiguration:
                   apiPath: "v2/UseCaseConfigurations"
                   typeDescription: "UseCaseConfigurations"
@@ -723,7 +731,8 @@ hull:
                                   $auth,
                                   $value.putInsteadOfPost -eq $true,
                                   $value.putUriExcludeIdentifier -eq $true,
-                                  $value.overwriteExisting -eq $true)
+                                  $value.overwriteExisting -eq $true,
+                                  $value.postQueryParams)
                           }
                           else
                           {
@@ -772,7 +781,7 @@ hull:
                   }
 
                   # Checks entities and performs required operations (DELETE/PUT/POST)
-                  hidden [void] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $bodyParams, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting)
+                  hidden [void] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $bodyParams, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting, [PSCustomObject] $postQueryParams)
                   {
                       $headers = $this.GetJsonHttpHeaders($auth)
                       $apiEndpoint = $apiEndpoint.Trim('/')
@@ -828,7 +837,7 @@ hull:
                               else
                               {
                                   $this.WriteLog("**** POSTing '$entityType' entry '$identifier' to create it")
-                                  $this.PostEntity($apiEndpoint, $bodyParams, $auth)
+                                  $this.PostEntity($apiEndpoint, $bodyParams, $auth, $postQueryParams)
                               }
 
                           }
@@ -840,10 +849,25 @@ hull:
                   }
 
                   # Post an entity
-                  hidden [PSCustomObject] PostEntity([string] $postUrl, [string] $json, [PSCustomObject] $auth)
+                  hidden [PSCustomObject] PostEntity([string] $postUrl, [string] $json, [PSCustomObject] $auth, [PSCustomObject] $postQueryParams)
                   {
                       $headers = $this.GetJsonHttpHeaders($auth)
                       $url = "$($postUrl)"
+
+                      if ($postQueryParams -ne $null)
+                      {
+                          $count = 0
+                          $start = "?"
+                          foreach($key in $postQueryParams.Keys)
+                          {
+                              if ($count -gt 0)
+                              {
+                                  $start = "&"
+                              }
+                              $url += "$($start)$($key)=$($postQueryParams[$key])"
+                              $count = $count + 1
+                          }
+                      }
 
                       return $this.InvokeWebRequest($url, "POST", $json, $headers)
                   }
