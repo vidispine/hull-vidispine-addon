@@ -85,8 +85,8 @@ hull:
                       ENTRY: authservice
                       ENDPOINT: api
                   env:
-                    clientId: AUTHSERVICE_TOKEN_INSTALLER_CLIENT_ID
-                    clientSecret: AUTHSERVICE_TOKEN_INSTALLER_CLIENT_SECRET
+                    clientId: AUTHSERVICE_TOKEN_PRODUCT_CLIENT_ID
+                    clientSecret: AUTHSERVICE_TOKEN_PRODUCT_CLIENT_SECRET
                   grantType: client_credentials
                   scopes:
                   - 'configportalscope'
