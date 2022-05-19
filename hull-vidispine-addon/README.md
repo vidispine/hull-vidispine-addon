@@ -109,6 +109,19 @@ By default the `hull-install` job is not enabled but already pre-configured so t
     - subresources are configured so that creating specific entities works out of the box for them
       - key `10_metadatafields` for inserting metadatafields into Vidispine
       - key `20_metadatafieldgroups` for inserting metadatafieldgroups into Vidispine  
+      - keys 
+        - `90_itemnotification`
+        - `91_collectionnotification`
+        - `92_jobnotification`
+        - `93_storagenotification`
+        - `94_storagefilenotification`
+        - `95_filenotification`
+        - `96_quotanotification`
+        - `97_groupnotification`
+        - `98_documentnotification`
+          `99_deletionlocknotification`
+        
+        for adding objet type notifications to VidiCore
   - endpoint with key `20_authservice` is set up to do token authentication on the authentication service endpoint defined in `hull.config.general.data.endpoints.authservice.uri.api` using the `installer` credentials from secret `authservice-token-secret`
     - subresources are configured so that creating specific entities works out of the box for them
       - key `10_resources` for inserting scopes into authentication service

@@ -33,6 +33,66 @@ hull:
                   _DEFAULTS_:
                     register: true
                     putInsteadOfPost: true
+                90_itemnotification:
+                  apiPath: "item/notification"
+                  typeDescription: "ItemNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                91_collectionnotification:
+                  apiPath: "collection/notification"
+                  typeDescription: "CollectionNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                92_jobnotification:
+                  apiPath: "job/notification"
+                  typeDescription: "JobNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                93_storagenotification:
+                  apiPath: "storage/notification"
+                  typeDescription: "StorageNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                94_storagefilenotification:
+                  apiPath: "storage/file/notification"
+                  typeDescription: "StorageFileNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                95_filenotification:
+                  apiPath: "file/notification"
+                  typeDescription: "FileNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                96_quotanotification:
+                  apiPath: "quota/notification"
+                  typeDescription: "QuotaNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                97_groupnotification:
+                  apiPath: "group/notification"
+                  typeDescription: "GroupNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                98_documentnotification:
+                  apiPath: "document/notification"
+                  typeDescription: "DocumentNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                99_deletionlocknotification:
+                  apiPath: "deletion-lock/notification"
+                  typeDescription: "DeletionLockNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
             20_authservice:
               auth:
                 token:
