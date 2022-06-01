@@ -854,7 +854,7 @@ hull:
                       $message = ""
                       try
                       {
-                          $this.WriteLog("**** Checking if entity exists, GETting uri '$($uri)''")
+                          $this.WriteLog("**** Checking if entity exists, GETting uri '$($uriGet)''")
                           $response = Invoke-WebRequest -Uri $uriGet -Method "GET" -headers $headers -UseBasicParsing -SkipCertificateCheck
                           if ([String]::IsNullOrWhitespace($getCustomScript))
                           {
