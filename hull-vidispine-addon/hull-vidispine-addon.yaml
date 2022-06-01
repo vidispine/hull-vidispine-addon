@@ -33,6 +33,66 @@ hull:
                   _DEFAULTS_:
                     register: true
                     putInsteadOfPost: true
+                90_itemnotification:
+                  apiPath: "item/notification"
+                  typeDescription: "ItemNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                91_collectionnotification:
+                  apiPath: "collection/notification"
+                  typeDescription: "CollectionNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                92_jobnotification:
+                  apiPath: "job/notification"
+                  typeDescription: "JobNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                93_storagenotification:
+                  apiPath: "storage/notification"
+                  typeDescription: "StorageNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                94_storagefilenotification:
+                  apiPath: "storage/file/notification"
+                  typeDescription: "StorageFileNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                95_filenotification:
+                  apiPath: "file/notification"
+                  typeDescription: "FileNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                96_quotanotification:
+                  apiPath: "quota/notification"
+                  typeDescription: "QuotaNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                97_groupnotification:
+                  apiPath: "group/notification"
+                  typeDescription: "GroupNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                98_documentnotification:
+                  apiPath: "document/notification"
+                  typeDescription: "DocumentNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                99_deletionlocknotification:
+                  apiPath: "deletion-lock/notification"
+                  typeDescription: "DeletionLockNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
             20_authservice:
               auth:
                 token:
@@ -732,7 +792,9 @@ hull:
                                   $value.putInsteadOfPost -eq $true,
                                   $value.putUriExcludeIdentifier -eq $true,
                                   $value.overwriteExisting -eq $true,
-                                  $value.postQueryParams)
+                                  $value.postQueryParams,
+                                  $value.getUriExcludeIdentifier,
+                                  $value.getCustomScript)
                           }
                           else
                           {
@@ -781,30 +843,62 @@ hull:
                   }
 
                   # Checks entities and performs required operations (DELETE/PUT/POST)
-                  hidden [void] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $bodyParams, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting, [PSCustomObject] $postQueryParams)
+                  hidden [void] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $bodyParams, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting, [PSCustomObject] $postQueryParams, [bool] $getUriExcludeIdentifier, [string] $getCustomScript)
                   {
                       $headers = $this.GetJsonHttpHeaders($auth)
                       $apiEndpoint = $apiEndpoint.Trim('/')
                       $uri = "$apiEndpoint/$identifier"
                       $uriPut = if ($putUriExcludeIdentifier) { $apiEndpoint } else { $uri }
+                      $uriGet = if ($getUriExcludeIdentifier) { $apiEndpoint } else { $uri }
 
+                      $message = ""
                       try
                       {
-                          $this.WriteLog("**** Checking if entity exists, GETting uri '$($uri)''")
-                          $response = Invoke-WebRequest -Uri $uri -Method "GET" -headers $headers -UseBasicParsing -SkipCertificateCheck
-                          $statusCode = $response.StatusCode
-                          $this.WriteLog("**** SUCCESS --> StatusCode: $($statusCode)")
+                          $this.WriteLog("**** Checking if entity exists, GETting uri '$($uriGet)''")
+                          $response = Invoke-WebRequest -Uri $uriGet -Method "GET" -headers $headers -UseBasicParsing -SkipCertificateCheck
+                          if ([String]::IsNullOrWhitespace($getCustomScript))
+                          {
+                            $statusCode = $response.StatusCode
+                            $this.WriteLog("**** SUCCESS --> StatusCode: $($statusCode)")
+                          }
+                          else
+                          {
+                            try
+                            {
+                                $this.WriteLog("**** Invoking getCustomScript")
+                                $scriptblock = [Scriptblock]::Create($getCustomScript)
+                                $this.WriteLog("[- Start Script -]")
+                                if ($scriptblock.InvokeReturnAsIs())
+                                {
+                                    $statusCode = 200
+                                }
+                                else
+                                {
+                                    $statusCode = 404
+                                }
+                                $this.WriteLog("[- End Script -]")
+
+                            }
+                            catch
+                            {
+                                $statusCode = 500
+                                $message = "ERROR --> Failed getCustomScript, set statusCode to $($statusCode). Exception was: $($_.Exception.Response)"
+                            }
+                          }
                       }
                       catch
                       {
                           $statusCode = $_.Exception.Response.StatusCode.Value__
-                          $this.LogInvokeWebRequestError($uri, "GET")
+                          $message = $_.Exception.Response
+                          $this.LogInvokeWebRequestError($uriGet, "GET")
                       }
+
+                      $this.WriteLog("**** StatusCode is $($statusCode)")
 
                       if ($statusCode -eq 200)
                       {
                           if($toBeDeleted) {
-                              $this.WriteLog("**** '$entityType' entry '$identifier' already exists and ia going to be deleted now")
+                              $this.WriteLog("**** '$entityType' entry '$identifier' already exists and is going to be deleted now")
                               $this.DeleteEntity($apiEndpoint, $identifier, $identifierQueryParam, $auth)
                           }
                           else
@@ -844,7 +938,7 @@ hull:
                       }
                       else
                       {
-                          throw [Exception]::new("ERROR --> Unexpected StatusCode: $($_.Exception.Response.StatusCode.Value__). Exception was: $($_.Exception.Response)")
+                          throw [Exception]::new("ERROR --> Unexpected StatusCode: $($statusCode) - Message: $($message)")
                       }
                   }
 
