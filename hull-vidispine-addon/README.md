@@ -28,18 +28,19 @@ hull:
       data:
         installation:
 ```
-The configuration section `hull-install` has the following structure:
+The configuration section `installation` has the following structure:
 
 | Parameter                       | Description                                                     | Defaults                 |                  Example |
 | ------------------------------- | ----------------------------------------------------------------| -----------------------------| -----------------------------------------|
-| `config` | Additional configuration options.<br><br>Key: <br>One of the allowed options defined in <br>`<configSpec>`<br><br>Value: <br>The configuration options value | `preScript`<br>`postScript`<br>`productUris`
+| `config` | Additional configuration options.<br><br>Key: <br>One of the allowed options defined in <br>`<configSpec>`<br><br>Value: <br>The configuration options value | `customCaCertificates`<br>`preScript`<br>`postScript`<br>`productUris`
 | `endpoints` | Dictionary of endpoints to communicate with.<br><br>Key: <br>Key for entry in dictionary `endpoints`<br><br>Value: <br>The endpoint definition in form of a `<endpointSpec>` | `10_vidicore:`<br>`20_authservice:`<br>`30_configportal:`
 
 #### ConfigSpec
-Describes configuration options. <br>Has exclusively the following sub-fields: <br><br>`preScript`<br>`postScript`<br>`productUris`
+Describes configuration options. <br>Has exclusively the following sub-fields: <br><br>`customCaCertificates`<br>`preScript`<br>`postScript`<br>`productUris`
 
 | Parameter                       | Description                                                     | Defaults                 |                  Example |
 | ------------------------------- | ----------------------------------------------------------------| -----------------------------| -----------------------------------------|
+| `customCaCertificates` | An optional dictionary of custom ca certificates that are being mounted into the`hull-install` and `hull-configure` pods. Presence of certificates may be required for proper communication with the authentication service.
 | `preScript` | A Powershell script to be executed before the installation jobs endpoints are processed. 
 | `postScript` | A Powershell script to be executed after the installation jobs endpoints are processed. 
 | `productUris` | Product URIs that are can be used in conjunction with the transformations that populate authentication client data such as `hull.vidispine.addon.coruris` and `hull.vidispine.addon.producturis`. <br><br>When populated the entries here will be manipulated according to the transformation and are added to the fields where the transformation is applied. <br><br>Note that this can be automatically populated by a `hull.util.transformation.tpl` from the `hull.config.general.data.endpoints` fields like in the example. | `[]` | `productUris:`<br>`-`&#160;`https://myapp`<br>`-`&#160;`https://myappalternativehost`<br><br>or<br><br>`productUris:`<br>&#160;&#160;`_HULL_TRANSFORMATION_:`<br>&#160;&#160;&#160;&#160;`NAME:`&#160;`hull.util.transformation.tpl`<br>&#160;&#160;&#160;&#160;`CONTENT:`&#160;`"`<br>&#160;&#160;&#160;&#160;&#160;&#160;`[`<br>&#160;&#160;&#160;&#160;&#160;&#160;`{{-`&#160;`(index`&#160;`.`&#160;`\"PARENT\").Values.hull.config.general.data.endpoints.configportal.uri.api`&#160;`-}},`<br>&#160;&#160;&#160;&#160;&#160;&#160;`{{-`&#160;`(index`&#160;`.`&#160;`\"PARENT\").Values.hull.config.general.data.endpoints.configportal.uri.ui`&#160;`-}}`<br>&#160;&#160;&#160;&#160;&#160;&#160;`]"`
@@ -83,6 +84,7 @@ Describes a particular entity on a subresource on an endpoint which is communica
 | `remove` | The entity will be DELETEd if it exists
 | `putUriExcludeIdentifier` | Some APIs handle PUTting of entities by PUTing to the parent resource and specifying the entity to create in the body. If the subresource handles PUTting in that way, set this parameter to `true`. If `false` or unspecified, PUT calls will be made to the path which ends with the entities name.
 | `putInsteadOfPost` | Some APIs use PUTting instead of POSTing for creation of new entities. If the subresource uses PUTting instead of POSTing, set this parameter to `true`.
+| `postQueryParams` | Query Parameters to add to the Url of a POST command. Not a frequent usa case but required to submit for example the `guid` of a UseCaseDefinition to migrate.
 | `overwriteExisting` | The default behavior is to not overwrite existing entities in case they already exist. Set this field to `true` to overwrite any existing entity.
 | `config` | The free-form body of the request in YAML specification. When PUTting or POSTing to APIs the content is converted from YAML to JSON and sent with header `Content-Type: application/json` | | `Name:`&#160;`Publish`<br>`Guid:`&#160;`c9689fe0-a0e9-40d7-af82-500bba342b62`<br>`UseCaseGroupName:`&#160;`Publish`<br>`UseCaseGroupOrderNo:`&#160;`2`<br>`OrderNo:`&#160;`1`<br>`ProductGuid:`<br>`- 62e052b1-6864-4502-87dc-944be4f5d783`<br>`UseCaseType:` `dynamic`<br>`Json:`&#160;`|`<br>&#160;&#160;`{"Overview":{"AllowToggleView":false,`<br>&#160;&#160;`"View":"detailed","Columns":[]},`<br>&#160;&#160;`"Fields:"`<br>&#160;&#160;`[{"Name":"targetStorage","DisplayName":"Target`<br>&#160;&#160;`Storage","Type":"VS_Storage","IsRequired":true,`<br>&#160;&#160;`"InputProperties":{"Storage":"Storage"}},`<br>&#160;&#160;`{"Name":"userSelectableWF",`<br>&#160;&#160;`"DisplayName":"User-Selectable`&#160;`Workflows",`<br>&#160;&#160;`"Type":"Multiple_Workflow",`<br>&#160;&#160;`"IsRequired":true},`<br>&#160;&#160;`{"Name":"userSelectableMetadata",`<br>&#160;&#160;`"DisplayName":"User-Selectable Metadata",`<br>&#160;&#160;`"Type":"CustomInput_MaskedControl"}],"Actions":`<br>&#160;&#160;`[{"IsEnabled":true,"Name":"Edit","OrderNo":1,`<br>&#160;&#160;`"TooltipMessage":"Edit this Publish `<br>&#160;&#160;`Configuration","Type":"edit"},`<br>&#160;&#160;`{"IsEnabled":true,`<br>&#160;&#160;`"Name":"Workflow Designer","OrderNo":3,`<br>&#160;&#160;`"TooltipMessage":"Open Workflow Designer",`<br>&#160;&#160;`"Type":"openWorkflow",`<br>&#160;&#160;`"SystemEndpointName":"workflow designer"}]`<br>&#160;&#160;`,"AllowMultipleConfig":false}`
 
@@ -107,6 +109,19 @@ By default the `hull-install` job is not enabled but already pre-configured so t
     - subresources are configured so that creating specific entities works out of the box for them
       - key `10_metadatafields` for inserting metadatafields into Vidispine
       - key `20_metadatafieldgroups` for inserting metadatafieldgroups into Vidispine  
+      - keys 
+        - `90_itemnotification`
+        - `91_collectionnotification`
+        - `92_jobnotification`
+        - `93_storagenotification`
+        - `94_storagefilenotification`
+        - `95_filenotification`
+        - `96_quotanotification`
+        - `97_groupnotification`
+        - `98_documentnotification`
+          `99_deletionlocknotification`
+        
+        for adding objet type notifications to VidiCore
   - endpoint with key `20_authservice` is set up to do token authentication on the authentication service endpoint defined in `hull.config.general.data.endpoints.authservice.uri.api` using the `installer` credentials from secret `authservice-token-secret`
     - subresources are configured so that creating specific entities works out of the box for them
       - key `10_resources` for inserting scopes into authentication service
@@ -116,8 +131,8 @@ By default the `hull-install` job is not enabled but already pre-configured so t
     - subresources are configured so that creating specific entities works out of the box for them
       - key `10_product` for inserting products into ConfigPortal
       - key `20_usecasedefinitions` for inserting use-case definitions into ConfigPortal
+      - key `25_migrate` for making calls to the UseCaseDefinition Migrate API. Note that for these calls to be successful the `guid` of the UseCaseDefinition needs to be passed under the `guid` key in the `postQueryParams` dictionary.
       - key `30_usecaseconfiguration` for inserting use-case configurations into ConfigPortal
       - key `40_metadata` for inserting metadata definitions into ConfigPortal
       - key `50_roles` for inserting roles into ConfigPortal
-  
 Some of the keys have a numerical prefix which guarantees the order of execution is in ascending alphanumeric form. This is needed because the Go dict structure used here to store data has all keys ordered this way when retrieving them one by one. If you overwrite one of the keys you need to make sure the name including prefix is identical.

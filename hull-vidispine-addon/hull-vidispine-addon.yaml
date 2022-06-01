@@ -4,6 +4,8 @@ hull:
     general:
       data:
         installation:
+          config:
+            customCaCertificates: {}
           endpoints:
             10_vidicore:
               auth:
@@ -31,6 +33,66 @@ hull:
                   _DEFAULTS_:
                     register: true
                     putInsteadOfPost: true
+                90_itemnotification:
+                  apiPath: "item/notification"
+                  typeDescription: "ItemNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                91_collectionnotification:
+                  apiPath: "collection/notification"
+                  typeDescription: "CollectionNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                92_jobnotification:
+                  apiPath: "job/notification"
+                  typeDescription: "JobNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                93_storagenotification:
+                  apiPath: "storage/notification"
+                  typeDescription: "StorageNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                94_storagefilenotification:
+                  apiPath: "storage/file/notification"
+                  typeDescription: "StorageFileNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                95_filenotification:
+                  apiPath: "file/notification"
+                  typeDescription: "FileNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                96_quotanotification:
+                  apiPath: "quota/notification"
+                  typeDescription: "QuotaNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                97_groupnotification:
+                  apiPath: "group/notification"
+                  typeDescription: "GroupNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                98_documentnotification:
+                  apiPath: "document/notification"
+                  typeDescription: "DocumentNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
+                99_deletionlocknotification:
+                  apiPath: "deletion-lock/notification"
+                  typeDescription: "DeletionLockNotification"
+                  identifierQueryParam: ""
+                  _DEFAULTS_:
+                    register: true
             20_authservice:
               auth:
                 token:
@@ -45,6 +107,7 @@ hull:
                   grantType: client_credentials
                   scopes:
                   - 'identityscope'
+                  - 'configportalscope'
               endpoint:
                 _HULL_TRANSFORMATION_:
                   NAME: hull.vidispine.addon.generalendpoint
@@ -110,6 +173,14 @@ hull:
                     register: true
                     remove: false
                     putUriExcludeIdentifier: true
+                25_migrate:
+                  apiPath: "v2/UseCaseDefinitions/Migrate"
+                  typeDescription: UseCaseDefinitionsMigrate
+                  identifierQueryParam: "Guid"
+                  _DEFAULTS_:
+                    register: true
+                    remove: false
+                    putUriExcludeIdentifier: true
                 30_usecaseconfiguration:
                   apiPath: "v2/UseCaseConfigurations"
                   typeDescription: "UseCaseConfigurations"
@@ -164,23 +235,20 @@ hull:
         pod:
           restartPolicy: OnFailure
           serviceAccountName: default
-          volumes:
-            installation:
-              configMap:
-                name: hull-install
           containers:
             installation:
               image:
                 repository: vpms/powershellcore-yaml
                 tag: "7.0.3-ubuntu-18.04-20200928"
-              command:
-              - "pwsh"
-              - "-c"
-              - "/script/Installer.ps1"
-              - "-ConfigFilePath"
-              - "/script/installation.yaml"
-              - "-Stage"
-              - "pre-install"
+              command: ["/bin/sh", "-c"]
+              args: _HT![
+                {{ if (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates }}
+                echo Updating Certificates;
+                update-ca-certificates;
+                {{ end }}
+                echo Run Scipt;
+                pwsh /script/Installer.ps1 -ConfigFilePath /script/installation.yaml -Stage pre-install;
+                ]
               env:
                 'AUTHSERVICE_TOKEN_INSTALLER_CLIENT_ID':
                   valueFrom:
@@ -216,9 +284,28 @@ hull:
                 'installation':
                   name: 'installation'
                   mountPath: /script
+                certs:
+                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+                  name: certs
+                  mountPath: '/usr/local/share/ca-certificates/'
+                etcssl:
+                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+                  name: etcssl
+                  mountPath: '/etc/ssl/certs'
+          volumes:
+            installation:
+              configMap:
+                name: hull-install
+            certs:
+              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+              secret:
+                secretName: "custom-ca-certificates"
+            etcssl:
+              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+              emptyDir: {}
 
       'hull-configure':
-        enabled: true 
+        enabled: false
         annotations:
           "helm.sh/hook": post-install,post-upgrade
           "helm.sh/hook-delete-policy": before-hook-creation
@@ -238,14 +325,15 @@ hull:
               image:
                 repository: vpms/powershellcore-yaml
                 tag: "7.0.3-ubuntu-18.04-20200928"
-              command:
-              - "pwsh"
-              - "-c"
-              - "/script/Installer.ps1"
-              - "-ConfigFilePath"
-              - "/script/installation.yaml"
-              - "-Stage"
-              - "post-install"
+              command: ["/bin/sh", "-c"]
+              args: _HT![
+                {{ if (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates }}
+                echo Updating Certificates;
+                update-ca-certificates;
+                {{ end }}
+                echo Run Scipt;
+                pwsh /script/Installer.ps1 -ConfigFilePath /script/installation.yaml -Stage pre-install;
+                ]
               env:
                 'AUTHSERVICE_TOKEN_INSTALLER_CLIENT_ID':
                   valueFrom:
@@ -281,6 +369,25 @@ hull:
                 'installation':
                   name: 'installation'
                   mountPath: /script
+                certs:
+                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+                  name: certs
+                  mountPath: '/usr/local/share/ca-certificates/'
+                etcssl:
+                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+                  name: etcssl
+                  mountPath: '/etc/ssl/certs'
+          volumes:
+            installation:
+              configMap:
+                name: hull-install
+            certs:
+              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+              secret:
+                secretName: "custom-ca-certificates"
+            etcssl:
+              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+              emptyDir: {}
 
     secret:
       'vidicore-secret':
@@ -312,6 +419,19 @@ hull:
             inline: ""
           productClientSecret:
             inline: ""
+
+      'custom-ca-certificates':
+        enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+        annotations:
+          "helm.sh/hook": pre-install,pre-upgrade
+          "helm.sh/hook-weight": "-80"
+          "helm.sh/hook-delete-policy": before-hook-creation
+        data: |-
+          _HT!{
+            {{ range $key,$value :=  (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates }}
+            {{ $key }}: { inline: {{ $value | quote }} },
+            {{ end }}
+          }
 
     configmap:
       'hull-install':
@@ -379,6 +499,37 @@ hull:
               )
               Import-Module powershell-yaml
 
+              function ParseErrorForResponseBody($Error)
+              {
+                  try
+                  {
+                      if ($PSVersionTable.PSVersion.Major -lt 6)
+                      {
+                          if ($Error.Exception.Response)
+                          {
+                              $Reader = New-Object System.IO.StreamReader($Error.Exception.Response.GetResponseStream())
+                              $Reader.BaseStream.Position = 0
+                              $Reader.DiscardBufferedData()
+                              $ResponseBody = $Reader.ReadToEnd()
+                              if ($ResponseBody.StartsWith('{')) {
+                                  $ResponseBody = $ResponseBody | ConvertFrom-Json
+                              }
+                              return $ResponseBody
+                          }
+                          return "<error getting body: Error.Exception.Response does not exist>"
+                      }
+                      else
+                      {
+                          return $Error.ErrorDetails.Message
+                      }
+                  }
+                  catch
+                  {
+                    return "<error getting body: $($_.Exception.Message)"
+                  }
+              }
+
+              [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
               $installer = New-Object Installer
               $installer.LoadConfiguration($ConfigFilePath, $Stage)
               $installer.Start()
@@ -398,6 +549,18 @@ hull:
                       [Console]::ForegroundColor = 'red'
                       [Console]::Error.WriteLine($message)
                       [Console]::ResetColor()
+                  }
+
+                  hidden [void] LogInvokeWebRequestError($uri, $method)
+                  {
+                      $this.WriteError("***** ERROR $($method.ToUpper()) to service: StatusCode: $($_.Exception.Response.StatusCode.Value__)")
+                      $this.WriteError("***** ERROR -> Url: '$($uri)'. $($_.Exception.ToString())")
+                      $this.WriteError("***** ERROR -> Exception Message: $($_.Exception.Message)")
+                      if ($_.Exception.InnerException -ne $null)
+                      {
+                          $this.WriteError("****** ERROR -> Inner Exception Message: $($_.Exception.InnerException.Message)")
+                      }
+                      $this.WriteError("***** ERROR -> Body: $(ParseErrorForResponseBody($_))")
                   }
 
                   # Invoke-WebRequest (GET, POST, PUT, DELETE) with retries and error handling
@@ -420,7 +583,8 @@ hull:
                               return $response
                           }
                           catch {
-                              $this.WriteLog("***** Error $($method.ToUpper()) to service. Url '$($url)'. $($_.Exception.ToString())")
+
+                              $this.LogInvokeWebRequestError($url, $method)
 
                               if ($retryCount -lt $retryLimit) {
                                   $this.WriteError("***** Retrying in 5 seconds.  Retry count $($retryCount) of $($retryLimit)")
@@ -471,9 +635,8 @@ hull:
                       $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
                       $headers.Add("Content-Type", "application/x-www-form-urlencoded")
                       $headers.Add("Accept", "application/json")
-                      $headers.Add("Authorization", "Basic $([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes([environment]::GetEnvironmentVariable($tokenRequest.env.clientId,"Process") + ":" + [environment]::GetEnvironmentVariable($tokenRequest.env.clientSecret,"Process"))))")
                       $scope = [String]::Join(" ", $tokenRequest.scopes)
-                      $request = @{ "client_id" = "installerClient"; "client_secret" = "575810cd-cc43-4deb-8a6c-478e71d51427"; "grant_type" = $tokenRequest.grantType ; "scope" = "$($scope)" }
+                      $request = @{ "client_id" = [environment]::GetEnvironmentVariable($tokenRequest.env.clientId,"Process"); "client_secret" = [environment]::GetEnvironmentVariable($tokenRequest.env.clientSecret,"Process"); "grant_type" = $tokenRequest.grantType ; "scope" = "$($scope)" }
 
                       try
                       {
@@ -560,7 +723,7 @@ hull:
                   [void] Start()
                   {
                       $this.WriteLog("---------- Starting all installations ----------")
-                      $this.ExecuteScript("pre-install", $this._config.preScript)
+                      $this.ExecuteScript("pre-install", $this._config.config.preScript)
                       foreach($apiKey in $this._config.endpoints.Keys)
                       {
                           $value = $this._config.endpoints[$apiKey]
@@ -578,7 +741,7 @@ hull:
                               $this.Endpoint($apiKey, $value)
                           }
                       }
-                      $this.ExecuteScript("post-install", $this._config.postScript)
+                      $this.ExecuteScript("post-install", $this._config.config.postScript)
                   }
 
                   # Handles all operations for a given endpoint/API
@@ -590,7 +753,7 @@ hull:
                           $this.WriteLog("** Starting installation for Subresource '$($subresourceKey)'")
 
                           $this.Subresource($subresourceKey, $value, $config.endpoint, $config.auth)
-                          
+
                           $this.WriteLog("** Finished installation for Subresource '$($subresourceKey)'")
                           $this.WriteLog("")
                       }
@@ -603,7 +766,7 @@ hull:
                     $stageSubresource = if ($subresource.Contains("stage")) { $subresource.stage } else { "pre-install" }
                     $this.WriteLog("*** Subresource stage is '$($stageSubresource)', global stage is '$($this._stage)'")
                     if ($stageSubresource.Equals($this._stage))
-                    {                       
+                    {
                       $endpoint = $endpoint.Trim('/')
                       foreach($entityKey in $subresource.entities.Keys)
                       {
@@ -628,7 +791,10 @@ hull:
                                   $auth,
                                   $value.putInsteadOfPost -eq $true,
                                   $value.putUriExcludeIdentifier -eq $true,
-                                  $value.overwriteExisting -eq $true)
+                                  $value.overwriteExisting -eq $true,
+                                  $value.postQueryParams,
+                                  $value.getUriExcludeIdentifier,
+                                  $value.getCustomScript)
                           }
                           else
                           {
@@ -654,7 +820,7 @@ hull:
 
                               if (!(Test-Path $filePath))
                               {
-                                  $this.WriteLog("File not exist")
+                                  $this.WriteLog("File '$($filePath)' does not exist")
                               }
                               else
                               {
@@ -671,38 +837,68 @@ hull:
                                       $configValue = $fileContentJson.$($configEntityValue.key)
                                       $value.config[$configEntityKey] = $configValue
                                   }
-
-
                               }
                           }
                       }
                   }
 
                   # Checks entities and performs required operations (DELETE/PUT/POST)
-                  hidden [void] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $bodyParams, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting)
+                  hidden [void] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $bodyParams, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting, [PSCustomObject] $postQueryParams, [bool] $getUriExcludeIdentifier, [string] $getCustomScript)
                   {
                       $headers = $this.GetJsonHttpHeaders($auth)
                       $apiEndpoint = $apiEndpoint.Trim('/')
                       $uri = "$apiEndpoint/$identifier"
                       $uriPut = if ($putUriExcludeIdentifier) { $apiEndpoint } else { $uri }
+                      $uriGet = if ($getUriExcludeIdentifier) { $apiEndpoint } else { $uri }
 
+                      $message = ""
                       try
                       {
-                          $this.WriteLog("**** Checking if entity exists, GETting uri '$($uri)''")
-                          $response = Invoke-WebRequest -Uri $uri -Method "GET" -headers $headers -UseBasicParsing -SkipCertificateCheck
-                          $statusCode = $response.StatusCode
-                          $this.WriteLog("**** SUCCESS --> StatusCode: $($statusCode)")
+                          $this.WriteLog("**** Checking if entity exists, GETting uri '$($uriGet)''")
+                          $response = Invoke-WebRequest -Uri $uriGet -Method "GET" -headers $headers -UseBasicParsing -SkipCertificateCheck
+                          if ([String]::IsNullOrWhitespace($getCustomScript))
+                          {
+                            $statusCode = $response.StatusCode
+                            $this.WriteLog("**** SUCCESS --> StatusCode: $($statusCode)")
+                          }
+                          else
+                          {
+                            try
+                            {
+                                $this.WriteLog("**** Invoking getCustomScript")
+                                $scriptblock = [Scriptblock]::Create($getCustomScript)
+                                $this.WriteLog("[- Start Script -]")
+                                if ($scriptblock.InvokeReturnAsIs())
+                                {
+                                    $statusCode = 200
+                                }
+                                else
+                                {
+                                    $statusCode = 404
+                                }
+                                $this.WriteLog("[- End Script -]")
+
+                            }
+                            catch
+                            {
+                                $statusCode = 500
+                                $message = "ERROR --> Failed getCustomScript, set statusCode to $($statusCode). Exception was: $($_.Exception.Response)"
+                            }
+                          }
                       }
                       catch
                       {
                           $statusCode = $_.Exception.Response.StatusCode.Value__
-                          $this.WriteLog("**** ERROR --> StatusCode: $($_.Exception.Response.StatusCode.Value__) Exception: $($_.Exception.Message)")
+                          $message = $_.Exception.Response
+                          $this.LogInvokeWebRequestError($uriGet, "GET")
                       }
+
+                      $this.WriteLog("**** StatusCode is $($statusCode)")
 
                       if ($statusCode -eq 200)
                       {
                           if($toBeDeleted) {
-                              $this.WriteLog("**** '$entityType' entry '$identifier' already exists and ia going to be deleted now")
+                              $this.WriteLog("**** '$entityType' entry '$identifier' already exists and is going to be deleted now")
                               $this.DeleteEntity($apiEndpoint, $identifier, $identifierQueryParam, $auth)
                           }
                           else
@@ -735,22 +931,37 @@ hull:
                               else
                               {
                                   $this.WriteLog("**** POSTing '$entityType' entry '$identifier' to create it")
-                                  $this.PostEntity($apiEndpoint, $bodyParams, $auth)
+                                  $this.PostEntity($apiEndpoint, $bodyParams, $auth, $postQueryParams)
                               }
 
                           }
                       }
                       else
                       {
-                        throw [Exception]::new("ERROR --> Unexpected StatusCode: $($_.Exception.Response.StatusCode.Value__). Exception was: $($_.Exception.Response)")
+                          throw [Exception]::new("ERROR --> Unexpected StatusCode: $($statusCode) - Message: $($message)")
                       }
                   }
 
                   # Post an entity
-                  hidden [PSCustomObject] PostEntity([string] $postUrl, [string] $json, [PSCustomObject] $auth)
+                  hidden [PSCustomObject] PostEntity([string] $postUrl, [string] $json, [PSCustomObject] $auth, [PSCustomObject] $postQueryParams)
                   {
                       $headers = $this.GetJsonHttpHeaders($auth)
                       $url = "$($postUrl)"
+
+                      if ($postQueryParams -ne $null)
+                      {
+                          $count = 0
+                          $start = "?"
+                          foreach($key in $postQueryParams.Keys)
+                          {
+                              if ($count -gt 0)
+                              {
+                                  $start = "&"
+                              }
+                              $url += "$($start)$($key)=$($postQueryParams[$key])"
+                              $count = $count + 1
+                          }
+                      }
 
                       return $this.InvokeWebRequest($url, "POST", $json, $headers)
                   }
@@ -783,5 +994,4 @@ hull:
                       }
                       return $true
                   }
-
               }
