@@ -5,11 +5,11 @@
 
 General label section must be populated with overriden names
 
-* All test objects have key "metadata§labels§app.kubernetes.io/instance" with value "RELEASE-NAME"
+* All test objects have key "metadata§labels§app.kubernetes.io/instance" with value "release-name"
 * All test objects have key "metadata§labels§app.kubernetes.io/managed-by" with value "Helm"
 * All test objects have key "metadata§labels§app.kubernetes.io/name" with value "a-shorter-name"
 * All test objects have key "metadata§labels§app.kubernetes.io/part-of" with value "undefined"
-* All test objects have key "metadata§labels§app.kubernetes.io/version" with value "1.22.0"
+* All test objects have key "metadata§labels§app.kubernetes.io/version" with value "1.24.0"
 
 Static names can be created
 
@@ -62,11 +62,11 @@ Run non-name override tests
 
 General label section must be populated
 
-* All test objects have key "metadata§labels§app.kubernetes.io/instance" with value "RELEASE-NAME"
+* All test objects have key "metadata§labels§app.kubernetes.io/instance" with value "release-name"
 * All test objects have key "metadata§labels§app.kubernetes.io/managed-by" with value "Helm"
 * All test objects have key "metadata§labels§app.kubernetes.io/name" with value of key "chart" from scenario data_store
 * All test objects have key "metadata§labels§app.kubernetes.io/part-of" with value "undefined"
-* All test objects have key "metadata§labels§app.kubernetes.io/version" with value "1.22.0"
+* All test objects have key "metadata§labels§app.kubernetes.io/version" with value "1.24.0"
 
 Static names can be created
 
@@ -111,3 +111,24 @@ Overwriting metadata must work properly
 * Test Object has key "metadata§annotations§general_custom_annotation_3" with value "Concrete Annotation 3"
 * Test Object has key "metadata§annotations§default_annotation_1" with value "Default Annotation 1"
 * Test Object has key "metadata§annotations§default_annotation_2" with value "Concrete Annotation 2"
+
+Enabling and Disabling
+
+* Test object "release-name-hull-test-disabled" does not exist
+* Test object "release-name-hull-test-disabled_transform" does not exist
+* Test object "release-name-hull-test-disabled_transform_dict" does not exist
+* Test object "release-name-hull-test-nulled" does not exist
+
+* Set test object to "release-name-hull-test-enabled_transform"
+* Test Object has key "metadata§annotations§annotation" with value "I am an Annotation"
+
+* Set test object to "release-name-hull-test-enabled_transform_dict"
+* Test Object has key "metadata§annotations§annotation" with value "I am an Annotation"
+
+Transformation checks
+
+* Test object "release-name-hull-test-disabled_transform_tpl_if" does not exist
+
+* Set test object to "release-name-hull-test-enabled_transform_tpl_if"
+* Test Object has key "metadata§annotations§annotation" with value "I am an Annotation"
+
