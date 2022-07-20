@@ -5,16 +5,6 @@
 ###################################################
 ### CONFIG
 hull:
-  config:
-    specific: # Here you can put all that is particular configuration for your app
-      globalRegistry: local.registry
-      
-      if_this_arg_is_defined: --this-is-defined # Whenever this is not empty ...
-      then_add_this_arg: --hence-is-this # also add this argument
-      
-      if_this_arg_is_not_defined:  # Whenever this is not empty ...
-      then_use_this_arg: --and-this-because-other-is-not-defined # also add this argument
-
   objects:
     registry:
 
@@ -82,7 +72,7 @@ hull:
               image:
                 repository: my/image/repo
                 tag: "99.9"
-                
+
       custom_args:
         pod:
           containers:
@@ -103,7 +93,37 @@ hull:
 ]
 >>>"
 
-      
+      int_bool_dict_array_ht:
+        pod:
+          containers:
+            main:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
+              args: _HT![
+                {{ if (index . "$").Values.hull.config.specific.if_this_arg_is_defined }}
+                "{{ (index . "$").Values.hull.config.specific.if_this_arg_is_defined }}",
+                "{{ (index . "$").Values.hull.config.specific.then_add_this_arg }}",
+                {{ end }}
+                {{ if not (index . "$").Values.hull.config.specific.if_this_arg_is_not_defined }}
+                "{{ (index . "$").Values.hull.config.specific.then_use_this_arg }}"
+                {{ end }}
+                ]
+              livenessProbe: 
+                initialDelaySeconds: _HT!12
+              readinessProbe: |-
+                _HT!{
+                  initialDelaySeconds: 55,
+                  periodSeconds: 66,
+                  failureThreshold: 77,
+                  timeoutSeconds: 88,
+                }
+              envFrom:
+                a_configmap:
+                  prefix: sourced_envs_prefix
+                  configMapRef:
+                    name: full_example_configmap
+                    optional: _HT!true
       removal_test:
         pod:
           containers:
@@ -210,8 +230,8 @@ hull:
                 ENV_VAR_FIELD:
                   valueFrom:
                     fieldRef:
-                      fieldPath: "metadata.field"                      
-                      apiVersion: "v1"                    
+                      fieldPath: "metadata.field"
+                      apiVersion: "v1"
                 ENV_VAR_RESOURCE:
                   valueFrom:
                     resourceFieldRef:
@@ -252,4 +272,455 @@ hull:
                   secretRef:
                     name: a_very_loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong_secret_name
                     staticName: true
-                
+
+      enabled_true_false:
+        pod:
+          containers:
+            test_disabled:
+              enabled: false
+              command:
+                - test_disabled
+            test_enabled:
+              enabled: true
+              command:
+                - test_enabled
+              envFrom:
+                test_disabled:
+                  enabled: false
+                  configMapRef:
+                    name: test_disabled
+                    optional: true
+                test_enabled:
+                  enabled: true
+                  configMapRef:
+                    name: test_enabled
+                    optional: true
+                test_disabled_transform:
+                  enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                    {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_off }}
+                    >>>"
+                  configMapRef:
+                    name: test_disabled_transform
+                    optional: true
+                test_enabled_transform:
+                  enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                    {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_on }}
+                    >>>"
+                  configMapRef:
+                    name: test_enabled_transform
+                    optional: true
+                test_enabled_missing:
+                  configMapRef:
+                    name: test_enabled_missing
+                    optional: true
+              env:
+                test_disabled:
+                  enabled: false
+                  value: test_disabled
+                test_enabled:
+                  enabled: true
+                  value: test_enabled
+                test_disabled_transform:
+                  enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                    {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_off }}
+                    >>>"
+                  value: test_disabled_transform
+                test_enabled_transform:
+                  enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                    {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_on }}
+                    >>>"
+                  value: test_enabled_transform
+                test_enabled_missing:
+                  value: test_enabled_missing
+              ports:
+                test_disabled:
+                  enabled: false
+                  protocol: TCP
+                  containerPort: 4345
+                test_enabled:
+                  enabled: true
+                  protocol: TCP
+                  containerPort: 4345
+                test_disabled_transform:
+                  enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                    {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_off }}
+                    >>>"
+                  protocol: TCP
+                  containerPort: 4345
+                test_enabled_transform:
+                  enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                    {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_on }}
+                    >>>"
+                  protocol: TCP
+                  containerPort: 4345
+                test_enabled_missing:
+                  protocol: TCP
+                  containerPort: 4345
+              volumeMounts:
+                test_disabled:
+                  enabled: false
+                  name: test_disabled
+                  mountPath: '/etc/init/configmap/all'
+                test_enabled:
+                  enabled: true
+                  name: test_enabled
+                  mountPath: '/etc/init/configmap/all'
+                test_disabled_transform:
+                  enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                    {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_off }}
+                    >>>"
+                  name: test_disabled_transform
+                  mountPath: '/etc/init/configmap/all'
+                test_enabled_transform:
+                  enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                    {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_on }}
+                    >>>"
+                  name: test_enabled_transform
+                  mountPath: '/etc/init/configmap/all'
+                test_enabled_missing:
+                  name: test_enabled_missing
+                  mountPath: '/etc/init/configmap/all'
+            test_enabled_transform:
+              enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_on }}
+                >>>"
+              command:
+                - test_enabled_transform
+            test_disabled_transform:
+              enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_off }}
+                >>>"
+              command:
+                - test_disabled_transform
+            test_enabled_missing:
+              command:
+                - test_enabled_missing
+          initContainers:
+            test_disabled:
+              enabled: false
+              command:
+                - test_disabled
+            test_enabled:
+              enabled: true
+              command:
+                - test_enabled
+              envFrom:
+                test_disabled:
+                  enabled: false
+                  configMapRef:
+                    name: test_disabled
+                    optional: true
+                test_enabled:
+                  enabled: true
+                  configMapRef:
+                    name: test_enabled
+                    optional: true
+                test_disabled_transform:
+                  enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                    {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_off }}
+                    >>>"
+                  configMapRef:
+                    name: test_disabled_transform
+                    optional: true
+                test_enabled_transform:
+                  enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                    {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_on }}
+                    >>>"
+                  configMapRef:
+                    name: test_enabled_transform
+                    optional: true
+                test_enabled_missing:
+                  configMapRef:
+                    name: test_enabled_missing
+                    optional: true
+              env:
+                test_disabled:
+                  enabled: false
+                  value: test_disabled
+                test_enabled:
+                  enabled: true
+                  value: test_enabled
+                test_disabled_transform:
+                  enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                    {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_off }}
+                    >>>"
+                  value: test_disabled_transform
+                test_enabled_transform:
+                  enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                    {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_on }}
+                    >>>"
+                  value: test_enabled_transform
+                test_enabled_missing:
+                  value: test_enabled_missing
+              ports:
+                test_disabled:
+                  enabled: false
+                  protocol: TCP
+                  containerPort: 4345
+                test_enabled:
+                  enabled: true
+                  protocol: TCP
+                  containerPort: 4345
+                test_disabled_transform:
+                  enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                    {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_off }}
+                    >>>"
+                  protocol: TCP
+                  containerPort: 4345
+                test_enabled_transform:
+                  enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                    {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_on }}
+                    >>>"
+                  protocol: TCP
+                  containerPort: 4345
+                test_enabled_missing:
+                  protocol: TCP
+                  containerPort: 4345
+              volumeMounts:
+                test_disabled:
+                  enabled: false
+                  name: test_disabled
+                  mountPath: '/etc/init/configmap/all'
+                test_enabled:
+                  enabled: true
+                  name: test_enabled
+                  mountPath: '/etc/init/configmap/all'
+                test_disabled_transform:
+                  enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                    {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_off }}
+                    >>>"
+                  name: test_disabled_transform
+                  mountPath: '/etc/init/configmap/all'
+                test_enabled_transform:
+                  enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                    {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_on }}
+                    >>>"
+                  name: test_enabled_transform
+                  mountPath: '/etc/init/configmap/all'
+                test_enabled_missing:
+                  name: test_enabled_missing
+                  mountPath: '/etc/init/configmap/all'
+            test_enabled_transform:
+              enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_on }}
+                >>>"
+              command:
+                - test_enabled_transform
+            test_disabled_transform:
+              enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_off }}
+                >>>"
+              command:
+                - test_disabled_transform
+            test_enabled_missing:
+              command:
+                - test_enabled_missing
+          volumes:
+            test_disabled:
+              enabled: false
+              secret:
+                secretName: test_disabled
+            test_enabled:
+              enabled: true
+              secret:
+                secretName: test_enabled
+            test_disabled_transform:
+              enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_off }}
+                >>>"
+              secret:
+                secretName: test_disabled_transform
+            test_enabled_transform:
+              enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
+                {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_on }}
+                >>>"
+              secret:
+                secretName: test_enabled_transform
+            test_enabled_missing:
+              secret:
+                secretName: test_enabled_missing
+
+      transformation_shortforms:
+        pod:
+          containers:
+            test_disabled:
+              enabled: false
+              command:
+                - test_disabled
+            test_enabled:
+              enabled: true
+              command:
+                - _HT![ 'test_enabled' ]
+              env:
+                test_disabled:
+                  enabled: false
+                  value: test_disabled
+                test_enabled:
+                  enabled: true
+                  value: _HT*hull.config.specific.name_test_enabled
+                test_disabled_transform:
+                  enabled: _HT?(index . "$").Values.hull.config.specific.switch_enabled_off
+                  value: test_disabled_transform
+                test_enabled_transform:
+                  enabled: _HT?(index . "$").Values.hull.config.specific.switch_enabled_on
+                  value: _HT!{{ (index . "$").Values.hull.config.specific.name_test_enabled }}_transform
+                test_enabled_missing:
+                  value: _HT!{{ (index . "$").Values.hull.config.specific.name_test_enabled }}_missing
+              envFrom:
+                test_disabled:
+                  enabled: false
+                  configMapRef:
+                    name: test_disabled
+                    optional: true
+                test_enabled:
+                  enabled: true
+                  configMapRef:
+                    name: _HT*hull.config.specific.name_test_enabled
+                    optional: true
+                test_disabled_transform:
+                  enabled: _HT?(index . "$").Values.hull.config.specific.switch_enabled_off
+                  configMapRef:                  
+                    name: test_disabled_transform
+                    optional: true
+                test_enabled_transform:
+                  enabled: _HT?(index . "$").Values.hull.config.specific.switch_enabled_on
+                  configMapRef:
+                    name: _HT!{{ (index . "$").Values.hull.config.specific.name_test_enabled }}_transform
+                    optional: true
+                test_enabled_missing:
+                  configMapRef:
+                    name: _HT!{{ (index . "$").Values.hull.config.specific.name_test_enabled }}_missing
+                    optional: true
+              ports:
+                _HT!:
+                  "_": |-
+                    {
+                      test_one: { containerPort: 10254, protocol: SCTP },
+                      test_two: { containerPort: 10255, protocol: UDP }
+                    }
+                test_three:
+                  containerPort: 10256
+                  protocol: SCTP
+            test_enabled_transform:
+              enabled: _HT?(index . "$").Values.hull.config.specific.switch_enabled_on
+              command:
+              - _HT![ {{ (printf "%s_%s" "test_enabled" "transform") }} ]
+            test_disabled_transform:
+              enabled: _HT?(index . "$").Values.hull.config.specific.switch_enabled_off
+              command:
+              - test_disabled_transform
+            test_enabled_missing:
+              command:
+              - _HT! [ {{ (printf "%s_%s" "test_enabled" "missing") }} ]
+              
+      transformation_doc_examples:
+        pod:
+          containers:
+            
+            array_form:
+              command: _HT![ 
+                  {{ (index . "$").Values.hull.config.specific.some_referenced_value }}, 
+                  "another_value",
+                  "and_another_value"
+                ]
+            
+            bool_variants:
+              env:
+                bool_field:
+                  enabled: _HT?and (index . "$").Values.hull.config.specific.switch_one_enabled (index . "$").Values.hull.config.specific.switch_two_enabled
+            
+            external:
+              image:
+                repository: quay.io/external_app
+                tag: "latest"
+
+            full_example:
+              args: _HT![
+                  {{ if (index . "$").Values.hull.config.specific.if_this_arg_is_defined }}
+                  "{{ (index . "$").Values.hull.config.specific.if_this_arg_is_defined }}",
+                  "{{ (index . "$").Values.hull.config.specific.then_add_this_arg }}",
+                  {{ end }}
+                  {{ if not (index . "$").Values.hull.config.specific.if_this_arg_is_not_defined }}
+                  "{{ (index . "$").Values.hull.config.specific.then_use_this_arg }}"
+                  {{ end }}
+                ]
+
+            get_variants:
+              env:
+                string_defined:
+                  enabled: true
+                  value: _HT*hull.config.specific.string_defined
+                string_empty:
+                  enabled: true
+                  value: _HT*hull.config.specific.string_empty
+                string_undefined:
+                  enabled: true
+                  value: _HT*hull.config.specific.string_undefined
+              envFrom:
+                bool_defined_false:
+                  configMapRef:
+                    name: bool_defined_false
+                    staticName: true
+                    optional: _HT*hull.config.specific.bool_defined_false
+                bool_defined_true:
+                  configMapRef:
+                    name: bool_defined_true
+                    staticName: true
+                    optional: _HT*hull.config.specific.bool_defined_true
+                #bool_undefined:
+                #  configMapRef:
+                #    name: bool_undefined
+                #    staticName: true
+                #    optional: _HT*hull.config.specific.bool_undefined
+              ports:
+                number_defined: 
+                  containerPort: _HT*hull.config.specific.number_defined
+                #number_undefined: 
+                #  containerPort: _HT*hull.config.specific.number_undefined
+
+            internal_one:
+              image:
+                registry: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.get>>><<<REFERENCE=hull.config.specific.globalRegistry>>>" # here it is used
+                repository: internal_app1
+                tag: "latest"
+
+            internal_two:
+              image: 
+                registry: _HT*hull.config.specific.globalRegistry # and here
+                repository: internal_app2
+                tag: "latest"
+
+            makefullname_variants:
+              env:
+                fullname:
+                  value: _HT^component-name
+
+            tpl_variants:
+              env:
+                tpl_string:
+                  value: _HT!{{ printf "%s-%s" (index . "$").Values.hull.config.specific.port_one (index . "$").Values.hull.config.specific.port_two }}
+              command:
+              - _HT!
+                  [ 
+                    {{ (index . "$").Values.hull.config.specific.command_one }}, 
+                    {{ (index . "$").Values.hull.config.specific.command_two }}
+                  ]
+              ports:
+                _HT!:
+                  "_": |-
+                    {
+                      first: { containerPort: {{ (index . "$").Values.hull.config.specific.port_one }} },
+                      second: { containerPort: {{ (index . "$").Values.hull.config.specific.port_two }} }
+                    }
+
+      complex_gets:
+        annotations: _HT*hull.config.specific.annotations_dict
+        pod:
+          containers:
+            main:
+              livenessProbe: _HT*hull.config.specific.liveness_probe
+              args: _HT*hull.config.specific.args_array
+            deferred: _HT*hull.config.specific.deferred_container
+
+      pod_get:
+        pod: _HT*hull.config.specific.pod_spec

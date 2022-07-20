@@ -2,7 +2,7 @@
   "description": "EndpointPort represents a Port used by an EndpointSlice",
   "properties": {
     "appProtocol": {
-      "description": "The application protocol for this port. This field follows standard Kubernetes label syntax. Un-prefixed names are reserved for IANA standard service names (as per RFC-6335 and http://www.iana.org/assignments/service-names). Non-standard protocols should use prefixed names such as mycompany.com/my-custom-protocol.",
+      "description": "The application protocol for this port. This field follows standard Kubernetes label syntax. Un-prefixed names are reserved for IANA standard service names (as per RFC-6335 and https://www.iana.org/assignments/service-names). Non-standard protocols should use prefixed names such as mycompany.com/my-custom-protocol.",
       "type": [
         "string",
         "null"
@@ -18,7 +18,10 @@
     "port": {
       "description": "The port number of the endpoint. If this is not specified, ports are not restricted and must be interpreted in the context of the specific consumer.",
       "format": "int32",
-      "type": "integer"
+      "type": [
+        "integer",
+        "null"
+      ]
     },
     "protocol": {
       "description": "The IP protocol for this port. Must be UDP, TCP, or SCTP. Default is TCP.",
@@ -29,6 +32,7 @@
     }
   },
   "type": "object",
+  "x-kubernetes-map-type": "atomic",
   "additionalProperties": false,
   "$schema": "http://json-schema.org/schema#"
 }
