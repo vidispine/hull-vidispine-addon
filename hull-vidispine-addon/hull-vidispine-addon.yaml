@@ -246,7 +246,7 @@ hull:
                 echo Updating Certificates;
                 update-ca-certificates;
                 {{ end }}
-                echo Run Scipt;
+                echo Run hull-install Script;
                 pwsh /script/Installer.ps1 -ConfigFilePath /script/installation.yaml -Stage pre-install;
                 ]
               env:
@@ -331,8 +331,8 @@ hull:
                 echo Updating Certificates;
                 update-ca-certificates;
                 {{ end }}
-                echo Run Scipt;
-                pwsh /script/Installer.ps1 -ConfigFilePath /script/installation.yaml -Stage pre-install;
+                echo Run hull-configure Script;
+                pwsh /script/Installer.ps1 -ConfigFilePath /script/installation.yaml -Stage post-install;
                 ]
               env:
                 'AUTHSERVICE_TOKEN_INSTALLER_CLIENT_ID':
@@ -602,11 +602,12 @@ hull:
                   }
 
                   # Gets the authorization header for either token based or basic auth
-                  hidden [PSCustomObject] GetJsonHttpHeaders([PSCustomObject] $auth)
+                  hidden [PSCustomObject] GetHttpHeaders([PSCustomObject] $auth, [string] $contentType)
                   {
                       $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
-                      $headers.Add("Content-Type", "application/json")
-                      $headers.Add("Accept", "application/json")
+
+                      $headers.Add("Content-Type", $contentType)
+                      $headers.Add("Accept", $contentType)
 
                       $authHeader = ""
                       if ($auth.token -ne $null)
@@ -752,7 +753,7 @@ hull:
                           $value = $config.subresources[$subresourceKey]
                           $this.WriteLog("** Starting installation for Subresource '$($subresourceKey)'")
 
-                          $this.Subresource($subresourceKey, $value, $config.endpoint, $config.auth)
+                          $this.Subresource($subresourceKey, $value, $config.endpoint, $config.auth, $config.stage)
 
                           $this.WriteLog("** Finished installation for Subresource '$($subresourceKey)'")
                           $this.WriteLog("")
@@ -760,10 +761,10 @@ hull:
                   }
 
                   # Handles all operations on a subresource of an endpoint
-                  hidden [void] Subresource([string] $name, [PSCustomObject] $subresource, [string] $endpoint, [PSCustomObject] $auth)
+                  hidden [void] Subresource([string] $name, [PSCustomObject] $subresource, [string] $endpoint, [PSCustomObject] $auth, [string] $stage)
                   {
                     $processSubresource = $true
-                    $stageSubresource = if ($subresource.Contains("stage")) { $subresource.stage } else { "pre-install" }
+                    $stageSubresource = if ($subresource.Contains("stage")) { $subresource.stage } else { if ($stage -ne $null) { $stage } else { "pre-install" } }
                     $this.WriteLog("*** Subresource stage is '$($stageSubresource)', global stage is '$($this._stage)'")
                     if ($stageSubresource.Equals($this._stage))
                     {
@@ -780,11 +781,22 @@ hull:
                               $this.WriteLog("*** $(if ($value.remove -eq $true) {"Starting to remove"} else {"Starting to register"}) Entity $($name) for entity key '$($entityKey)'")
 
                               $this.ReadConfigValueFromFile($value)
-
+                              
+                              $contentType = "$(if ([String]::IsNullOrEmpty($value.contentType)) { "application/json" } else { $value.contentType })"
+                              $content = $value.config
+                              if ($value.remove -eq $true)
+                              {
+                                $content = [string]::empty
+                              }
+                              elseif ($contentType -eq "application/json")
+                              {
+                                $content = $content | ConvertTo-Json -Depth 20
+                              }
+                              
                               $this.CheckEntity(
                                   "$($endpoint)/$($subresource.apiPath)",
                                   $name,
-                                  "$(if ($value.remove -eq $true) {[string]::empty} else { $value.config | ConvertTo-Json -Depth 20})",
+                                  $content,
                                   $subresource.typeDescription,
                                   $value.remove -eq $true,
                                   "$(if ($value.remove -eq $true) {$subresource.identifierQueryParam} else {''})",
@@ -794,7 +806,9 @@ hull:
                                   $value.overwriteExisting -eq $true,
                                   $value.postQueryParams,
                                   $value.getUriExcludeIdentifier,
-                                  $value.getCustomScript)
+                                  $value.getCustomScript,
+                                  $value.noGet,
+                                  $contentType)
                           }
                           else
                           {
@@ -843,54 +857,92 @@ hull:
                   }
 
                   # Checks entities and performs required operations (DELETE/PUT/POST)
-                  hidden [void] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $bodyParams, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting, [PSCustomObject] $postQueryParams, [bool] $getUriExcludeIdentifier, [string] $getCustomScript)
+                  hidden [void] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $content, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting, [PSCustomObject] $postQueryParams, [bool] $getUriExcludeIdentifier, [string] $getCustomScript, [bool] $noGet, [string] $contentType)
                   {
-                      $headers = $this.GetJsonHttpHeaders($auth)
+                      $headers = $this.GetHttpHeaders($auth, $contentType)
                       $apiEndpoint = $apiEndpoint.Trim('/')
                       $uri = "$apiEndpoint/$identifier"
                       $uriPut = if ($putUriExcludeIdentifier) { $apiEndpoint } else { $uri }
                       $uriGet = if ($getUriExcludeIdentifier) { $apiEndpoint } else { $uri }
+                      $uriDelete = $uri
 
                       $message = ""
-                      try
+                      $statusCode = 500
+                      $result = $null
+                      
+                      if ($noGet)
                       {
-                          $this.WriteLog("**** Checking if entity exists, GETting uri '$($uriGet)''")
-                          $response = Invoke-WebRequest -Uri $uriGet -Method "GET" -headers $headers -UseBasicParsing -SkipCertificateCheck
-                          if ([String]::IsNullOrWhitespace($getCustomScript))
-                          {
-                            $statusCode = $response.StatusCode
-                            $this.WriteLog("**** SUCCESS --> StatusCode: $($statusCode)")
-                          }
-                          else
-                          {
-                            try
-                            {
-                                $this.WriteLog("**** Invoking getCustomScript")
-                                $scriptblock = [Scriptblock]::Create($getCustomScript)
-                                $this.WriteLog("[- Start Script -]")
-                                if ($scriptblock.InvokeReturnAsIs())
-                                {
-                                    $statusCode = 200
-                                }
-                                else
-                                {
-                                    $statusCode = 404
-                                }
-                                $this.WriteLog("[- End Script -]")
-
-                            }
-                            catch
-                            {
-                                $statusCode = 500
-                                $message = "ERROR --> Failed getCustomScript, set statusCode to $($statusCode). Exception was: $($_.Exception.Response)"
-                            }
-                          }
+                        $statusCode = 404
+                        $this.WriteLog("**** NoGet is true, not GETting value. Handle as StatusCode $($statusCode)")
                       }
-                      catch
+                      else
                       {
-                          $statusCode = $_.Exception.Response.StatusCode.Value__
-                          $message = $_.Exception.Response
-                          $this.LogInvokeWebRequestError($uriGet, "GET")
+                        try
+                        {
+                            $this.WriteLog("**** Checking if entity exists, GETting uri '$($uriGet)'")
+                            $responseGet = Invoke-WebRequest -Uri $uriGet -Method "GET" -headers $headers -UseBasicParsing -SkipCertificateCheck
+                            if ([String]::IsNullOrWhitespace($getCustomScript))
+                            {
+                              $statusCode = $responseGet.StatusCode
+                              $this.WriteLog("**** SUCCESS --> StatusCode: $($statusCode)")
+                            }
+                            else
+                            {
+                              try
+                              {
+                                  $this.WriteLog("**** Invoking getCustomScript")
+                                  $scriptblock = [Scriptblock]::Create($getCustomScript)
+                                  $this.WriteLog("[- Start Script -]")
+                                  $result = $scriptblock.InvokeReturnAsIs()
+                                  $this.WriteLog("Type of result: $($result.GetType())")
+                                  $this.WriteLog("[- End Script -]")
+                                  if ($result.GetType() -eq "Bool")
+                                  {
+                                      if ($result)
+                                      {
+                                          $statusCode = 200
+                                      }
+                                      else
+                                      {
+                                          $statusCode = 404
+                                      }
+                                  }
+                                  else
+                                  {
+                                    if ($result -ne $null)
+                                    {
+                                      $json = $result | ConvertFrom-Json
+                                      if ($json.statusCode)
+                                      {
+                                        $statusCode = $json.statusCode
+                                        $this.WriteLog("Updated StatusCode: $($statusCode)")
+                                      }
+                                      if ($json.uriPut)
+                                      {
+                                        $uriPut = $json.uriPut
+                                        $this.WriteLog("Updated PUT Uri: $($uriPut)")
+                                      }
+                                      if ($json.uriDelete)
+                                      {
+                                        $uriDelete = $json.uriDelete
+                                        $this.WriteLog("Updated DELETE Uri: $($uriDelete)")
+                                      }
+                                    }
+                                  }
+                              }
+                              catch
+                              {
+                                  $statusCode = 500
+                                  $message = "ERROR --> Failed getCustomScript, set statusCode to $($statusCode). Exception was: $($Error[0])"
+                              }
+                            }
+                        }
+                        catch
+                        {
+                            $statusCode = $_.Exception.Response.StatusCode.Value__
+                            $message = $_.Exception.Response
+                            $this.LogInvokeWebRequestError($uriGet, "GET")
+                        }
                       }
 
                       $this.WriteLog("**** StatusCode is $($statusCode)")
@@ -899,26 +951,35 @@ hull:
                       {
                           if($toBeDeleted) {
                               $this.WriteLog("**** '$entityType' entry '$identifier' already exists and is going to be deleted now")
-                              $this.DeleteEntity($apiEndpoint, $identifier, $identifierQueryParam, $auth)
+                              $this.DeleteEntity($uriDelete, $identifier, $identifierQueryParam, $auth, $contentType)
                           }
                           else
                           {
                               if ($overwriteExisting)
                               {
                                   $this.WriteLog("**** '$entityType' entry '$identifier' already exists, hence PUTing instead of POSTing to update entity")
-                                  $this.PutEntity($uriPut, $bodyParams, $auth)
+                                  $this.PutEntity($uriPut, $content, $auth, $contentType)
                               }
                               else
                               {
-                                $this.WriteLog("**** '$entityType' entry '$identifier' already exists, not overwriting due to flag 'overwriteExisting' not being set")
+                                  $this.WriteLog("**** '$entityType' entry '$identifier' already exists, not overwriting due to flag 'overwriteExisting' not being set")
                               }
                           }
 
                       }
-                      elseif ($statusCode -eq 404)
+                      elseif ($noGet -or ($statusCode -eq 404))
                       {
-                          if($toBeDeleted) {
-                              $this.WriteLog("**** '$entityType' entry '$identifier' does not exist but should be deleted, nothing will be done")
+                          if($toBeDeleted)
+                          {
+                              if($noGet)
+                              {
+                                  $this.WriteLog("**** Unclear if '$entityType' entry '$identifier' does exist due to 'noGet=true', DELETEing anyway since 'remove=true'")
+                                  $this.DeleteEntity($uriDelete, $identifier, $identifierQueryParam, $auth, $contentType)
+                              }
+                              else
+                              {
+                                  $this.WriteLog("**** '$entityType' entry '$identifier' does not exist but should be deleted, nothing will be done")
+                              }
                           }
                           else
                           {
@@ -926,12 +987,12 @@ hull:
                               if ($putInsteadOfPost)
                               {
                                   $this.WriteLog("**** PUTting '$entityType' entry '$identifier' to create it since 'putInsteadOfPost' is set to true")
-                                  $this.PutEntity($uriPut, $bodyParams, $auth)
+                                  $this.PutEntity($uriPut, $content, $auth, $contentType)
                               }
                               else
                               {
                                   $this.WriteLog("**** POSTing '$entityType' entry '$identifier' to create it")
-                                  $this.PostEntity($apiEndpoint, $bodyParams, $auth, $postQueryParams)
+                                  $this.PostEntity($apiEndpoint, $content, $auth, $postQueryParams, $contentType)
                               }
 
                           }
@@ -943,9 +1004,9 @@ hull:
                   }
 
                   # Post an entity
-                  hidden [PSCustomObject] PostEntity([string] $postUrl, [string] $json, [PSCustomObject] $auth, [PSCustomObject] $postQueryParams)
+                  hidden [PSCustomObject] PostEntity([string] $postUrl, [string] $json, [PSCustomObject] $auth, [PSCustomObject] $postQueryParams, [string] $contentType)
                   {
-                      $headers = $this.GetJsonHttpHeaders($auth)
+                      $headers = $this.GetHttpHeaders($auth, $contentType)
                       $url = "$($postUrl)"
 
                       if ($postQueryParams -ne $null)
@@ -967,18 +1028,18 @@ hull:
                   }
 
                   # Put an entity
-                  hidden [PSCustomObject] PutEntity([string] $putUrl, [string] $json, [PSCustomObject] $auth)
+                  hidden [PSCustomObject] PutEntity([string] $putUrl, [string] $json, [PSCustomObject] $auth, [string] $contentType)
                   {
-                      $headers = $this.GetJsonHttpHeaders($auth)
+                      $headers = $this.GetHttpHeaders($auth, $contentType)
                       $url = "$($putUrl)"
 
                       return $this.InvokeWebRequest($url, "PUT", $json, $headers)
                   }
 
                   # Delete an entity
-                  hidden [PSCustomObject] DeleteEntity([string] $deleteUrl, [string] $identifier, [string] $identifierQueryParam, [PSCustomObject] $auth)
+                  hidden [PSCustomObject] DeleteEntity([string] $deleteUrl, [string] $identifier, [string] $identifierQueryParam, [PSCustomObject] $auth, [string] $contentType)
                   {
-                      $headers = $this.GetJsonHttpHeaders($auth)
+                      $headers = $this.GetHttpHeaders($auth, $contentType)
                       $url = "$($deleteUrl.TrimEnd('/'))$(if ([string]::IsNullOrWhitespace($identifierQueryParam)) { [string]::Empty } else { "?$identifierQueryParam=$identifier" })"
 
                       return $this.InvokeWebRequest($url, "DELETE", "", $headers)
