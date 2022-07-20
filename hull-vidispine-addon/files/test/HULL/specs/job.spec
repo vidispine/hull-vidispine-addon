@@ -6,7 +6,7 @@ Test creation of objects and features.
 
 ## Render and Validate
 * Render
-* Expected number of "15" objects were rendered
+* Expected number of "24" objects were rendered
 * Validate
 
 ## Metadata
@@ -29,20 +29,26 @@ Test creation of objects and features.
 
 * Test Object has key "spec§template§spec§containers§0§volumeMounts" with array value that has "1" items
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§0§name" with value "installation"
+
 * Test Object has key "spec§template§spec§volumes" with array value that has "1" items
 * Test Object has key "spec§template§spec§volumes§0§name" with value "installation"
+
 ## Certificates
 * Prepare default test case for this kind including suites "pod,customcacertificates"
 * Render
+
 * Set test object to "release-name-hull-test-hull-install"
+
 * Test Object has key "spec§template§spec§containers§0§volumeMounts" with array value that has "3" items
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§0§name" with value "certs"
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§1§name" with value "etcssl"
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§2§name" with value "installation"
+
 * Test Object has key "spec§template§spec§volumes" with array value that has "3" items
 * Test Object has key "spec§template§spec§volumes§0§name" with value "certs"
 * Test Object has key "spec§template§spec§volumes§1§name" with value "etcssl"
 * Test Object has key "spec§template§spec§volumes§2§name" with value "installation"
+
 * Set test object to "release-name-hull-test-custom-ca-certificates" of kind "Secret"
 * Test Object has key "data§test_cert_1" with Base64 encoded value of "CERT-DATA-1"
 * Test Object has key "data§test_cert_2" with Base64 encoded value of "CERT-DATA-2"
