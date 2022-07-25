@@ -7,7 +7,7 @@ import subprocess
 import sys
 import jsonschema
 import yaml
-
+import re
 from dotty_dict import Dotty
 from getgauge.python import Messages, before_scenario, before_step, data_store, step
 
@@ -141,7 +141,10 @@ def copy_the_hull_chart_files_to_test_object_in_chart(case, chart):
         copyfile(hull_path, "README.md", dst_path)
         copyfile(hull_path, "values.schema.json", dst_path)
         copyfile(hull_path, "values.yaml", dst_path)
-        copyfile(hull_path, "hull.yaml", os.path.join(dir_path, TEST_EXECUTION_FOLDER, 'case', case, 'chart', chart, "templates"))
+        if os.environ.get("style") == 'single_file' or os.environ.get("default"):
+            copyfile(hull_path, "hull.yaml", os.path.join(dir_path, TEST_EXECUTION_FOLDER, 'case', case, 'chart', chart, "templates"))
+        if os.environ.get("style") == 'multi_file':
+            copytree(os.path.join(hull_path, "files/templates"), os.path.join(dir_path, TEST_EXECUTION_FOLDER, 'case', case, 'chart', chart, "templates"))
         copytree(os.path.join(hull_path, "templates"), os.path.join(dst_path, "templates"))
     except Exception as e:
         print("Oops!", e.__str__, "occurred.")
@@ -193,6 +196,20 @@ def set_test_object_to_of_kind(name, kind):
 def set_test_object_to(name):
     data_store.scenario.test_object = data_store.scenario["objects_" + data_store.scenario.kind][name]    
 
+@step("Test object <name> of kind <kind> does not exist")
+def test_object_of_kind_does_not_exist(name, kind):
+    try:
+        data_store.scenario["objects_" + kind][name]
+    except Exception as e:
+        if e.__class__.__name__ == 'KeyError':
+            assert True
+            return
+    assert False
+
+@step("Test object <name> does not exist")
+def test_object_does_not_exist(name):
+    return test_object_of_kind_does_not_exist(name, data_store.scenario.kind)
+
 @step("Test Object has key <key> with array value that has <count> items")
 def test_object_has_key_with_array_value_that_has_items(key, value):
     assert data_store.scenario.test_object != None
@@ -212,6 +229,14 @@ def test_object_has_key_with_value(key, value):
     assert "test_object" in data_store.scenario != None, "No Test Object set!"
     assert data_store.scenario.test_object != None, "Test Object set to None!"
     assert_values_equal(data_store.scenario.test_object[key], value, key)
+
+@step("Test Object has key <key> with value matching regex <regex>")
+def test_object_has_key_with_value_matching_regex(key, regex):
+    assert "test_object" in data_store.scenario != None, "No Test Object set!"    
+    assert data_store.scenario.test_object != None, "Test Object set to None!"
+    assert regex != None, "Regex cannot be empty!"
+    compiled = re.compile(regex)
+    assert compiled.match(data_store.scenario.test_object[key]), "The value '" + data_store.scenario.test_object[key] + "' was not matched by regex '" + regex + "'!"
 
 @step("Test Object has key <key> set to true")
 def test_object_has_key_set_to_true(key):
@@ -242,6 +267,12 @@ def test_object_has_key_with_integer_value(key, value):
     assert data_store.scenario.test_object != None, "Test Object set to None!"
     assert_values_equal(data_store.scenario.test_object[key], int(value), key)
 
+@step("Test Object has key <key> with null value")
+def test_object_has_key_with_null_value(key):
+    assert "test_object" in data_store.scenario != None, "No Test Object set!"
+    assert data_store.scenario.test_object != None, "Test Object set to None!"
+    assert_values_equal(data_store.scenario.test_object[key], None, key)
+
 @step("Test Object has key <key> with Base64 encoded value of <value>")
 def test_object_has_key_with_base64_encoded_value(key, value):
     assert data_store.scenario.test_object != None
@@ -261,6 +292,13 @@ def all_test_objects_have_key_with_value(key, value):
         set_test_object_to(i)
         test_object_has_key_with_value(key, value)        
 
+@step("All test objects have key <key> with value matching regex <regex>")
+def all_test_objects_have_key_with_value_matching_regex(key, regex):
+    test_objects = data_store.scenario["objects_" + data_store.scenario.kind]
+    for i in test_objects:
+        set_test_object_to(i)
+        test_object_has_key_with_value_matching_regex(key, regex)
+      
 @step("All test objects have key <key> with value of key <scenario_key> from scenario data_store")
 def all_test_objects_have_key_with_value_of_key_from_data_store(key, scenario_key):
     test_objects = data_store.scenario["objects_" + data_store.scenario.kind]
@@ -280,6 +318,18 @@ def validate():
     test_objects = data_store.scenario.objects
     for i in test_objects:
         validate_test_object_against_json_schema(i)
+
+@step("Fail to Validate because error contains <expected_error>")
+def fail_to_validate(expected_error):
+    try:
+        validate()
+    except Exception as e:
+        if expected_error in str(e.__str__):
+            print(f'Found expected message:\n\'{expected_error}\'\nin  exception message:\n\'{str(e.__str__)}\'')
+            assert True
+            return
+        else:
+            assert False, "Expected error " + expected_error + " not found in Exception message: " + str(e.__str__)
 
 @step("Validate test object against JSON Schema")
 def validate_test_object_against_json_schema(test_object):
@@ -326,7 +376,7 @@ def render_chart(case, chart, values_file):
     for suite in data_store.scenario.suites:
         suites += ("-f", os.path.join(chart_path, suite + ".values.hull.yaml"))
     
-    args = ("helm", "template", chart_path, "--debug", "--output-dir", render_path) +  ("-f",  os.path.join(chart_path, "hull-vidispine-addon.yaml")) + suites + ("-f",  os.path.join(chart_path, values_file))
+    args = ("helm", "template", chart_path, "--name-template", "release-name", "--debug", "--output-dir", render_path)+  ("-f",  os.path.join(chart_path, "hull-vidispine-addon.yaml")) + suites + ("-f",  os.path.join(chart_path, values_file))
     
     popen = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     print('STDOUT:\n', popen.stdout.decode("utf-8").replace("\n",os.linesep))
@@ -364,33 +414,30 @@ def copyfile(src_dir, src_filename, dst_dir):
 
 def get_objects(case, chart):
     dir_path = os.path.dirname(os.path.realpath(__file__))
+    rendered_files_folder = os.path.join(dir_path, TEST_EXECUTION_FOLDER, 'case', case, 'rendered', chart, 'templates')
     rendered_file_path = os.path.join(dir_path, TEST_EXECUTION_FOLDER, 'case', case, 'rendered', chart, 'templates',  'hull.yaml')
 
-    assert os.path.isfile(rendered_file_path)
     
     items = []
-    with open(rendered_file_path) as file_in:
+    for file in os.listdir(rendered_files_folder):
+        with open(os.path.join(rendered_files_folder, file), encoding='utf-8') as file_in:
+            
+            item = None
+            itemIndex = -1
+            for line in file_in:
+                if line.startswith("---"):
+                    items.append([])
+                items[itemIndex].append(line)
         
-        item = None
-        itemIndex = -1
-        for line in file_in:
-            if line.startswith("---"):                
-                items.append([])
-            items[itemIndex].append(line)
-    
-    data_store.scenario.objects = []
-    for key in list(data_store.scenario.keys()):
-        if key.startswith("objects_"):
-            data_store.scenario[key] = dict()
-        
-    for i in items:
-        
-        item = Dotty(yaml.safe_load("".join(i)), separator='§')
-        data_store.scenario.objects.append(item)
-        if not ("objects_" + item['kind']) in data_store.scenario:
-            data_store.scenario["objects_" + item['kind']] = dict()
-        data_store.scenario["objects_" + item['kind']][item['metadata§name']] = item
-
-    #with open(os.path.join(dir_path, "./k8s_api_strict.json")) as json_file:
-    #    schema = json.load(json_file)
-    #    data_store.scenario["schema"] = schema
+        data_store.scenario.objects = []
+        for key in list(data_store.scenario.keys()):
+            if key.startswith("objects_"):
+                data_store.scenario[key] = dict()
+            
+        for i in items:
+            
+            item = Dotty(yaml.safe_load("".join(i)), separator='§')
+            data_store.scenario.objects.append(item)
+            if not ("objects_" + item['kind']) in data_store.scenario:
+                data_store.scenario["objects_" + item['kind']] = dict()
+            data_store.scenario["objects_" + item['kind']][item['metadata§name']] = item
