@@ -764,7 +764,7 @@ hull:
                   hidden [void] Subresource([string] $name, [PSCustomObject] $subresource, [string] $endpoint, [PSCustomObject] $auth, [string] $stage)
                   {
                     $processSubresource = $true
-                    $stageSubresource = if ($subresource.Contains("stage")) { $subresource.stage } else { if ($stage -ne $null) { $stage } else { "pre-install" } }
+                    $stageSubresource = if ($subresource.Contains("stage")) { $subresource.stage } else { if ([String]::IsNullOrEmpty($stage)) { "pre-install" } else { $stage } }
                     $this.WriteLog("*** Subresource stage is '$($stageSubresource)', global stage is '$($this._stage)'")
                     if ($stageSubresource.Equals($this._stage))
                     {
