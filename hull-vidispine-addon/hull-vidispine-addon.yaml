@@ -294,8 +294,8 @@ hull:
                   mountPath: '/etc/ssl/certs'
           volumes:
             installation:
-              configMap:
-                name: hull-install
+              secret:
+                secretName: hull-install
             certs:
               enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
               secret:
@@ -379,8 +379,8 @@ hull:
                   mountPath: '/etc/ssl/certs'
           volumes:
             installation:
-              configMap:
-                name: hull-install
+              secret:
+                secretName: hull-install
             certs:
               enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
               secret:
@@ -433,7 +433,6 @@ hull:
             {{ end }}
           }
 
-    configmap:
       'hull-install':
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
@@ -602,13 +601,14 @@ hull:
                   }
 
                   # Gets the authorization header for either token based or basic auth
-                  hidden [PSCustomObject] GetHttpHeaders([PSCustomObject] $auth, [string] $contentType)
+                  hidden [PSCustomObject] GetHttpHeaders([PSCustomObject] $auth, [string] $contentType, [PSCustomObject] $endpointExtraHeaders = $null, [PSCustomObject] $value = $null)
                   {
                       $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
 
+                      # Set ContentType Header always
                       $headers.Add("Content-Type", $contentType)
                       $headers.Add("Accept", $contentType)
-
+                      
                       $authHeader = [String]::Empty
                       if ($auth.token -ne $null)
                       {
@@ -629,6 +629,41 @@ hull:
                       {
                         $this.WriteLog("++++ Authorization header not set, neither basic nor token auth specified.")
                       }
+
+                      if ($endpointExtraHeaders )
+                      {                          
+                          foreach($header in $endpointExtraHeaders.Keys)
+                          {
+                            if ($headers.ContainsKey($header))
+                            {
+                              $this.WriteLog("++++ OVerwriting Header '$($header)' with value '$($endpointExtraHeaders[$header])' from Endpoint Headers.")                              
+                            }
+                            else
+                            {
+                              $this.WriteLog("++++ Adding Header '$($header)' with value '$($endpointExtraHeaders[$header])' from Endpoint Headers.")
+                            }
+                            $headers[$header] = $endpointExtraHeaders[$header]
+                          }
+                      }
+
+                      if ($value.extraHeaders)
+                      {
+                          foreach($header in $value.extraHeaders.Keys)
+                          {
+                            if ($headers.ContainsKey($header))
+                            {
+                              $this.WriteLog("++++ OVerwriting Header '$($header)' with value '$($value.extraHeaders[$header])' from Entity Headers.")                              
+                            }
+                            else
+                            {
+                              $this.WriteLog("++++ Adding Header '$($header)' with value '$($value.extraHeaders[$header])' from Entity Headers.")
+                            }
+                            
+                            $headers[$header] = $value.extraHeaders[$header]
+
+                          }
+                      }
+
                       return $headers
                   }
 
@@ -760,7 +795,7 @@ hull:
                           $value = $config.subresources[$subresourceKey]
                           $this.WriteLog("** Starting installation for Subresource '$($subresourceKey)'")
 
-                          $this.Subresource($subresourceKey, $value, $config.endpoint, $config.auth, $config.stage)
+                          $this.Subresource($subresourceKey, $value, $config.endpoint, $config.auth, $config.stage, $config.extraHeaders)
 
                           $this.WriteLog("** Finished installation for Subresource '$($subresourceKey)'")
                           $this.WriteLog("")
@@ -768,10 +803,11 @@ hull:
                   }
 
                   # Handles all operations on a subresource of an endpoint
-                  hidden [void] Subresource([string] $name, [PSCustomObject] $subresource, [string] $endpoint, [PSCustomObject] $auth, [string] $stage)
+                  hidden [void] Subresource([string] $name, [PSCustomObject] $subresource, [string] $endpoint, [PSCustomObject] $auth, [string] $stage, [PSCustomObject] $extraHeaders)
                   {
                     $processSubresource = $true
                     $stageSubresource = if ($subresource.Contains("stage")) { $subresource.stage } else { if ([String]::IsNullOrEmpty($stage)) { "pre-install" } else { $stage } }
+                    
                     $this.WriteLog("*** Subresource stage is '$($stageSubresource)', global stage is '$($this._stage)'")
                     if ($stageSubresource.Equals($this._stage))
                     {
@@ -815,7 +851,9 @@ hull:
                                   $value.getUriExcludeIdentifier,
                                   $value.getCustomScript,
                                   $value.noGet,
-                                  $contentType)
+                                  $contentType,
+                                  $this.GetHttpHeaders($auth, $contentType, $extraHeaders, $value)
+                              )
                           }
                           else
                           {
@@ -829,44 +867,9 @@ hull:
                     }
                   }
 
-                  # Read config value from file content
-                  [void] ReadConfigValueFromFile([PSCustomObject] $value)
-                  {
-                      if ($value.configValueFromFile -ne $null)
-                      {
-                          foreach($entityKey in $value.configValueFromFile.Keys)
-                          {
-                              $currentPath = (Get-Item -Path ".\" -Verbose).FullName
-                              $filePath = Join-Path $currentPath $entityKey
-
-                              if (!(Test-Path $filePath))
-                              {
-                                  $this.WriteLog("File '$($filePath)' does not exist")
-                              }
-                              else
-                              {
-                                  $fileContent = Get-Content -Path $filePath | Out-String
-                                  $fileContentJson = $fileContent | ConvertFrom-Json
-
-                                  $this.WriteLog("Config file found: " + $fileContentJson)
-
-                                  $configs = $value.configValueFromFile[$entityKey]
-
-                                  foreach($configEntityKey in $configs.Keys) {
-
-                                      $configEntityValue = $configs[$configEntityKey]
-                                      $configValue = $fileContentJson.$($configEntityValue.key)
-                                      $value.config[$configEntityKey] = $configValue
-                                  }
-                              }
-                          }
-                      }
-                  }
-
                   # Checks entities and performs required operations (DELETE/PUT/POST)
-                  hidden [void] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $content, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting, [PSCustomObject] $postQueryParams, [bool] $getUriExcludeIdentifier, [string] $getCustomScript, [bool] $noGet, [string] $contentType)
+                  hidden [void] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $content, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting, [PSCustomObject] $postQueryParams, [bool] $getUriExcludeIdentifier, [string] $getCustomScript, [bool] $noGet, [string] $contentType, [PSCustomObject] $headers)
                   {
-                      $headers = $this.GetHttpHeaders($auth, $contentType)
                       $apiEndpoint = $apiEndpoint.Trim('/')
                       $uri = "$apiEndpoint/$identifier"
                       $uriPut = if ($putUriExcludeIdentifier) { $apiEndpoint } else { $uri }
@@ -958,14 +961,14 @@ hull:
                       {
                           if($toBeDeleted) {
                               $this.WriteLog("**** '$entityType' entry '$identifier' already exists and is going to be deleted now")
-                              $this.DeleteEntity($uriDelete, $identifier, $identifierQueryParam, $auth, $contentType)
+                              $this.DeleteEntity($uriDelete, $identifier, $identifierQueryParam, $auth, $contentType, $headers)
                           }
                           else
                           {
                               if ($overwriteExisting)
                               {
                                   $this.WriteLog("**** '$entityType' entry '$identifier' already exists, hence PUTing instead of POSTing to update entity")
-                                  $this.PutEntity($uriPut, $content, $auth, $contentType)
+                                  $this.PutEntity($uriPut, $content, $auth, $contentType, $headers)
                               }
                               else
                               {
@@ -981,7 +984,7 @@ hull:
                               if($noGet)
                               {
                                   $this.WriteLog("**** Unclear if '$entityType' entry '$identifier' does exist due to 'noGet=true', DELETEing anyway since 'remove=true'")
-                                  $this.DeleteEntity($uriDelete, $identifier, $identifierQueryParam, $auth, $contentType)
+                                  $this.DeleteEntity($uriDelete, $identifier, $identifierQueryParam, $auth, $contentType, $headers)
                               }
                               else
                               {
@@ -994,14 +997,13 @@ hull:
                               if ($putInsteadOfPost)
                               {
                                   $this.WriteLog("**** PUTting '$entityType' entry '$identifier' to create it since 'putInsteadOfPost' is set to true")
-                                  $this.PutEntity($uriPut, $content, $auth, $contentType)
+                                  $this.PutEntity($uriPut, $content, $auth, $contentType, $headers)
                               }
                               else
                               {
                                   $this.WriteLog("**** POSTing '$entityType' entry '$identifier' to create it")
-                                  $this.PostEntity($apiEndpoint, $content, $auth, $postQueryParams, $contentType)
+                                  $this.PostEntity($apiEndpoint, $content, $auth, $postQueryParams, $contentType, $headers)
                               }
-
                           }
                       }
                       else
@@ -1011,9 +1013,8 @@ hull:
                   }
 
                   # Post an entity
-                  hidden [PSCustomObject] PostEntity([string] $postUrl, [string] $json, [PSCustomObject] $auth, [PSCustomObject] $postQueryParams, [string] $contentType)
+                  hidden [PSCustomObject] PostEntity([string] $postUrl, [string] $json, [PSCustomObject] $auth, [PSCustomObject] $postQueryParams, [string] $contentType, [PSCustomObject] $headers)
                   {
-                      $headers = $this.GetHttpHeaders($auth, $contentType)
                       $url = "$($postUrl)"
 
                       if ($postQueryParams -ne $null)
@@ -1035,18 +1036,16 @@ hull:
                   }
 
                   # Put an entity
-                  hidden [PSCustomObject] PutEntity([string] $putUrl, [string] $json, [PSCustomObject] $auth, [string] $contentType)
+                  hidden [PSCustomObject] PutEntity([string] $putUrl, [string] $json, [PSCustomObject] $auth, [string] $contentType, [PSCustomObject] $headers)
                   {
-                      $headers = $this.GetHttpHeaders($auth, $contentType)
                       $url = "$($putUrl)"
 
                       return $this.InvokeWebRequest($url, "PUT", $json, $headers)
                   }
 
                   # Delete an entity
-                  hidden [PSCustomObject] DeleteEntity([string] $deleteUrl, [string] $identifier, [string] $identifierQueryParam, [PSCustomObject] $auth, [string] $contentType)
+                  hidden [PSCustomObject] DeleteEntity([string] $deleteUrl, [string] $identifier, [string] $identifierQueryParam, [PSCustomObject] $auth, [string] $contentType, [PSCustomObject] $headers)
                   {
-                      $headers = $this.GetHttpHeaders($auth, $contentType)
                       $url = "$($deleteUrl.TrimEnd('/'))$(if ([string]::IsNullOrWhitespace($identifierQueryParam)) { [string]::Empty } else { "?$identifierQueryParam=$identifier" })"
 
                       return $this.InvokeWebRequest($url, "DELETE", "", $headers)
@@ -1062,4 +1061,38 @@ hull:
                       }
                       return $true
                   }
-              }
+
+                  # Read config value from file content
+                  [void] ReadConfigValueFromFile([PSCustomObject] $value)
+                  {
+                      if ($value.configValueFromFile -ne $null)
+                      {
+                          foreach($entityKey in $value.configValueFromFile.Keys)
+                          {
+                              $currentPath = (Get-Item -Path ".\" -Verbose).FullName
+                              $filePath = Join-Path $currentPath $entityKey
+
+                              if (!(Test-Path $filePath))
+                              {
+                                  $this.WriteLog("File '$($filePath)' does not exist")
+                              }
+                              else
+                              {
+                                  $fileContent = Get-Content -Path $filePath | Out-String
+                                  $fileContentJson = $fileContent | ConvertFrom-Json
+
+                                  $this.WriteLog("Config file found: " + $fileContentJson)
+
+                                  $configs = $value.configValueFromFile[$entityKey]
+
+                                  foreach($configEntityKey in $configs.Keys) {
+
+                                      $configEntityValue = $configs[$configEntityKey]
+                                      $configValue = $fileContentJson.$($configEntityValue.key)
+                                      $value.config[$configEntityKey] = $configValue
+                                  }
+                              }
+                          }
+                      }
+                  }
+                }
