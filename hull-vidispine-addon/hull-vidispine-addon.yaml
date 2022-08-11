@@ -609,7 +609,7 @@ hull:
                       $headers.Add("Content-Type", $contentType)
                       $headers.Add("Accept", $contentType)
 
-                      $authHeader = ""
+                      $authHeader = [String]::Empty
                       if ($auth.token -ne $null)
                       {
                           $accessToken = $this.GetAccessToken($auth.token)
@@ -620,8 +620,15 @@ hull:
                           $authHeader = "Basic $([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes([environment]::GetEnvironmentVariable($auth.basic.env.username,"Process") + ":" + [environment]::GetEnvironmentVariable($auth.basic.env.password,"Process"))))"
                       }
 
-                      $headers.Add("Authorization", $authHeader)
-                      $this.WriteLog("++++ Authorization header: $authHeader")
+                      if ($authHeader -ne [String]::Empty)
+                      {
+                        $headers.Add("Authorization", $authHeader)
+                        $this.WriteLog("++++ Authorization header: $authHeader")
+                      }
+                      else
+                      {
+                        $this.WriteLog("++++ Authorization header not set, neither basic nor token auth specified.")
+                      }
                       return $headers
                   }
 
