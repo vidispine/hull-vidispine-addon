@@ -11,7 +11,3 @@ Test creation of objects and features.
 
 ## Metadata
 * Check basic metadata functionality
-
-
-
-
