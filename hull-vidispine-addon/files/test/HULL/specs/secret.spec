@@ -6,7 +6,7 @@ Test creation of objects and features.
 
 ## Render and Validate
 * Render
-* Expected number of "12" objects were rendered
+* Expected number of "13" objects were rendered
 * Validate
 
 ## Metadata
@@ -38,6 +38,12 @@ Test creation of objects and features.
 * Set test object to "release-name-hull-test-transformation_resolved"
 * Test Object has key "data§concrete_file_4_resolved.txt" with Base64 encoded value of "This is a text file with a pointer to a transformation."
 
+## Default ConfigMap
+* Render
+
+* Set test object to "release-name-hull-test-hull-install"
+* Test Object has key "data§installation.yaml" with non empty value
+* Test Object has key "data§Installer.ps1" with non empty value
 ___
 
 * Clean the test execution folder
