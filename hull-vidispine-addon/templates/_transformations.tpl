@@ -388,9 +388,7 @@ Icon: |-
 {{- printf "%s" ":" }}
 {{- $parent.Values.hull.config.specific.messagebus.password }}
 {{- printf "%s" "@" }}
-{{- $url := default 
-    $parent.Values.hull.config.general.data.endpoints.rabbitmq.uri.amq 
-    $parent.Values.hull.config.general.data.endpoints.rabbitmq.uri.amqInternal }}
+{{- $url := default $parent.Values.hull.config.general.data.endpoints.rabbitmq.uri.amq $parent.Values.hull.config.general.data.endpoints.rabbitmq.uri.amqInternal }}
 {{- printf "%s:%s" (urlParse $url).hostname ((urlParse $url).port | toString) }}
 {{- else -}}
 ""
