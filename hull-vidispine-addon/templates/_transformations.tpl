@@ -164,9 +164,11 @@ Icon: |-
 {{- $component := (index . "COMPONENT") -}}
 {{- $timeout := default "TIMEOUT" "60" }}
 {{ $key }}:
-{{ if (index $parent.Values.hull.config.specific.components $component).appsettings }}
-    appsettings.json:
-      path: files/appsettings-{{ $component }}.json
+{{ if (index $parent.Values.hull.config.specific.components $component).mounts }}
+{{ range $filename, $filecontent := (index $parent.Values.hull.config.specific.components $component).mounts }}
+    {{ filename }}:
+      path: files/{{ $component }}-{{ filename }}
+{{ end }}
 {{ end }}
 {{ if (index $parent.Values.hull.config.specific.components $component).database }}
     database-name:
@@ -224,6 +226,24 @@ Icon: |-
               name: {{ $component }}
               port:
                 name: http
+{{- end -}}
+
+{{- define "hull.vidispine.addon.vidiflow.component.pod.volumes" -}}
+{{- $parent := (index . "PARENT_CONTEXT") -}}
+{{- $key := (index . "KEY") -}}
+{{- $component := (index . "COMPONENT") -}}
+{{ $key }}:
+  settings:
+    secret:
+      defaultMode: 0744
+      secretName: {{ $component }}
+  certs:
+    enabled: $parent.Values.hull.config.general.data.installation.config.customCaCertificates
+    secret:
+      secretName: "custom-ca-certificates"
+  etcssl:
+    enabled: $parent.Values.hull.config.general.data.installation.config.customCaCertificates
+    emptyDir: {}
 {{- end -}}
 
 {{- define "hull.vidispine.addon.vidiflow.component.pod.env" -}}
