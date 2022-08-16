@@ -166,8 +166,8 @@ Icon: |-
 {{ $key }}:
 {{ if (index $parent.Values.hull.config.specific.components $component).mounts }}
 {{ range $filename, $filecontent := (index $parent.Values.hull.config.specific.components $component).mounts }}
-    {{ filename }}:
-      path: files/{{ $component }}-{{ filename }}
+    {{ $filename }}:
+      path: files/{{ $component }}-{{ $filename }}
 {{ end }}
 {{ end }}
 {{ if (index $parent.Values.hull.config.specific.components $component).database }}
