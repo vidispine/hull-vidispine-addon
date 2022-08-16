@@ -207,25 +207,32 @@ Icon: |-
         {{- end -}}
 {{- end -}}
 
-{{- define "hull.vidispine.addon.vidiflow.component.ingress.rule" -}}
+{{- define "hull.vidispine.addon.vidiflow.component.ingress.rules" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $key := (index . "KEY") -}}
-{{- $component := (index . "COMPONENT") -}}
-{{- $uriname := (index . "URINAME") -}}
-{{- $endpoint := default (index . "ENDPOINT") "vidiflow" -}}
+{{- $componentInputs := (index . "COMPONENTS") -}}
+{{- $endpoint := default "vidiflow" (index . "ENDPOINT") -}}
+{{- $portName := default "http" (index . "PORTNAME") -}}
+{{- $components := regexSplit "," ($componentInputs | trim) -1 -}}
+{{- if $components }}
 {{ $key }}:
-  {{ $component }}:
-    host: "{{ (urlParse (index (index $parent.Values.hull.config.general.data.endpoints $endpoint).uri $uriname)).hostname }}"
+{{ range $componentKebapCase := $components }}
+{{- $componentSnakeCase := (regexReplaceAll "-" $componentKebapCase "_") | trim -}}
+{{- $componentUri := camelcase $componentSnakeCase | untitle | toString }}
+  {{ $componentKebapCase }}:
+    host: "{{ (urlParse (index (index $parent.Values.hull.config.general.data.endpoints $endpoint).uri $componentUri)).hostname }}"
     http:
       paths:
-        {{ $component }}:
-          path: {{ (urlParse (index (index $parent.Values.hull.config.general.data.endpoints $endpoint).uri $uriname)).path }}
+        {{ $componentKebapCase }}:
+          path: {{ (urlParse (index (index $parent.Values.hull.config.general.data.endpoints $endpoint).uri $componentUri)).path }}
           pathType: ImplementationSpecific
           backend:
             service: 
-              name: {{ $component }}
+              name: {{ $componentKebapCase }}
               port:
-                name: http
+                name: {{ $portName }}
+{{ end }}
+{{ end }}
 {{- end -}}
 
 {{- define "hull.vidispine.addon.vidiflow.component.pod.volumes" -}}
@@ -250,7 +257,7 @@ Icon: |-
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $key := (index . "KEY") -}}
 {{- $component := (index . "COMPONENT") -}}
-{{- $connectionstringsuffix := default nil (index . "CONNECTIONSTRINGSUFFIX") -}}
+{{- $connectionstringsuffix := default "" (index . "CONNECTIONSTRINGSUFFIX") -}}
 {{ $key }}:
   'ENDPOINTS__RABBITMQCONNECTIONSTRING':
     valueFrom:
@@ -409,7 +416,7 @@ Icon: |-
 {{- $parent.Values.hull.config.specific.messagebus.password }}
 {{- printf "%s" "@" }}
 {{- $url := default $parent.Values.hull.config.general.data.endpoints.rabbitmq.uri.amq $parent.Values.hull.config.general.data.endpoints.rabbitmq.uri.amqInternal }}
-{{- printf "%s:%s" (urlParse $url).hostname ((urlParse $url).port | toString) }}
+{{- printf "%s:%s" (urlParse $url).hostname ((regexSplit ":" $url -1) | last) }}
 {{- else -}}
 ""
 {{- end -}}
