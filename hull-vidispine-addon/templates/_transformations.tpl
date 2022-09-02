@@ -289,8 +289,12 @@ Icon: |-
       secretKeyRef:
         name: index
         key: password
-{{ if (ne $connectionstringsuffix "") }}
-  "CONNECTIONSTRINGS__{{ $connectionstringsuffix }}":
+{{ if (index $parent.Values.hull.config.specific.components $component).database }}
+{{ if (hasKey (index $parent.Values.hull.config.specific.components $component).database "connectionStringEnvVarSuffix") }}
+  "CONNECTIONSTRINGS__{{ (index $parent.Values.hull.config.specific.components $component).database.connectionStringEnvVarSuffix }}":
+{{ else }}
+  "CONNECTIONSTRINGS":
+{{ end }}
     valueFrom:
       secretKeyRef:
         name: "{{ $component }}"
