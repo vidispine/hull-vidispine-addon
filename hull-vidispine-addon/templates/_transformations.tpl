@@ -162,7 +162,7 @@ Icon: |-
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $key := (index . "KEY") -}}
 {{- $component := (index . "COMPONENT") -}}
-{{- $timeout := default "TIMEOUT" "60" }}
+{{- $timeout := default "60" (index . "TIMEOUT") }}
 {{ $key }}:
 {{ if (index $parent.Values.hull.config.specific.components $component).mounts }}
 {{ range $filename, $filecontent := (index $parent.Values.hull.config.specific.components $component).mounts }}
@@ -172,9 +172,9 @@ Icon: |-
 {{ end }}
 {{ if (index $parent.Values.hull.config.specific.components $component).database }}
     database-name:
-      inline: {{ printf "%s_vidiflow_%s" $parent.Values.hull.config.specific.system.name ((index $parent.Values.hull.config.specific.components $component).database.name) }}
+      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name }}
     database-username: 
-      inline: {{ printf "%s_vidiflow_%s" $parent.Values.hull.config.specific.system.name ((index $parent.Values.hull.config.specific.components $component).database.username) }}
+      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username }}
         {{- $parent.Values.hull.config.specific.database.usernamesPostfix }}
     database-password:
       inline: {{ (index $parent.Values.hull.config.specific.components $component).database.password }}    
@@ -184,9 +184,9 @@ Icon: |-
         Data Source=
         {{- printf "%s,%s" $parent.Values.hull.config.specific.database.host (toString $parent.Values.hull.config.specific.database.port) -}}
         ;Initial Catalog=
-        {{- printf "%s_vidiflow_%s" $parent.Values.hull.config.specific.system.name ((index $parent.Values.hull.config.specific.components $component).database.name) -}}
+        {{- (index $parent.Values.hull.config.specific.components $component).database.name -}}
         ;MultipleActiveResultSets=true;User ID=
-        {{- printf "%s_vidiflow_%s" $parent.Values.hull.config.specific.system.name ((index $parent.Values.hull.config.specific.components $component).database.username) -}}
+        {{- (index $parent.Values.hull.config.specific.components $component).database.username -}}
         ;Password={{- (index $parent.Values.hull.config.specific.components $component).database.password -}}
         ;Connect Timeout=
         {{- $timeout -}}
@@ -197,9 +197,9 @@ Icon: |-
         ;Port=
         {{- (toString $parent.Values.hull.config.specific.database.port) -}}
         ;Database=
-        {{- printf "%s_vidiflow_%s" $parent.Values.hull.config.specific.system.name ((index $parent.Values.hull.config.specific.components $component).database.name) -}}
+        {{- (index $parent.Values.hull.config.specific.components $component).database.name -}}
         ;User ID=
-        {{- printf "%s_vidiflow_%s" $parent.Values.hull.config.specific.system.name ((index $parent.Values.hull.config.specific.components $component).database.username) -}}
+        {{- (index $parent.Values.hull.config.specific.components $component).database.username -}}
         {{- $parent.Values.hull.config.specific.database.usernamesPostfix -}}
         ;Password=
         {{- (index $parent.Values.hull.config.specific.components $component).database.password -}}
