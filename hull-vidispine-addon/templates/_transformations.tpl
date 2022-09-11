@@ -171,11 +171,20 @@ Icon: |-
 {{ end }}
 {{ end }}
 {{ if (index $parent.Values.hull.config.specific.components $component).database }}
+{{ if (eq $parent.Values.hull.config.specific.database.type "mssql") }}
     database-name:
       inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name }}
     database-username: 
       inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username }}
         {{- $parent.Values.hull.config.specific.database.usernamesPostfix }}
+{{ end }}
+{{ if (eq $parent.Values.hull.config.specific.database.type "postgres") }}
+    database-name:
+      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name | lower }}
+    database-username: 
+      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username | lower }}
+        {{- $parent.Values.hull.config.specific.database.usernamesPostfix | lower }}
+{{ end }}
     database-password:
       inline: {{ (index $parent.Values.hull.config.specific.components $component).database.password }}    
     database-connection-string:
@@ -197,10 +206,10 @@ Icon: |-
         ;Port=
         {{- (toString $parent.Values.hull.config.specific.database.port) -}}
         ;Database=
-        {{- (index $parent.Values.hull.config.specific.components $component).database.name -}}
+        {{- (index $parent.Values.hull.config.specific.components $component).database.name | lower -}}
         ;User ID=
-        {{- (index $parent.Values.hull.config.specific.components $component).database.username -}}
-        {{- $parent.Values.hull.config.specific.database.usernamesPostfix -}}
+        {{- (index $parent.Values.hull.config.specific.components $component).database.username | lower -}}
+        {{- $parent.Values.hull.config.specific.database.usernamesPostfix | lower -}}
         ;Password=
         {{- (index $parent.Values.hull.config.specific.components $component).database.password -}}
         {{- end -}}
@@ -420,7 +429,13 @@ Icon: |-
 {{- $parent.Values.hull.config.specific.messagebus.password }}
 {{- printf "%s" "@" }}
 {{- $url := default $parent.Values.hull.config.general.data.endpoints.rabbitmq.uri.amq $parent.Values.hull.config.general.data.endpoints.rabbitmq.uri.amqInternal }}
-{{- printf "%s:%s" (urlParse $url).hostname ((regexSplit ":" $url -1) | last) }}
+{{- $end := (regexSplit ":" $url -1) | last | trim -}}
+{{- $vhost := "" -}}
+{{- $port := (regexSplit "/" $end -1) | first -}}
+{{- if (and (contains "/" $end) (not (hasSuffix "/" $end))) -}}
+{{- $vhost = (regexSplit "/" $end -1) | last -}}
+{{- end -}}
+{{- printf "%s:%s/%s" (urlParse $url).hostname $port $vhost }}
 {{- else -}}
 ""
 {{- end -}}
@@ -443,7 +458,8 @@ Icon: |-
   installerClientSecret: 
     inline: {{ $parent.Values.hull.config.specific.authService.installerClientSecret }}
   productClientId: 
-    inline: ""
+    inline: {{ $parent.Values.hull.config.specific.authService.productClientId }}
   productClientSecret: 
-    inline: "" 
+    inline: {{ $parent.Values.hull.config.specific.authService.productClientSecret }}
+{{
 {{ end }}

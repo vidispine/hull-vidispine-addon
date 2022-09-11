@@ -205,6 +205,14 @@ hull:
                     register: true
                     remove: false
                     putUriExcludeIdentifier: true
+                60_product_component:
+                  apiPath: "v2/ProductComponent"
+                  typeDescription: ProductComponent
+                  identifierQueryParam: "Guid"
+                  _DEFAULTS_:
+                    register: true
+                    remove: false
+                    putUriExcludeIdentifier: true
 
 ###################################################
 
@@ -823,7 +831,8 @@ hull:
 
                               $this.WriteLog("*** $(if ($value.remove -eq $true) {"Starting to remove"} else {"Starting to register"}) Entity $($name) for entity key '$($entityKey)'")
 
-                              $this.ReadConfigValueFromFile($value)
+                              $value.config = $this.ReadConfigFromFile($value)
+                              $value.config = $this.ReadConfigValuesFromFiles($value)
                               
                               $contentType = "$(if ([String]::IsNullOrEmpty($value.contentType)) { "application/json" } else { $value.contentType })"
                               $content = $value.config
@@ -1061,16 +1070,70 @@ hull:
                       }
                       return $true
                   }
-
-                  # Read config value from file content
-                  [void] ReadConfigValueFromFile([PSCustomObject] $value)
+                  
+                  # Map JSON config value from JSON file conten key
+                  [PSCustomObject] ReadConfigValuesFromFiles([PSCustomObject] $entity)
                   {
-                      if ($value.configValueFromFile -ne $null)
+                      if ($entity.readConfigValuesFromFiles -ne $null)
                       {
-                          foreach($entityKey in $value.configValueFromFile.Keys)
+                          if ([String]::IsNullOrEmpty($entity.config))
                           {
+                              $this.WriteLog("Created new empty config dictionary.")
+                              $entity.config = @{}
+                          }
+                          else
+                          {
+                              $this.WriteLog("Current config: $($entity.config).")
+                          }
+                          
+                          foreach($configKey in $entity.readConfigValuesFromFiles.Keys)
+                          {
+                              $value = $entity.readConfigValuesFromFiles[$configKey]
+                              $path = $value.path
+                              if ([String]::IsNullOrEmpty($path))
+                              {
+                                  throw [Exception]::new("ERROR --> Property 'path' does not exist for Config Key '$($configKey)', cannot identify source file")
+                              }
+                              
                               $currentPath = (Get-Item -Path ".\" -Verbose).FullName
-                              $filePath = Join-Path $currentPath $entityKey
+                              $filePath = Join-Path $currentPath $value.path
+
+                              if (!(Test-Path $filePath))
+                              {
+                                  throw [Exception]::new("ERROR --> File '$($filePath)' does not exist")
+                              }
+                              $this.WriteLog("External Config file found: " + $filePath)
+                              
+                              $fileContent = Get-Content -Path $filePath | Out-String
+                                               
+                              if ([string]::IsNullOrWhitespace($value.key))
+                              {
+                                  $this.WriteLog("No 'key' property provided, mapping full contents of '$($filePath)' to Config Key '$($configKey)'")
+                                  
+                                  $entity.config.$configKey = $fileContent  
+                              }
+                              else
+                              {
+                                  $this.WriteLog("Value '$($value.key)' provided for 'key' property, mapping content of key from JSON file '$($filePath)' to Config Key '$($configKey)'")
+                                  $fileContentJson = $fileContent | ConvertFrom-Json
+                                  $this.WriteLog("JSON file content: " + $fileContentJson)
+                                  $entity.config[$configKey] = $fileContentJson.$($value.key)                                 
+                              }
+                          }
+                      }
+                      
+                      return $entity.config
+                  }
+
+                  # Read complete config from file
+                  [PSCustomObject] ReadConfigFromFile([PSCustomObject] $entity)
+                  {
+                      if ($entity.readConfigFromFile -ne $null)
+                      {
+                          foreach($configKey in $entity.readConfigValuesFromFile.Keys)
+                          {
+                              $currentPath = (Get-Item -Path "./" -Verbose).FullName
+                              $filePath = Join-Path $currentPath $entity.readConfigFromFile
 
                               if (!(Test-Path $filePath))
                               {
@@ -1079,20 +1142,15 @@ hull:
                               else
                               {
                                   $fileContent = Get-Content -Path $filePath | Out-String
-                                  $fileContentJson = $fileContent | ConvertFrom-Json
+                                  
+                                  $this.WriteLog("Updating config from file " + $filePath + " with: " + $fileContent)
 
-                                  $this.WriteLog("Config file found: " + $fileContentJson)
-
-                                  $configs = $value.configValueFromFile[$entityKey]
-
-                                  foreach($configEntityKey in $configs.Keys) {
-
-                                      $configEntityValue = $configs[$configEntityKey]
-                                      $configValue = $fileContentJson.$($configEntityValue.key)
-                                      $value.config[$configEntityKey] = $configValue
-                                  }
+                                  $entity.config = $fileContent
+                                  
                               }
-                          }
+                          }                              
                       }
+                      
+                      return $entity.config
                   }
-                }
+              }
