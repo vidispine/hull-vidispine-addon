@@ -461,5 +461,4 @@ Icon: |-
     inline: {{ $parent.Values.hull.config.specific.authService.productClientId }}
   productClientSecret: 
     inline: {{ $parent.Values.hull.config.specific.authService.productClientSecret }}
-{{
 {{ end }}
