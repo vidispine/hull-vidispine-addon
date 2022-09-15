@@ -60,6 +60,9 @@ jobs:
       - version: "3.9.0"
       - version: "3.9.1"
       - version: "3.9.2"
+      - version: "3.9.3"
+      - version: "3.9.4"      
+
 - job: CreateRelease
   dependsOn: RunTests
   steps:

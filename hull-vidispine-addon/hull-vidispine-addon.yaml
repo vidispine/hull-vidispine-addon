@@ -6,6 +6,13 @@ hull:
         installation:
           config:
             customCaCertificates: {}
+            preScript: ""
+            postScript: ""
+            productUris: []
+            debug:
+              ignoreEntityRestCallErrors: false
+              retriesForEntityRestCall: 3
+              retriesForAuthServiceCall: 10
           endpoints:
             10_vidicore:
               auth:
@@ -157,7 +164,7 @@ hull:
                   ENTRY: configportal
                   ENDPOINT: api
               subresources:
-                10_product:
+                10_product: &product
                   apiPath: "v2/Products"
                   typeDescription: "Product"
                   identifierQueryParam: "Guid"
@@ -165,6 +172,7 @@ hull:
                     register: true
                     remove: false
                     putUriExcludeIdentifier: true
+                10_products: *product                 
                 20_usecasedefinitions:
                   apiPath: "v2/UseCaseDefinitions"
                   typeDescription: "UseCaseDefinitions"
@@ -181,7 +189,7 @@ hull:
                     register: true
                     remove: false
                     putUriExcludeIdentifier: true
-                30_usecaseconfiguration:
+                30_usecaseconfiguration: &usecaseconfiguration
                   apiPath: "v2/UseCaseConfigurations"
                   typeDescription: "UseCaseConfigurations"
                   identifierQueryParam: "Guid"
@@ -189,9 +197,18 @@ hull:
                     register: true
                     remove: false
                     putUriExcludeIdentifier: true
+                30_usecaseconfigurations: *usecaseconfiguration
                 40_metadata:
                   apiPath: "v2/Metadata"
                   typeDescription: "Metadata"
+                  identifierQueryParam: "Guid"
+                  _DEFAULTS_:
+                    register: true
+                    remove: false
+                    putUriExcludeIdentifier: true
+                45_metadatagroups:
+                  apiPath: "v2/MetadataGroup"
+                  typeDescription: "MetadataGroup"
                   identifierQueryParam: "Guid"
                   _DEFAULTS_:
                     register: true
@@ -205,7 +222,7 @@ hull:
                     register: true
                     remove: false
                     putUriExcludeIdentifier: true
-                60_product_component:
+                60_productcomponents:
                   apiPath: "v2/ProductComponent"
                   typeDescription: ProductComponent
                   identifierQueryParam: "Guid"
@@ -213,7 +230,21 @@ hull:
                     register: true
                     remove: false
                     putUriExcludeIdentifier: true
-
+                70_mappedgroups:
+                  apiPath: v2/ActiveDirectoryMappedGroups
+                  typeDescription: ActiveDirectoryMappedGroups
+                  identifierQueryParam: Guid
+                  _DEFAULTS_:
+                    register: true
+                    remove: false
+                80_systemendpoints:
+                  apiPath: v2/SystemEndpoints
+                  typeDescription: SystemEndpoints
+                  identifierQueryParam: Guid
+                  _DEFAULTS_:
+                    register: true
+                    remove: false
+                
 ###################################################
 
   objects:
@@ -292,6 +323,9 @@ hull:
                 'installation':
                   name: 'installation'
                   mountPath: /script
+                custom-installation-files:
+                  name: custom-installation-files
+                  mountPath: /custom-installation-files
                 certs:
                   enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
                   name: certs
@@ -304,6 +338,9 @@ hull:
             installation:
               secret:
                 secretName: hull-install
+            custom-installation-files:
+              secret:
+                secretName: custom-installation-files
             certs:
               enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
               secret:
@@ -324,10 +361,6 @@ hull:
         pod:
           restartPolicy: OnFailure
           serviceAccountName: default
-          volumes:
-            installation:
-              configMap:
-                name: hull-install
           containers:
             installation:
               image:
@@ -377,6 +410,9 @@ hull:
                 'installation':
                   name: 'installation'
                   mountPath: /script
+                custom-installation-files:
+                  name: custom-installation-files
+                  mountPath: /custom-installation-files
                 certs:
                   enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
                   name: certs
@@ -389,6 +425,9 @@ hull:
             installation:
               secret:
                 secretName: hull-install
+            custom-installation-files:
+              secret:
+                secretName: custom-installation-files
             certs:
               enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
               secret:
@@ -407,10 +446,6 @@ hull:
           adminUsername:
             inline: ""
           adminPassword:
-            inline: ""
-          username:
-            inline: ""
-          password:
             inline: ""
 
       'authservice-token-secret':
@@ -440,7 +475,17 @@ hull:
             {{ $key }}: { inline: {{ $value | quote }} },
             {{ end }}
           }
-
+      'custom-installation-files':
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: |-
+          _HT!{
+            {{ range $file, $_ := (index . "$").Files.Glob "files/hull-vidispine-addon/installation/sources/*" }}
+            {{ $file | base | quote }}: { path: {{ $file | quote }} },
+            {{ end }}
+          }
       'hull-install':
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
@@ -449,21 +494,44 @@ hull:
         data:
           installation.yaml:
             inline: |-
-              {{- with  (index $.Values "hull").config.general.data.installation }}
+                {{- with  (index $.Values "hull").config.general.data.installation }}
                   {{- $configScope := . -}}
-                  {{- $configScopeEndpoints := .endpoints -}}
-                  {{- range $endpoint, $endpointval := .endpoints -}}
+                  {{- $configScopeEndpoints := dict -}}
+                  {{- if hasKey . "endpoints" -}}
+                      {{- $configScopeEndpoints = .endpoints -}}
+                  {{- end -}}
+                  {{- range $path, $_ := $.Files.Glob "files/hull-vidispine-addon/installation/endpoints/*.yaml" -}}
+                      {{- $configScopeEndpoints = merge $configScopeEndpoints (dict (base $path | trimSuffix ".yaml") (fromYaml ($.Files.Get $path))) -}}
+                  {{- end -}}
+                  {{- range $endpoint, $endpointval := $configScopeEndpoints -}}
                       {{- $endpointScope := $endpointval -}}
-                      {{- include "hull.vidispine.addon.transformation" (dict "PARENT_CONTEXT" $ "SOURCE" $endpointval) -}}
                       {{- if $endpointval.endpoint -}}
-                          {{- range $subresource, $subresourceval := $endpointval.subresources }}
-                              {{- $subresourceScope := $subresourceval }}
-                              {{- range $entity, $entityval := $subresourceval.entities }}
+                          {{- $subresources := dict -}}
+                          {{- if hasKey $endpointval "subresources" -}}
+                              {{- $subresources = $endpointval.subresources -}}
+                          {{- end -}}
+                          {{- range $path, $_ :=  $.Files.Glob (printf "%s/%s/%s" "files/hull-vidispine-addon/installation/endpoints" $endpoint "*.yaml") -}}
+                              {{- $subresources = merge $subresources (dict (base $path | trimSuffix ".yaml") (fromYaml ($.Files.Get $path))) -}}
+                          {{- end -}}
+                          {{- range $subresource, $subresourceval := $subresources }}
+                              {{- $subresourceScope := $subresourceval -}}
+                              {{- $entities := dict  -}}
+                              {{- if hasKey $subresourceval "entities" -}}
+                                  {{- $entities = $subresourceval.entities -}}
+                              {{- else -}}
+                                {{- $u := set $subresourceval "entities" dict }}
+                              {{- end -}}
+                              {{- range $path, $_ :=  $.Files.Glob (printf "%s/%s/%s/%s" "files/hull-vidispine-addon/installation/endpoints" $endpoint $subresource "*.yaml") -}}
+                                  {{- $entities = merge $entities (dict (base $path | trimSuffix ".yaml") (fromYaml ($.Files.Get $path))) -}}
+                              {{- end -}}
+                              {{- range $entity, $entityval := $entities }}
                                   {{- $mergedDict := dict -}}
                                   {{- if hasKey $subresourceval "_DEFAULTS_" -}}
                                       {{- $mergedDict = deepCopy $subresourceval._DEFAULTS_ -}}
                                   {{- end -}}
                                   {{- $t := mergeOverwrite $mergedDict $entityval -}}
+                                  {{- $z := set (index $.Values "hull").config.general.data.installation "endpoints" $configScopeEndpoints }}
+                                  {{- include "hull.vidispine.addon.transformation" (dict "PARENT_CONTEXT" $ "SOURCE" (index $.Values "hull").config.general.data.installation.endpoints) -}}
                                   {{- if typeIs "map[string]interface {}" $mergedDict -}}
                                       {{- if hasKey $mergedDict "config" -}}
                                           {{- $configDict := $mergedDict.config -}}
@@ -483,8 +551,8 @@ hull:
                           {{- $configScopeEndpoints = unset $configScopeEndpoints $endpoint -}}
                       {{- end }}
                   {{- end }}
-              {{ toYaml $configScope | indent 4 }}
-              {{ end }}
+                  {{- toYaml $configScope -}}
+                {{ end }}
           Installer.ps1:
             inline: |-
               <#
@@ -539,13 +607,52 @@ hull:
               [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
               $installer = New-Object Installer
               $installer.LoadConfiguration($ConfigFilePath, $Stage)
+              $installer.WriteLog("----------- Settings: ----------")
+              $installer.WriteLog("debug:")
+              $installer.WriteLog("  ignoreEntityRestCallErrors: $($installer._config.config.debug.ignoreEntityRestCallErrors)")
+              $installer.WriteLog("  retriesForEntityRestCall: $($installer._config.config.debug.retriesForEntityRestCall)")
+              $installer.WriteLog("  retriesForAuthServiceCall: $($installer.$_config.config.debug.retriesForAuthServiceCall)")
               $installer.Start()
-              Write-Host "----------- Installer finished processing all endpoints ----------"
+              $installer.WriteLog("----------- Installer finished processing all endpoints ----------")
+              $installer.WriteLog("")
+              $installer.WriteLog("----------- Summary ----------")
+              if ($installer._successes)
+              {
+                $installer.WriteLog("")
+                $installer.WriteLog("----------- Successful steps ---------- ")
+                foreach ($ep in $installer._successes.Keys) {
+                    $installer.WriteLog("  $($ep):")
+                    foreach ($sr in $installer._successes[$ep].Keys) {
+                      $installer.WriteLog("    $($sr):")
+                      foreach ($en in $installer._successes[$ep][$sr].Keys) {
+                        $installer.WriteLog("      $($en): $($installer._successes[$ep][$sr][$en]['lastMethod']) [$($installer._successes[$ep][$sr][$en]['lastUri'])]")
+                      }
+                    }
+                }
+                $installer.WriteError("-----------  Done listing successes -----------")
+              }
+              if ($installer._errors)
+              {
+                $installer.WriteError("")
+                $installer.WriteError("----------- Errors encounted but ignored due to setting 'config.ignoreAllEntityErrors=true' ----------")
+                foreach ($ep in $installer._errors.Keys) {
+                    $installer.WriteError("  $($ep):")
+                    foreach ($sr in $installer._errors[$ep].Keys) {
+                      $installer.WriteError("    $($sr):")
+                      foreach ($en in $installer._errors[$ep][$sr].Keys) {
+                        $installer.WriteError("      $($en): $($installer._errors[$ep][$sr][$en]) ")
+                      }
+                    }
+                }
+                $installer.WriteError("-----------  Done listing errors -----------")
+              }
 
               Class Installer
               {
                   hidden [PSCustomObject] $_config
                   hidden [string] $_stage
+                  hidden [PSCustomObject] $_errors
+                  hidden [PSCustomObject] $_successes
 
                   hidden [void] WriteLog($message) {
                       "$(get-date -format "yyyy-MM-dd HH:mm:ss"): $($message)" | Write-Host
@@ -554,20 +661,46 @@ hull:
                   # Override the built-in cmdlet with a custom version
                   hidden [void] WriteError($message) {
                       [Console]::ForegroundColor = 'red'
-                      [Console]::Error.WriteLine($message)
+                      [Console]::Error.WriteLine("$(get-date -format "yyyy-MM-dd HH:mm:ss"): $($message)")
                       [Console]::ResetColor()
                   }
 
-                  hidden [void] LogInvokeWebRequestError($uri, $method)
+                  hidden [string] LogInvokeWebRequestError()
                   {
-                      $this.WriteError("***** ERROR $($method.ToUpper()) to service: StatusCode: $($_.Exception.Response.StatusCode.Value__)")
-                      $this.WriteError("***** ERROR -> Url: '$($uri)'. $($_.Exception.ToString())")
-                      $this.WriteError("***** ERROR -> Exception Message: $($_.Exception.Message)")
+                      return $this.LogInvokeWebRequestError($null, $null)
+                  }
+
+                  hidden [string] LogInvokeWebRequestError($uri, $method)
+                  {
+                      $log = ""
+                      $message = ""
+                      if ($uri -ne $null)
+                      {
+                        $message = "***** ERROR $($method.ToUpper()) to service: StatusCode: $($_.Exception.Response.StatusCode.Value__)"
+                        $this.WriteError($message)
+                        $log += $message + [System.Environment]::Newline
+                      }
+                      if ($method -ne $null)
+                      {
+                        $message = "***** ERROR -> Url: '$($uri)'. $($_.Exception.ToString())"
+                        $this.WriteError($message)
+                        $log += $message + [System.Environment]::Newline
+                      }
+                      $message = "***** ERROR -> Exception Message: $($_.Exception.Message)"
+                      $this.WriteError($message)
+                      $log += $message + [System.Environment]::Newline
+
                       if ($_.Exception.InnerException -ne $null)
                       {
-                          $this.WriteError("****** ERROR -> Inner Exception Message: $($_.Exception.InnerException.Message)")
+                        $message = "****** ERROR -> Inner Exception Message: $($_.Exception.InnerException.Message)"
+                        $this.WriteError($message)
+                        $log += $message + [System.Environment]::Newline
                       }
-                      $this.WriteError("***** ERROR -> Body: $(ParseErrorForResponseBody($_))")
+                      $message = "***** ERROR -> Body: $(ParseErrorForResponseBody($_))"
+                      $this.WriteError($message)
+                      $log += $message + [System.Environment]::Newline
+
+                      return $log
                   }
 
                   # Invoke-WebRequest (GET, POST, PUT, DELETE) with retries and error handling
@@ -577,7 +710,7 @@ hull:
                       [string] $jsonBody,
                       [PSCustomObject] $headers
                   ) {
-                      $retryLimit = 5
+                      $retryLimit = $this._config.config.debug.retriesForEntityRestCall
                       $retryCount = 1
                       $response = $null
 
@@ -599,11 +732,11 @@ hull:
                                   Start-Sleep 5
                               }
                               else {
-                                  $this.WriteError("***** Failed $($method.ToUpper()) '$($url)' after $($retryLimit) time(s): $($_.Exception.Message)")
-                                  throw $_.Exception.Message
+                                  $this.WriteError("***** Failed $($method.ToUpper()) '$($url)' after $($retryLimit) attempt(s): $($_.Exception.Message)")
+                                  throw
                               }
                           }
-                      } while ($retryCount -le $retryLimit)
+                      } while ($true)
 
                       return $response
                   }
@@ -626,6 +759,7 @@ hull:
                       if ($auth.basic -ne $null)
                       {
                           $authHeader = "Basic $([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes([environment]::GetEnvironmentVariable($auth.basic.env.username,"Process") + ":" + [environment]::GetEnvironmentVariable($auth.basic.env.password,"Process"))))"
+                          $this.WriteLog("++++ Using Basic Auth for User '$([Text.Encoding]::ASCII.GetBytes([environment]::GetEnvironmentVariable($auth.basic.env.username,"Process")))'. Password is $(if ([environment]::GetEnvironmentVariable($auth.basic.env.password,"Process") -ne [String]::Empty) {"not "} else {" "} )empty.")
                       }
 
                       if ($authHeader -ne [String]::Empty)
@@ -639,7 +773,7 @@ hull:
                       }
 
                       if ($endpointExtraHeaders )
-                      {                          
+                      {
                           foreach($header in $endpointExtraHeaders.Keys)
                           {
                             if ($headers.ContainsKey($header))
@@ -666,7 +800,7 @@ hull:
                             {
                               $this.WriteLog("++++ Adding Header '$($header)' with value '$($value.extraHeaders[$header])' from Entity Headers.")
                             }
-                            
+
                             $headers[$header] = $value.extraHeaders[$header]
 
                           }
@@ -691,10 +825,14 @@ hull:
 
                       try
                       {
-                          $this.WriteLog("++++ Getting access token with grant_type '$($tokenRequest.grantType)' and scope '$($scope)' with headers:")
+                          $this.WriteLog("++++ Getting access token for Client Id '$([environment]::GetEnvironmentVariable($tokenRequest.env.clientId,"Process"))' with grant_type '$($tokenRequest.grantType)' and scope '$($scope)' with headers:")
                           foreach ($key in $headers.Keys)
                           {
                               $this.WriteLog("++++   Key: $key Value: $($headers[$key])")
+                          }
+                          if ([String]::IsNullOrEmpty([environment]::GetEnvironmentVariable($tokenRequest.env.clientSecret,"Process")))
+                          {
+                            $this.WriteLog("++++ WARNING: Client Secret for $([environment]::GetEnvironmentVariable($tokenRequest.env.clientId,"Process")) is empty!")
                           }
                           $response = Invoke-WebRequest -Uri "$($tokenRequest.authenticationServiceEndpoint)/connect/token" -Method Post -Body $request -Headers $headers -UseBasicParsing -SkipCertificateCheck
                           $this.AssertResponse($response)
@@ -712,7 +850,7 @@ hull:
                   hidden [void] PingAuthServiceApi([string] $authenticationServiceEndpoint)
                   {
                       $retryCount = 0;
-                      $retryLimit = 30;
+                      $retryLimit = $this._config.config.debug.retriesForAuthServiceCall
 
                       # The health check URI of AuthService. Does not require any authentication.
                       $authenticationServiceEndpoint = $authenticationServiceEndpoint.Trim('/')
@@ -803,7 +941,7 @@ hull:
                           $value = $config.subresources[$subresourceKey]
                           $this.WriteLog("** Starting installation for Subresource '$($subresourceKey)'")
 
-                          $this.Subresource($subresourceKey, $value, $config.endpoint, $config.auth, $config.stage, $config.extraHeaders)
+                          $this.Subresource($subresourceKey, $value, $config.endpoint, $config.auth, $config.stage, $config.extraHeaders, $name)
 
                           $this.WriteLog("** Finished installation for Subresource '$($subresourceKey)'")
                           $this.WriteLog("")
@@ -811,11 +949,11 @@ hull:
                   }
 
                   # Handles all operations on a subresource of an endpoint
-                  hidden [void] Subresource([string] $name, [PSCustomObject] $subresource, [string] $endpoint, [PSCustomObject] $auth, [string] $stage, [PSCustomObject] $extraHeaders)
+                  hidden [void] Subresource([string] $subresourceName, [PSCustomObject] $subresource, [string] $endpoint, [PSCustomObject] $auth, [string] $stage, [PSCustomObject] $extraHeaders, [string] $endpointName)
                   {
                     $processSubresource = $true
                     $stageSubresource = if ($subresource.Contains("stage")) { $subresource.stage } else { if ([String]::IsNullOrEmpty($stage)) { "pre-install" } else { $stage } }
-                    
+                    $authSubresource = if ($subresource.Contains("auth")) { $subresource.auth } else { $auth }
                     $this.WriteLog("*** Subresource stage is '$($stageSubresource)', global stage is '$($this._stage)'")
                     if ($stageSubresource.Equals($this._stage))
                     {
@@ -844,25 +982,66 @@ hull:
                               {
                                 $content = $content | ConvertTo-Json -Depth 20
                               }
-                              
-                              $this.CheckEntity(
-                                  "$($endpoint)/$($subresource.apiPath)",
-                                  $name,
-                                  $content,
-                                  $subresource.typeDescription,
-                                  $value.remove -eq $true,
-                                  "$(if ($value.remove -eq $true) {$subresource.identifierQueryParam} else {''})",
-                                  $auth,
-                                  $value.putInsteadOfPost -eq $true,
-                                  $value.putUriExcludeIdentifier -eq $true,
-                                  $value.overwriteExisting -eq $true,
-                                  $value.postQueryParams,
-                                  $value.getUriExcludeIdentifier,
-                                  $value.getCustomScript,
-                                  $value.noGet,
-                                  $contentType,
-                                  $this.GetHttpHeaders($auth, $contentType, $extraHeaders, $value)
-                              )
+                              try {
+                                $callResult = $this.CheckEntity(
+                                    "$($endpoint)/$($subresource.apiPath)",
+                                    $name,
+                                    $content,
+                                    $subresource.typeDescription,
+                                    $value.remove -eq $true,
+                                    "$(if ($value.remove -eq $true) {$subresource.identifierQueryParam} else {''})",
+                                    $authSubresource,
+                                    $value.putInsteadOfPost -eq $true,
+                                    $value.putUriExcludeIdentifier -eq $true,
+                                    $value.overwriteExisting -eq $true,
+                                    $value.postQueryParams,
+                                    $value.getUriExcludeIdentifier,
+                                    $value.getCustomScript,
+                                    $value.noGet,
+                                    $contentType,
+                                    $this.GetHttpHeaders($authSubresource, $contentType, $extraHeaders, $value),
+                                    $value.getQueryParams
+                                )
+
+                                if (-Not ($this._successes))
+                                {
+                                  $this._successes = @{}
+                                }
+                                if (-Not ($this._successes.ContainsKey($endpointName)))
+                                {
+                                  $this._successes[$endpointName] = @{}
+                                }
+                                if (-Not ($this._successes[$endpointName].ContainsKey($subresourceName)))
+                                {
+                                  $this._successes[$endpointName][$subresourceName] = @{}
+                                }
+
+                                $this._successes[$endpointName][$subresourceName][$entityKey] = $callResult
+                              }
+                              catch
+                              {
+                                if ($this._config.config.debug.ignoreEntityRestCallErrors)
+                                {
+                                  if (-Not ($this._errors))
+                                  {
+                                    $this._errors = @{}
+                                  }
+                                  if (-Not ($this._errors.ContainsKey($endpointName)))
+                                  {
+                                    $this._errors[$endpointName] = @{}
+                                  }
+                                  if (-Not ($this._errors[$endpointName].ContainsKey($subresourceName)))
+                                  {
+                                    $this._errors[$endpointName][$subresourceName] = @{}
+                                  }
+
+                                  $this._errors[$endpointName][$subresourceName][$entityKey] = "[" + [System.Environment]::NewLine + $this.LogInvokeWebRequestError() + "]"
+                                }
+                                else
+                                {
+                                  throw
+                                }
+                              }
                           }
                           else
                           {
@@ -877,7 +1056,7 @@ hull:
                   }
 
                   # Checks entities and performs required operations (DELETE/PUT/POST)
-                  hidden [void] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $content, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting, [PSCustomObject] $postQueryParams, [bool] $getUriExcludeIdentifier, [string] $getCustomScript, [bool] $noGet, [string] $contentType, [PSCustomObject] $headers)
+                  hidden [PSCustomObject] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $content, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting, [PSCustomObject] $postQueryParams, [bool] $getUriExcludeIdentifier, [string] $getCustomScript, [bool] $noGet, [string] $contentType, [PSCustomObject] $headers, [PSCustomObject] $getQueryParams)
                   {
                       $apiEndpoint = $apiEndpoint.Trim('/')
                       $uri = "$apiEndpoint/$identifier"
@@ -888,6 +1067,9 @@ hull:
                       $message = ""
                       $statusCode = 500
                       $result = $null
+
+                      $lastMethod = ""
+                      $lastUri = ""
                       
                       if ($noGet)
                       {
@@ -898,8 +1080,25 @@ hull:
                       {
                         try
                         {
+                            if ($getQueryParams -ne $null)
+                            {
+                                $count = 0
+                                $start = "?"
+                                foreach($key in $getQueryParams.Keys)
+                                {
+                                    if ($count -gt 0)
+                                    {
+                                        $start = "&"
+                                    }
+                                    $uriGet += "$($start)$($key)=$($getQueryParams[$key])"
+                                    $count = $count + 1
+                                }
+                            }
+
                             $this.WriteLog("**** Checking if entity exists, GETting uri '$($uriGet)'")
                             $responseGet = Invoke-WebRequest -Uri $uriGet -Method "GET" -headers $headers -UseBasicParsing -SkipCertificateCheck
+                            $lastMethod = "GET"
+                            $lastUri = $uriGet
                             if ([String]::IsNullOrWhitespace($getCustomScript))
                             {
                               $statusCode = $responseGet.StatusCode
@@ -971,6 +1170,8 @@ hull:
                           if($toBeDeleted) {
                               $this.WriteLog("**** '$entityType' entry '$identifier' already exists and is going to be deleted now")
                               $this.DeleteEntity($uriDelete, $identifier, $identifierQueryParam, $auth, $contentType, $headers)
+                              $lastMethod = "DELETE"
+                              $lastUri = $uriDelete
                           }
                           else
                           {
@@ -978,6 +1179,8 @@ hull:
                               {
                                   $this.WriteLog("**** '$entityType' entry '$identifier' already exists, hence PUTing instead of POSTing to update entity")
                                   $this.PutEntity($uriPut, $content, $auth, $contentType, $headers)
+                                  $lastMethod = "PUT"
+                                  $lastUri = $uriPut
                               }
                               else
                               {
@@ -994,6 +1197,8 @@ hull:
                               {
                                   $this.WriteLog("**** Unclear if '$entityType' entry '$identifier' does exist due to 'noGet=true', DELETEing anyway since 'remove=true'")
                                   $this.DeleteEntity($uriDelete, $identifier, $identifierQueryParam, $auth, $contentType, $headers)
+                                  $lastMethod = "DELETE"
+                                  $lastUri = $uriDelete
                               }
                               else
                               {
@@ -1007,11 +1212,15 @@ hull:
                               {
                                   $this.WriteLog("**** PUTting '$entityType' entry '$identifier' to create it since 'putInsteadOfPost' is set to true")
                                   $this.PutEntity($uriPut, $content, $auth, $contentType, $headers)
+                                  $lastMethod = "PUT"
+                                  $lastUri = $uriPut
                               }
                               else
                               {
                                   $this.WriteLog("**** POSTing '$entityType' entry '$identifier' to create it")
                                   $this.PostEntity($apiEndpoint, $content, $auth, $postQueryParams, $contentType, $headers)
+                                  $lastMethod = "POST"
+                                  $lastUri = $apiEndpoint
                               }
                           }
                       }
@@ -1019,6 +1228,8 @@ hull:
                       {
                           throw [Exception]::new("ERROR --> Unexpected StatusCode: $($statusCode) - Message: $($message)")
                       }
+
+                      return @{ "lastMethod" = $lastMethod; "lastUri" = $lastUri }
                   }
 
                   # Post an entity
@@ -1096,7 +1307,7 @@ hull:
                               }
                               
                               $currentPath = (Get-Item -Path ".\" -Verbose).FullName
-                              $filePath = Join-Path $currentPath $value.path
+                              $filePath = Join-Path $currentPath "custom-installation-files" $value.path
 
                               if (!(Test-Path $filePath))
                               {
@@ -1133,7 +1344,7 @@ hull:
                           foreach($configKey in $entity.readConfigValuesFromFile.Keys)
                           {
                               $currentPath = (Get-Item -Path "./" -Verbose).FullName
-                              $filePath = Join-Path $currentPath $entity.readConfigFromFile
+                              $filePath = Join-Path $currentPath "custom-installation-files" $entity.readConfigFromFile
 
                               if (!(Test-Path $filePath))
                               {
