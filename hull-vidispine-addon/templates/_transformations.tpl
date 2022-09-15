@@ -14,7 +14,7 @@
         {{- if typeIs "map[string]interface {}" $value -}}
             {{- $params := default nil $value._HULL_TRANSFORMATION_ -}}
             {{- range $sfKey, $sfValue := $shortForms -}}
-                {{- if (hasKey $value $sfKey) -}}}}
+                {{- if (hasKey $value $sfKey) -}}
                     {{- $params = dict "NAME" (first $sfValue) (last $sfValue) (first (values (index $value $sfKey))) -}}
                 {{- end -}} 
             {{- end -}} 
@@ -34,7 +34,7 @@
             {{- $params := default nil nil -}}
             {{- if (or (hasPrefix "_HULL_TRANSFORMATION_" $value) (hasPrefix "_HT?" $value) (hasPrefix "_HT*" $value) (hasPrefix "_HT!" $value) (hasPrefix "_HT^" $value)) -}}
                 {{- range $sfKey, $sfValue := $shortForms -}}
-                    {{- if (hasPrefix $sfKey $value) -}}}}
+                    {{- if (hasPrefix $sfKey $value) -}}
                         {{- $params = dict "NAME" (first $sfValue) (last $sfValue) (trimPrefix $sfKey $value) -}}
                     {{- end -}} 
                 {{- end -}} 
@@ -167,7 +167,7 @@ Icon: |-
 {{ if (index $parent.Values.hull.config.specific.components $component).mounts }}
 {{ range $filename, $filecontent := (index $parent.Values.hull.config.specific.components $component).mounts }}
     {{ $filename }}:
-      path: files/{{ $component }}-{{ $filename }}
+      path: files/mounts/{{ $filename }}/{{ $component }}
 {{ end }}
 {{ end }}
 {{ if (index $parent.Values.hull.config.specific.components $component).database }}
