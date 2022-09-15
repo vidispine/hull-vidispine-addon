@@ -164,7 +164,7 @@ hull:
                   ENTRY: configportal
                   ENDPOINT: api
               subresources:
-                10_product: &product
+                10_product:
                   apiPath: "v2/Products"
                   typeDescription: "Product"
                   identifierQueryParam: "Guid"
@@ -172,7 +172,14 @@ hull:
                     register: true
                     remove: false
                     putUriExcludeIdentifier: true
-                10_products: *product                 
+                10_products: 
+                  apiPath: "v2/Products"
+                  typeDescription: "Product"
+                  identifierQueryParam: "Guid"
+                  _DEFAULTS_:
+                    register: true
+                    remove: false
+                    putUriExcludeIdentifier: true          
                 20_usecasedefinitions:
                   apiPath: "v2/UseCaseDefinitions"
                   typeDescription: "UseCaseDefinitions"
@@ -189,7 +196,7 @@ hull:
                     register: true
                     remove: false
                     putUriExcludeIdentifier: true
-                30_usecaseconfiguration: &usecaseconfiguration
+                30_usecaseconfiguration:
                   apiPath: "v2/UseCaseConfigurations"
                   typeDescription: "UseCaseConfigurations"
                   identifierQueryParam: "Guid"
@@ -197,7 +204,14 @@ hull:
                     register: true
                     remove: false
                     putUriExcludeIdentifier: true
-                30_usecaseconfigurations: *usecaseconfiguration
+                30_usecaseconfigurations:
+                  apiPath: "v2/UseCaseConfigurations"
+                  typeDescription: "UseCaseConfigurations"
+                  identifierQueryParam: "Guid"
+                  _DEFAULTS_:
+                    register: true
+                    remove: false
+                    putUriExcludeIdentifier: true
                 40_metadata:
                   apiPath: "v2/Metadata"
                   typeDescription: "Metadata"
