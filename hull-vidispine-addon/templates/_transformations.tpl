@@ -222,6 +222,7 @@ Icon: |-
 {{- $componentInputs := (index . "COMPONENTS") -}}
 {{- $endpoint := default "vidiflow" (index . "ENDPOINT") -}}
 {{- $portName := default "http" (index . "PORTNAME") -}}
+{{- $serviceName := default "" (index . "SERVICENAME") -}}
 {{- $components := regexSplit "," ($componentInputs | trim) -1 -}}
 {{- if $components }}
 {{ $key }}:
@@ -237,7 +238,11 @@ Icon: |-
           pathType: ImplementationSpecific
           backend:
             service: 
+{{ if (eq $serviceName "") }}
               name: {{ $componentKebapCase }}
+{{ else }}
+              name: {{ $serviceName }}
+{{ end }}
               port:
                 name: {{ $portName }}
 {{ end }}
