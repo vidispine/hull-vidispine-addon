@@ -164,7 +164,7 @@ Icon: |-
 {{- $component := (index . "COMPONENT") -}}
 {{- $timeout := default "60" (index . "TIMEOUT") }}
 {{ $key }}:
-{{ range $path, $_ := $parent.Files.Glob (printf "files/mounts/%s/*.*" $component) }}
+{{ range $path, $_ := $parent.Files.Glob (printf "files/mounts/%s/*" $component) }}
     {{ $path | base }}:
       path: {{ $path}}
 {{ end }}
