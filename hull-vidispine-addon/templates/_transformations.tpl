@@ -164,10 +164,26 @@ Icon: |-
 {{- $component := (index . "COMPONENT") -}}
 {{- $timeout := default "60" (index . "TIMEOUT") }}
 {{ $key }}:
+{{ range $path, $_ := $parent.Files.Glob (printf "files/mounts/%s/*.*" $component) }}
+    {{ $path | base }}:
+      path: {{ $path}}
+{{ end }}
 {{ if (index $parent.Values.hull.config.specific.components $component).mounts }}
 {{ range $filename, $filecontent := (index $parent.Values.hull.config.specific.components $component).mounts }}
     {{ $filename }}:
-      path: files/mounts/{{ $component }}/{{ $filename }}
+{{ if (hasSuffix ".json" $filename) }}
+{{ $json := $filecontent | toPrettyJson }}
+{{ if (hasKey $parent.Values.hull.config.specific.components "common") }}
+{{ if (hasKey $parent.Values.hull.config.specific.components.common "mounts") }}
+{{ if (hasKey $parent.Values.hull.config.specific.components.common.mounts $filename) }}
+{{ $json = merge $filecontent (index $parent.Values.hull.config.specific.components.common.mounts $filename) | toPrettyJson }}
+{{ end }}
+{{ end }}
+{{ end }}
+      inline: {{ $json | toPrettyJson }}      
+{{ else }}
+      inline: {{ $filecontent}}      
+{{ end }}
 {{ end }}
 {{ end }}
 {{ if (index $parent.Values.hull.config.specific.components $component).database }}
