@@ -417,7 +417,7 @@ Icon: |-
 {{ $key }}:
 {{ range $key, $value := index $parent.Values.hull.config.specific $resource }}
   {{ $key }}:
-    inline: {{ $value }}
+    inline: {{ default nil $value }}
 {{ end }}
 {{ end }}
 
