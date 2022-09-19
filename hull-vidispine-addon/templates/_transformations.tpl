@@ -158,98 +158,6 @@ Icon: |-
   {{ template "hull.object.pod.imagePullSecrets" (dict "PARENT_CONTEXT" (index . "PARENT") "SPEC" (index . "SPEC") "HULL_ROOT_KEY" "hull") }}
 {{- end -}}
 
-{{- define "hull.vidispine.addon.vidiflow.component.secret.data" -}}
-{{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $key := (index . "KEY") -}}
-{{- $component := (index . "COMPONENT") -}}
-{{- $timeout := default "60" (index . "TIMEOUT") }}
-{{ $key }}:
-{{ $mountsSpecified := false }}
-{{ $componentSpecified := false }}
-{{ if (hasKey $parent.Values.hull.config.specific "components") }}
-{{ if (hasKey (index $parent.Values.hull.config.specific.components) $component) }}
-{{ $componentSpecified = true }}
-{{ if (hasKey (index $parent.Values.hull.config.specific.components $component) "mounts") }}
-{{ $mountsSpecified = true }}
-{{ end }}
-{{ end }}
-{{ end }}
-{{ range $path, $_ := $parent.Files.Glob (printf "files/mounts/%s/*" $component) }}
-{{ $mountSpecified := false }}
-{{ if $mountsSpecified }}
-{{ if (hasKey (index $parent.Values.hull.config.specific.components $component).mounts ($path | base) ) }}
-{{ $mountSpecified = true }}
-{{ end }}
-{{ end }}
-{{ if (not $mountSpecified) }}
-    {{ $path | base }}:
-      path: {{ $path}}
-{{ end }}
-{{ end }}
-{{ if $mountsSpecified }}
-{{ range $filename, $filecontent := (index $parent.Values.hull.config.specific.components $component).mounts }}
-    {{ $filename }}:
-{{ if (hasSuffix ".json" $filename) }}
-{{ $json := $filecontent | toPrettyJson }}
-{{ if (hasKey $parent.Values.hull.config.specific.components "common") }}
-{{ if (hasKey $parent.Values.hull.config.specific.components.common "mounts") }}
-{{ if (hasKey $parent.Values.hull.config.specific.components.common.mounts $filename) }}
-{{ $json = merge $filecontent (index $parent.Values.hull.config.specific.components.common.mounts $filename) | toPrettyJson }}
-{{ end }}
-{{ end }}
-{{ end }}
-      inline: {{ $json | toPrettyJson }}      
-{{ else }}
-      inline: {{ $filecontent}}      
-{{ end }}
-{{ end }}
-{{ end }}
-{{ if (index $parent.Values.hull.config.specific.components $component).database }}
-{{ if (eq $parent.Values.hull.config.specific.database.type "mssql") }}
-    database-name:
-      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name }}
-    database-username: 
-      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username }}
-        {{- $parent.Values.hull.config.specific.database.usernamesPostfix }}
-{{ end }}
-{{ if (eq $parent.Values.hull.config.specific.database.type "postgres") }}
-    database-name:
-      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name | lower }}
-    database-username: 
-      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username | lower }}
-        {{- $parent.Values.hull.config.specific.database.usernamesPostfix | lower }}
-{{ end }}
-    database-password:
-      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.password }}    
-    database-connection-string:
-      inline: 
-        {{ if (eq $parent.Values.hull.config.specific.database.type "mssql") -}}
-        Data Source=
-        {{- printf "%s,%s" $parent.Values.hull.config.specific.database.host (toString $parent.Values.hull.config.specific.database.port) -}}
-        ;Initial Catalog=
-        {{- (index $parent.Values.hull.config.specific.components $component).database.name -}}
-        ;MultipleActiveResultSets=true;User ID=
-        {{- (index $parent.Values.hull.config.specific.components $component).database.username -}}
-        ;Password={{- (index $parent.Values.hull.config.specific.components $component).database.password -}}
-        ;Connect Timeout=
-        {{- $timeout -}}
-        {{- end -}}
-        {{- if (eq $parent.Values.hull.config.specific.database.type "postgres") -}}
-        Server=
-        {{- $parent.Values.hull.config.specific.database.host -}}
-        ;Port=
-        {{- (toString $parent.Values.hull.config.specific.database.port) -}}
-        ;Database=
-        {{- (index $parent.Values.hull.config.specific.components $component).database.name | lower -}}
-        ;User ID=
-        {{- (index $parent.Values.hull.config.specific.components $component).database.username | lower -}}
-        {{- $parent.Values.hull.config.specific.database.usernamesPostfix | lower -}}
-        ;Password=
-        {{- (index $parent.Values.hull.config.specific.components $component).database.password -}}
-        {{- end -}}
-        {{- end -}}
-{{- end -}}
-
 {{- define "hull.vidispine.addon.vidiflow.component.ingress.rules" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $key := (index . "KEY") -}}
@@ -501,3 +409,107 @@ Icon: |-
   productClientSecret: 
     inline: {{ $parent.Values.hull.config.specific.authService.productClientSecret }}
 {{ end }}
+
+{{- define "hull.vidispine.addon.vidiflow.specific.resource.secret.data" -}}
+{{- $parent := (index . "PARENT_CONTEXT") -}}
+{{- $key := (index . "KEY") -}}
+{{- $resource := (index . "RESOURCE") -}}
+{{ $key }}:
+{{ range $key, $value := index $parent.Values.hull.config.specific $resource }}
+  {{ $key }}:
+    inline: {{ $value }}
+{{ end }}
+{{ end }}
+
+
+{{- define "hull.vidispine.addon.vidiflow.component.secret.data" -}}
+{{- $parent := (index . "PARENT_CONTEXT") -}}
+{{- $key := (index . "KEY") -}}
+{{- $component := (index . "COMPONENT") -}}
+{{- $timeout := default "60" (index . "TIMEOUT") }}
+{{ $key }}:
+{{ $mountsSpecified := false }}
+{{ $componentSpecified := false }}
+{{ if (hasKey $parent.Values.hull.config.specific "components") }}
+{{ if (hasKey (index $parent.Values.hull.config.specific.components) $component) }}
+{{ $componentSpecified = true }}
+{{ if (hasKey (index $parent.Values.hull.config.specific.components $component) "mounts") }}
+{{ $mountsSpecified = true }}
+{{ end }}
+{{ end }}
+{{ end }}
+{{ range $path, $_ := $parent.Files.Glob (printf "files/mounts/%s/*" $component) }}
+{{ $mountSpecified := false }}
+{{ if $mountsSpecified }}
+{{ if (hasKey (index $parent.Values.hull.config.specific.components $component).mounts ($path | base) ) }}
+{{ $mountSpecified = true }}
+{{ end }}
+{{ end }}
+{{ if (not $mountSpecified) }}
+    {{ $path | base }}:
+      path: {{ $path}}
+{{ end }}
+{{ end }}
+{{ if $mountsSpecified }}
+{{ range $filename, $filecontent := (index $parent.Values.hull.config.specific.components $component).mounts }}
+    {{ $filename }}:
+{{ if (hasSuffix ".json" $filename) }}
+{{ $json := $filecontent | toPrettyJson }}
+{{ if (hasKey $parent.Values.hull.config.specific.components "common") }}
+{{ if (hasKey $parent.Values.hull.config.specific.components.common "mounts") }}
+{{ if (hasKey $parent.Values.hull.config.specific.components.common.mounts $filename) }}
+{{ $json = merge $filecontent (index $parent.Values.hull.config.specific.components.common.mounts $filename) | toPrettyJson }}
+{{ end }}
+{{ end }}
+{{ end }}
+      inline: {{ $json | toPrettyJson }}      
+{{ else }}
+      inline: {{ $filecontent}}      
+{{ end }}
+{{ end }}
+{{ end }}
+{{ if (index $parent.Values.hull.config.specific.components $component).database }}
+{{ if (eq $parent.Values.hull.config.specific.database.type "mssql") }}
+    database-name:
+      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name }}
+    database-username: 
+      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username }}
+        {{- $parent.Values.hull.config.specific.database.usernamesPostfix }}
+{{ end }}
+{{ if (eq $parent.Values.hull.config.specific.database.type "postgres") }}
+    database-name:
+      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name | lower }}
+    database-username: 
+      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username | lower }}
+        {{- $parent.Values.hull.config.specific.database.usernamesPostfix | lower }}
+{{ end }}
+    database-password:
+      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.password }}    
+    database-connection-string:
+      inline: 
+        {{ if (eq $parent.Values.hull.config.specific.database.type "mssql") -}}
+        Data Source=
+        {{- printf "%s,%s" $parent.Values.hull.config.specific.database.host (toString $parent.Values.hull.config.specific.database.port) -}}
+        ;Initial Catalog=
+        {{- (index $parent.Values.hull.config.specific.components $component).database.name -}}
+        ;MultipleActiveResultSets=true;User ID=
+        {{- (index $parent.Values.hull.config.specific.components $component).database.username -}}
+        ;Password={{- (index $parent.Values.hull.config.specific.components $component).database.password -}}
+        ;Connect Timeout=
+        {{- $timeout -}}
+        {{- end -}}
+        {{- if (eq $parent.Values.hull.config.specific.database.type "postgres") -}}
+        Server=
+        {{- $parent.Values.hull.config.specific.database.host -}}
+        ;Port=
+        {{- (toString $parent.Values.hull.config.specific.database.port) -}}
+        ;Database=
+        {{- (index $parent.Values.hull.config.specific.components $component).database.name | lower -}}
+        ;User ID=
+        {{- (index $parent.Values.hull.config.specific.components $component).database.username | lower -}}
+        {{- $parent.Values.hull.config.specific.database.usernamesPostfix | lower -}}
+        ;Password=
+        {{- (index $parent.Values.hull.config.specific.components $component).database.password -}}
+        {{- end -}}
+        {{- end -}}
+{{- end -}}
