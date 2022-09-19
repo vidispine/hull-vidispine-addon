@@ -164,21 +164,29 @@ Icon: |-
 {{- $component := (index . "COMPONENT") -}}
 {{- $timeout := default "60" (index . "TIMEOUT") }}
 {{ $key }}:
-{{ $mountSpecified := false }}
-{{ if (hasKey $parent.Values.hull.config.specific $component }}
+{{ $mountsSpecified := false }}
+{{ $componentSpecified := false }}
+{{ if (hasKey $parent.Values.hull.config.specific "components") }}
+{{ if (hasKey (index $parent.Values.hull.config.specific.components) $component) }}
+{{ $componentSpecified = true }}
 {{ if (hasKey (index $parent.Values.hull.config.specific.components $component) "mounts") }}
-{{ if (hasKey (index (index $parent.Values.hull.config.specific.components $component).mounts) ($path | base)) }}
-{{ $mountSpecified = true }}
+{{ $mountsSpecified = true }}
 {{ end }}
 {{ end }}
 {{ end }}
 {{ range $path, $_ := $parent.Files.Glob (printf "files/mounts/%s/*" $component) }}
+{{ $mountSpecified := false }}
+{{ if $mountsSpecified }}
+{{ if (hasKey (index $parent.Values.hull.config.specific.components $component).mounts ($path | base) ) }}
+{{ $mountSpecified = true }}
+{{ end }}
+{{ end }}
 {{ if (not $mountSpecified) }}
     {{ $path | base }}:
       path: {{ $path}}
 {{ end }}
 {{ end }}
-{{ if $mountSpecified }}
+{{ if $mountsSpecified }}
 {{ range $filename, $filecontent := (index $parent.Values.hull.config.specific.components $component).mounts }}
     {{ $filename }}:
 {{ if (hasSuffix ".json" $filename) }}
