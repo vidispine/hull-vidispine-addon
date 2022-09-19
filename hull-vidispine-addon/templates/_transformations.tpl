@@ -165,8 +165,13 @@ Icon: |-
 {{- $timeout := default "60" (index . "TIMEOUT") }}
 {{ $key }}:
 {{ range $path, $_ := $parent.Files.Glob (printf "files/mounts/%s/*" $component) }}
+{{ if (hasKey (index $parent.Values.hull.config.specific.components $component) "mounts") }}
+{{ if (hasKey (index (index $parent.Values.hull.config.specific.components $component).mounts) ($path | base)) }}
+{{ else }}
     {{ $path | base }}:
       path: {{ $path}}
+{{ end }}
+{{ end }}
 {{ end }}
 {{ if (index $parent.Values.hull.config.specific.components $component).mounts }}
 {{ range $filename, $filecontent := (index $parent.Values.hull.config.specific.components $component).mounts }}
