@@ -18,8 +18,8 @@ hull:
               auth:
                 basic:
                   env:
-                    username: VIDICORE_ADMIN_USERNAME
-                    password: VIDICORE_ADMIN_PASSWORD
+                    username: AUTH_BASIC_VIDICORE_ADMINUSER
+                    password: AUTH_BASIC_VIDICORE_ADMINPASSWORD
               endpoint:
                 _HULL_TRANSFORMATION_:
                   NAME: hull.vidispine.addon.generalendpoint
@@ -109,8 +109,8 @@ hull:
                       ENTRY: authservice
                       ENDPOINT: api
                   env:
-                    clientId: AUTHSERVICE_TOKEN_INSTALLER_CLIENT_ID
-                    clientSecret: AUTHSERVICE_TOKEN_INSTALLER_CLIENT_SECRET
+                    clientId: CLIENT_INSTALLER_ID
+                    clientSecret: CLIENT_INSTALLER_SECRET
                   grantType: client_credentials
                   scopes:
                   - 'identityscope'
@@ -152,8 +152,8 @@ hull:
                       ENTRY: authservice
                       ENDPOINT: api
                   env:
-                    clientId: AUTHSERVICE_TOKEN_PRODUCT_CLIENT_ID
-                    clientSecret: AUTHSERVICE_TOKEN_PRODUCT_CLIENT_SECRET
+                    clientId: CLIENT_PRODUCT_ID
+                    clientSecret: CLIENT_PRODUCT_SECRET
                   grantType: client_credentials
                   scopes:
                   - 'configportalscope'
@@ -262,7 +262,9 @@ hull:
 ###################################################
 
   objects:
+
     registry:
+
       _HULL_OBJECT_TYPE_DEFAULT_:
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
@@ -270,6 +272,7 @@ hull:
           "helm.sh/hook-delete-policy": before-hook-creation
 
     serviceaccount:
+
       default:
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
@@ -277,6 +280,7 @@ hull:
           "helm.sh/hook-delete-policy": before-hook-creation
 
     job:
+
       'hull-install':
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
@@ -303,36 +307,46 @@ hull:
                 pwsh /script/Installer.ps1 -ConfigFilePath /script/installation.yaml -Stage pre-install;
                 ]
               env:
-                'AUTHSERVICE_TOKEN_INSTALLER_CLIENT_ID':
+                'CLIENT_INSTALLER_ID':
                   valueFrom:
                     secretKeyRef:
                       name: authservice-token-secret
                       key: installerClientId
-                'AUTHSERVICE_TOKEN_INSTALLER_CLIENT_SECRET':
+                      optional: true
+                'CLIENT_INSTALLER_SECRET':
                   valueFrom:
                     secretKeyRef:
                       name: authservice-token-secret
                       key: installerClientSecret
-                'AUTHSERVICE_TOKEN_PRODUCT_CLIENT_ID':
+                      optional: true
+                'CLIENT_PRODUCT_ID':
                   valueFrom:
                     secretKeyRef:
                       name: authservice-token-secret
                       key: productClientId
-                'AUTHSERVICE_TOKEN_PRODUCT_CLIENT_SECRET':
+                      optional: true
+                'CLIENT_PRODUCT_SECRET':
                   valueFrom:
                     secretKeyRef:
                       name: authservice-token-secret
                       key: productClientSecret
-                'VIDICORE_ADMIN_USERNAME':
+                      optional: true
+                'AUTH_BASIC_VIDICORE_ADMINUSER':
                   valueFrom:
                     secretKeyRef:
                       name: vidicore-secret
                       key: adminUsername
-                'VIDICORE_ADMIN_PASSWORD':
+                      optional: true
+                'AUTH_BASIC_VIDICORE_ADMINPASSWORD':
                   valueFrom:
                     secretKeyRef:
                       name: vidicore-secret
                       key: adminPassword
+                      optional: true
+              envFrom:
+                auth:
+                  secretRef:
+                    name: auth
               volumeMounts:
                 'installation':
                   name: 'installation'
@@ -390,36 +404,46 @@ hull:
                 pwsh /script/Installer.ps1 -ConfigFilePath /script/installation.yaml -Stage post-install;
                 ]
               env:
-                'AUTHSERVICE_TOKEN_INSTALLER_CLIENT_ID':
+                'CLIENT_INSTALLER_ID':
                   valueFrom:
                     secretKeyRef:
                       name: authservice-token-secret
                       key: installerClientId
-                'AUTHSERVICE_TOKEN_INSTALLER_CLIENT_SECRET':
+                      optional: true
+                'CLIENT_INSTALLER_SECRET':
                   valueFrom:
                     secretKeyRef:
                       name: authservice-token-secret
                       key: installerClientSecret
-                'AUTHSERVICE_TOKEN_PRODUCT_CLIENT_ID':
+                      optional: true
+                'CLIENT_PRODUCT_ID':
                   valueFrom:
                     secretKeyRef:
                       name: authservice-token-secret
                       key: productClientId
-                'AUTHSERVICE_TOKEN_PRODUCT_CLIENT_SECRET':
+                      optional: true
+                'CLIENT_PRODUCT_SECRET':
                   valueFrom:
                     secretKeyRef:
                       name: authservice-token-secret
                       key: productClientSecret
-                'VIDICORE_ADMIN_USERNAME':
+                      optional: true
+                'AUTH_BASIC_VIDICORE_ADMINUSER':
                   valueFrom:
                     secretKeyRef:
                       name: vidicore-secret
                       key: adminUsername
-                'VIDICORE_ADMIN_PASSWORD':
+                      optional: true
+                'AUTH_BASIC_VIDICORE_ADMINPASSWORD':
                   valueFrom:
                     secretKeyRef:
                       name: vidicore-secret
                       key: adminPassword
+                      optional: true
+              envFrom:
+                auth:
+                  secretRef:
+                    name: auth
               volumeMounts:
                 'installation':
                   name: 'installation'
@@ -451,30 +475,24 @@ hull:
               emptyDir: {}
 
     secret:
-      'vidicore-secret':
-        annotations:
-          "helm.sh/hook": pre-install,pre-upgrade
-          "helm.sh/hook-weight": "-80"
-          "helm.sh/hook-delete-policy": before-hook-creation
-        data:
-          adminUsername:
-            inline: ""
-          adminPassword:
-            inline: ""
 
-      'authservice-token-secret':
+      'auth':
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
           "helm.sh/hook-weight": "-80"
           "helm.sh/hook-delete-policy": before-hook-creation
         data:
-          installerClientId:
+          CLIENT_INSTALLER_ID:
             inline: ""
-          installerClientSecret:
+          CLIENT_INSTALLER_SECRET:
             inline: ""
-          productClientId:
+          CLIENT_PRODUCT_ID:
             inline: ""
-          productClientSecret:
+          CLIENT_PRODUCT_SECRET:
+            inline: ""
+          AUTH_BASIC_VIDICORE_ADMINUSER:
+            inline: ""
+          AUTH_BASIC_VIDICORE_ADMINPASSWORD:
             inline: ""
 
       'custom-ca-certificates':
@@ -489,6 +507,7 @@ hull:
             {{ $key }}: { inline: {{ $value | quote }} },
             {{ end }}
           }
+      
       'custom-installation-files':
         annotations:
           helm.sh/hook: pre-install,pre-upgrade
@@ -500,6 +519,7 @@ hull:
             {{ $file | base | quote }}: { path: {{ $file | quote }} },
             {{ end }}
           }
+      
       'hull-install':
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
