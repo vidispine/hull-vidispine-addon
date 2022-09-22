@@ -33,28 +33,61 @@
 {{- end -}}
 
 
+{{- define "hull.vidispine.addon.library.safeGetString" -}}
+{{- $current := (index . "DICTIONARY") }}
+{{- $dotKey := (index . "KEY") }}
+{{- $path := splitList "." $dotKey -}}
+{{- $keyFound := true -}}
+{{- $result := "" }}
+{{- range $key := $path -}}  
+{{- if (and (hasKey $current $key) ($keyFound)) -}}
+{{- $current = (index $current $key) }}
+{{- else -}}
+{{- $keyFound = false -}}
+{{- end -}}
+{{- end -}}
+{{- if (or (not $keyFound) (not (typeIs "string" $current))) -}}
+""
+{{- else -}}
+{{- $current -}}
+{{- end -}}
+{{- end -}}
+
+
 
 {{- define "hull.vidispine.addon.library.get.endpoint" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $endpointType := (index . "TYPE") }}
+{{- $response := "" }}
+{{- if (hasKey $parent.Values.hull.config.general.data "endpoints") -}}
+{{- $endpoints := $parent.Values.hull.config.general.data.endpoints -}}
 {{- if (eq $endpointType "database") -}}
-  {{- if (ne (default "" $parent.Values.hull.config.general.data.endpoints.postgres.uri.address) "") -}}
+  {{- if (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" "postgres.uri.address")) "") -}}
   postgres
   {{- end -}}
-  {{- if (ne (default "" $parent.Values.hull.config.general.data.endpoints.mssql.uri.address) "") -}}
+  {{- if (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" "mssql.uri.address")) "") -}}
   mssql
   {{- end -}}
 {{- else -}}
   {{- if (eq $endpointType "messagebus") -}}
-    {{- if (ne (default "" (default $parent.Values.hull.config.general.data.endpoints.rabbitmq.uri.amq $parent.Values.hull.config.general.data.endpoints.rabbitmq.uri.amqInternal)) "") -}}
+    {{- $internal := "rabbitmq.uri.amqInternal" -}}
+    {{- $external := "rabbitmq.uri.amq" -}}
+    {{- if (or (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $internal)) "") 
+               (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $external)) "")) -}}
     rabbitmq
     {{- end -}}
-    {{- if (ne (default "" (default $parent.Values.hull.config.general.data.endpoints.activemq.uri.amq $parent.Values.hull.config.general.data.endpoints.activemq.uri.amqInternal)) "") -}}
+    {{- $internal := "activemq.uri.amqInternal" -}}
+    {{- $external := "activemq.uri.amq" -}}
+    {{- if (or (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $internal)) "") 
+               (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $external)) "")) -}}
     activemq
     {{- end -}}
   {{- else -}}
     {{- if (eq $endpointType "index") -}}
-      {{- if (ne (default "" (default $parent.Values.hull.config.general.data.endpoints.opensearch.uri.api $parent.Values.hull.config.general.data.endpoints.opensearch.uri.apiInternal)) "") -}}
+      {{- $internal := "opensearch.uri.apiInternal" -}}
+      {{- $external := "opensearch.uri.api" -}}
+      {{- if (or (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $internal)) "") 
+               (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $external)) "")) -}}
       opensearch
       {{- end -}}
     {{- else -}}
@@ -62,8 +95,10 @@
     {{- end -}}
   {{- end -}}
 {{- end -}}
+{{- else -}}
+""
 {{- end -}}
-
+{{- end -}}
 
 
 {{- define "hull.vidispine.addon.library.get.endpoint.info" -}}
