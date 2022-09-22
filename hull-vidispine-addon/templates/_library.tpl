@@ -181,36 +181,43 @@
 {{- $component := (index . "COMPONENT") -}}
 {{- $connectionstringsuffix := default "" (index . "CONNECTIONSTRINGSUFFIX") -}}
 {{ $key }}:
-  'ENDPOINTS__RABBITMQCONNECTIONSTRING':
-    valueFrom:
-      secretKeyRef:
-        name: endpoints
-        key: rabbitmq-auth-basic-connectionString
   'DBUSERPOSTFIX':
     valueFrom:
       secretKeyRef:
-        name: endpoints
-        key: database-auth-basic-usernamesPostfix
+        name: auth
+        key: AUTH_BASIC_DATABASE_USERNAMESPOSTFIX
   'DBADMINUSER':
     valueFrom:
       secretKeyRef:
-        name: endpoints
-        key: database-auth-basic-adminUsername
+        name: auth
+        key: AUTH_BASIC_DATABASE_ADMINUSERNAME
   'DBADMINPASSWORD':
     valueFrom:
       secretKeyRef:
-        name: endpoints
-        key: database-auth-basic-adminPassword
+        name: auth
+        key: AUTH_BASIC_DATABASE_ADMINPASSWORD
   'ELASTICSEARCH__USERNAME':
     valueFrom:
       secretKeyRef:
-        name: endpoints
-        key: index-auth-basic-username
+        name: auth
+        key: AUTH_BASIC_INDEX_USERNAME
   'ELASTICSEARCH__PASSWORD':
     valueFrom:
       secretKeyRef:
-        name: endpoints
-        key: index-auth-basic-password
+        name: auth
+        key: AUTH_BASIC_INDEX_PASSWORD
+{{ if (index $parent.Values.hull.config.specific.components $component).auth }}
+  'CLIENTSECRET__CLIENTID':
+    valueFrom:
+      secretKeyRef:
+        name: "auth"
+        key:  "CLIENT_{{ $component | upper }}_ID"
+  'CLIENTSECRET__CLIENTSECRET':
+    valueFrom:
+      secretKeyRef:
+        name: "auth"
+        key:  "CLIENT_{{ $component | upper }}_SECRET"
+{{- end -}}
 {{ if (index $parent.Values.hull.config.specific.components $component).database }}
 {{ if (hasKey (index $parent.Values.hull.config.specific.components $component).database "connectionStringEnvVarSuffix") }}
   "CONNECTIONSTRINGS__{{ (index $parent.Values.hull.config.specific.components $component).database.connectionStringEnvVarSuffix }}":
@@ -222,20 +229,15 @@
         name: "{{ $component }}"
         key:  database-connectionString
 {{ end }}
-{{ if (index $parent.Values.hull.config.specific.components $component).auth }}
-  'CLIENTSECRET__CLIENTID':
+{{- $messagebus := include "hull.vidispine.addon.library.get.endpoint" (dict "PARENT_CONTEXT" $parent "TYPE" "messagebus") }}
+{{ if (eq $messagebus "rabbitmq") }}
+  'ENDPOINTS__RABBITMQCONNECTIONSTRING':
     valueFrom:
       secretKeyRef:
-        name: "authservice-token-secret"
-        key:  "{{ $component }}-client-id"
-  'CLIENTSECRET__CLIENTSECRET':
-    valueFrom:
-      secretKeyRef:
-        name: "authservice-token-secret"
-        key:  "{{ $component }}-client-secret"
+        name: "{{ $component }}"
+        key: messagebus-connectionString
 {{- end -}}
 {{- end -}}
-
 
 
 {{- define "hull.vidispine.addon.library.component.job.database" -}}
@@ -262,33 +264,33 @@
         DBADMINUSER:
           valueFrom:
             secretKeyRef:
-              name: endpoints
-              key: database-auth-basic-adminUsername
+              name: auth
+              key: AUTH_BASIC_DATABASE_ADMINUSERNAME
         DBADMINPASSWORD:
           valueFrom:
             secretKeyRef:
-              name: endpoints
-              key: database-auth-basic-adminPassword
+              name: auth
+              key: AUTH_BASIC_DATABASE_ADMINPASSWORD
         DBUSERPOSTFIX:
           valueFrom:
             secretKeyRef:
-              name: endpoints
-              key: database-auth-basic-usernamesPostfix
+              name: auth
+              key: AUTH_BASIC_DATABASE_USERNAMESPOSTFIX
         DBNAME:
           valueFrom:
             secretKeyRef:
               name: "{{ $component }}"
-              key: database-name
+              key: AUTH_BASIC_DATABASE_NAME
         DBUSER:
           valueFrom:
             secretKeyRef:
               name: "{{ $component }}"
-              key: database-username
+              key: AUTH_BASIC_DATABASE_USERNAME
         DBPASSWORD:
           valueFrom:
             secretKeyRef:
               name: "{{ $component }}"
-              key: database-password
+              key: AUTH_BASIC_DATABASE_PASSWORD
       args:
       - "/bin/sh"
       - "-c"
@@ -321,57 +323,33 @@
         DBADMINUSER:
           valueFrom:
             secretKeyRef:
-              name: endpoints
-              key: database-auth-basic-adminUsername
+              name: auth
+              key: AUTH_BASIC_DATABASE_ADMINUSERNAME
         DBADMINPASSWORD:
           valueFrom:
             secretKeyRef:
-              name: endpoints
-              key: database-auth-basic-adminPassword
+              name: auth
+              key: AUTH_BASIC_DATABASE_ADMINPASSWORD
         DBUSERPOSTFIX:
           valueFrom:
             secretKeyRef:
-              name: endpoints
-              key: database-auth-basic-usernamesPostfix
+              name: auth
+              key: AUTH_BASIC_DATABASE_USERNAMESPOSTFIX
         DBNAME:
           valueFrom:
             secretKeyRef:
               name: "{{ $component }}"
-              key: database-name
+              key: AUTH_BASIC_DATABASE_NAME
         DBUSER:
           valueFrom:
             secretKeyRef:
               name: "{{ $component }}"
-              key: database-username
+              key: AUTH_BASIC_DATABASE_USERNAME
         DBPASSWORD:
           valueFrom:
             secretKeyRef:
               name: "{{ $component }}"
-              key: database-password
-{{ end }}
-
-
-
-{{- define "hull.vidispine.addon.library.secret.authservicetokensecret" -}}
-{{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $key := (index . "KEY") -}}
-{{ $key }}:
-{{ range $k, $v := $parent.Values.hull.config.specific.components }}
-{{ if (hasKey $v "auth") }}
-  {{ $k }}-client-id: 
-    inline: {{ $v.auth.clientId }}
-  {{ $k }}-client-secret: 
-    inline: {{ $v.auth.clientSecret }}  
-{{ end }}
-{{ end }}
-  installerClientId: 
-    inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.installerClientId }}
-  installerClientSecret: 
-    inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.installerClientSecret }}
-  productClientId: 
-    inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.productClientId }}
-  productClientSecret: 
-    inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.productClientSecret }}
+              key: AUTH_BASIC_DATABASE_PASSWORD
 {{ end }}
 
 
@@ -463,22 +441,27 @@
 {{ $databaseKey := include "hull.vidispine.addon.library.get.endpoint" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
 {{ $databaseUsernamesPostfix := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "usernamesPostfix") }}
 {{ if (eq $databaseKey "mssql") }}
-    database-name:
+    AUTH_BASIC_DATABASE_NAME:
       inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name }}
-    database-username: 
+    AUTH_BASIC_DATABASE_USERNAME: 
       inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username }}
         {{- $databaseUsernamesPostfix }}
 {{ end }}
 {{ if (eq $databaseKey "postgres") }}
-    database-name:
+    AUTH_BASIC_DATABASE_NAME:
       inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name | lower }}
-    database-username: 
+    AUTH_BASIC_DATABASE_USERNAME: 
       inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username | lower }}
         {{- $databaseUsernamesPostfix | lower }}
 {{ end }}
-    database-password:
+    AUTH_BASIC_DATABASE_PASSWORD:
       inline: {{ (index $parent.Values.hull.config.specific.components $component).database.password }}    
     database-connectionString:
       inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "connectionString" "COMPONENT" $component) }}
+{{- end -}}
+{{- $messagebus := include "hull.vidispine.addon.library.get.endpoint" (dict "PARENT_CONTEXT" $parent "TYPE" "messagebus") }}
+{{ if (eq $messagebus "rabbitmq") }}
+    messagebus-connectionString:
+      inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "messagebus" "INFO" "connectionString" "COMPONENT" $component) }}
 {{- end -}}
 {{- end -}}
