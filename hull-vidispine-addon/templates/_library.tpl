@@ -256,7 +256,7 @@
         DBHOST:
           value: {{ $databaseHost }}
         DBPORT:
-          value: {{ $databasePort }}
+          value: {{ $databasePort | toString | quote }}
         DBTYPE:
           value: {{ $databaseKey }}
         DBADMINUSER:
@@ -315,7 +315,7 @@
         DBHOST:
           value: {{ $databaseHost }}
         DBPORT:
-          value: {{ $databasePort }}
+          value: {{ $databasePort | toString | quote }}
         DBTYPE:
           value: {{ $databaseKey }}
         DBADMINUSER:
