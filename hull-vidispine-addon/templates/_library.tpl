@@ -414,6 +414,8 @@
     inline: {{ $v.auth.clientSecret }}  
 {{ end }}
 {{ end }}
+{{ if (hasKey $parent.Values.hull.config.general.data.endpoints "authservice") }}
+{{ if (hasKey $parent.Values.hull.config.general.data.endpoints.authservice "token") }}
   CLIENT_INSTALLER_ID: 
     inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.installerClientId }}
   CLIENT_INSTALLER_SECRET:
@@ -422,6 +424,8 @@
     inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.productClientId }}
   CLIENT_PRODUCT_SECRET: 
     inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.productClientSecret }}
+{{ end }}
+{{ end }}
 {{ end }}
 
 
