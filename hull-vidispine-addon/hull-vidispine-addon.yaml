@@ -306,43 +306,6 @@ hull:
                 echo Run hull-install Script;
                 pwsh /script/Installer.ps1 -ConfigFilePath /script/installation.yaml -Stage pre-install;
                 ]
-              env:
-                'CLIENT_INSTALLER_ID':
-                  valueFrom:
-                    secretKeyRef:
-                      name: authservice-token-secret
-                      key: installerClientId
-                      optional: true
-                'CLIENT_INSTALLER_SECRET':
-                  valueFrom:
-                    secretKeyRef:
-                      name: authservice-token-secret
-                      key: installerClientSecret
-                      optional: true
-                'CLIENT_PRODUCT_ID':
-                  valueFrom:
-                    secretKeyRef:
-                      name: authservice-token-secret
-                      key: productClientId
-                      optional: true
-                'CLIENT_PRODUCT_SECRET':
-                  valueFrom:
-                    secretKeyRef:
-                      name: authservice-token-secret
-                      key: productClientSecret
-                      optional: true
-                'AUTH_BASIC_VIDICORE_ADMINUSER':
-                  valueFrom:
-                    secretKeyRef:
-                      name: vidicore-secret
-                      key: adminUsername
-                      optional: true
-                'AUTH_BASIC_VIDICORE_ADMINPASSWORD':
-                  valueFrom:
-                    secretKeyRef:
-                      name: vidicore-secret
-                      key: adminPassword
-                      optional: true
               envFrom:
                 auth:
                   secretRef:
@@ -403,43 +366,6 @@ hull:
                 echo Run hull-configure Script;
                 pwsh /script/Installer.ps1 -ConfigFilePath /script/installation.yaml -Stage post-install;
                 ]
-              env:
-                'CLIENT_INSTALLER_ID':
-                  valueFrom:
-                    secretKeyRef:
-                      name: authservice-token-secret
-                      key: installerClientId
-                      optional: true
-                'CLIENT_INSTALLER_SECRET':
-                  valueFrom:
-                    secretKeyRef:
-                      name: authservice-token-secret
-                      key: installerClientSecret
-                      optional: true
-                'CLIENT_PRODUCT_ID':
-                  valueFrom:
-                    secretKeyRef:
-                      name: authservice-token-secret
-                      key: productClientId
-                      optional: true
-                'CLIENT_PRODUCT_SECRET':
-                  valueFrom:
-                    secretKeyRef:
-                      name: authservice-token-secret
-                      key: productClientSecret
-                      optional: true
-                'AUTH_BASIC_VIDICORE_ADMINUSER':
-                  valueFrom:
-                    secretKeyRef:
-                      name: vidicore-secret
-                      key: adminUsername
-                      optional: true
-                'AUTH_BASIC_VIDICORE_ADMINPASSWORD':
-                  valueFrom:
-                    secretKeyRef:
-                      name: vidicore-secret
-                      key: adminPassword
-                      optional: true
               envFrom:
                 auth:
                   secretRef:
