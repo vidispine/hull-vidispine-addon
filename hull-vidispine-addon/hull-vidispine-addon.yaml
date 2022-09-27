@@ -241,7 +241,6 @@ hull:
                   _DEFAULTS_:
                     register: true
                     remove: false
-                    putUriExcludeIdentifier: true
                 70_mappedgroups:
                   apiPath: v2/ActiveDirectoryMappedGroups
                   typeDescription: ActiveDirectoryMappedGroups
@@ -459,7 +458,7 @@ hull:
                       {{- $configScopeEndpoints = .endpoints -}}
                   {{- end -}}
                   {{- range $path, $_ := $.Files.Glob "files/hull-vidispine-addon/installation/endpoints/*.yaml" -}}
-                      {{- $configScopeEndpoints = merge $configScopeEndpoints (dict (base $path | trimSuffix ".yaml") (fromYaml ($.Files.Get $path))) -}}
+                      {{- $configScopeEndpoints = mergeOverwrite $configScopeEndpoints (dict (base $path | trimSuffix ".yaml") (fromYaml ($.Files.Get $path))) -}}
                   {{- end -}}
                   {{- range $endpoint, $endpointval := $configScopeEndpoints -}}
                       {{- $endpointScope := $endpointval -}}
@@ -469,7 +468,7 @@ hull:
                               {{- $subresources = $endpointval.subresources -}}
                           {{- end -}}
                           {{- range $path, $_ :=  $.Files.Glob (printf "%s/%s/%s" "files/hull-vidispine-addon/installation/endpoints" $endpoint "*.yaml") -}}
-                              {{- $subresources = merge $subresources (dict (base $path | trimSuffix ".yaml") (fromYaml ($.Files.Get $path))) -}}
+                              {{- $subresources = mergeOverwrite $subresources (dict (base $path | trimSuffix ".yaml") (fromYaml ($.Files.Get $path))) -}}
                           {{- end -}}
                           {{- range $subresource, $subresourceval := $subresources }}
                               {{- $subresourceScope := $subresourceval -}}
@@ -480,7 +479,7 @@ hull:
                                 {{- $u := set $subresourceval "entities" dict }}
                               {{- end -}}
                               {{- range $path, $_ :=  $.Files.Glob (printf "%s/%s/%s/%s" "files/hull-vidispine-addon/installation/endpoints" $endpoint $subresource "*.yaml") -}}
-                                  {{- $entities = merge $entities (dict (base $path | trimSuffix ".yaml") (fromYaml ($.Files.Get $path))) -}}
+                                  {{- $entities = mergeOverwrite $entities (dict (base $path | trimSuffix ".yaml") (fromYaml ($.Files.Get $path))) -}}
                               {{- end -}}
                               {{- range $entity, $entityval := $entities }}
                                   {{- $mergedDict := dict -}}
