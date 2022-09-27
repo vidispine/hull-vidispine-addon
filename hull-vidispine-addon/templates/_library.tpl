@@ -417,19 +417,24 @@
 {{ if (hasKey $parent.Values.hull.config.general.data.endpoints "authservice") }}
 {{ if (hasKey $parent.Values.hull.config.general.data.endpoints.authservice "auth") }}
 {{ if (hasKey $parent.Values.hull.config.general.data.endpoints.authservice.auth "token") }}
-  CLIENT_INSTALLER_ID: 
-    inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.installerClientId }}
-  CLIENT_INSTALLER_SECRET:
-    inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.installerClientSecret }}
-  CLIENT_PRODUCT_ID: 
-    inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.productClientId }}
-  CLIENT_PRODUCT_SECRET: 
-    inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.productClientSecret }}
+  CLIENT_AUTHSERVICE_INSTALLATION_ID: 
+    inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.installationClientId }}
+  CLIENT_AUTHSERVICE_INSTALLATION_SECRET:
+    inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.installationClientSecret }}
+{{ if (hasKey $parent.Values.hull.config.general.data.endpoints "configportal") }}
+{{ if (hasKey $parent.Values.hull.config.general.data.endpoints.configportal "auth") }}
+{{ if (hasKey $parent.Values.hull.config.general.data.endpoints.configportal.auth "token") }}
+  CLIENT_CONFIGPORTAL_INSTALLATION_ID: 
+    inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.configportal.auth.token.installationClientId }}
+  CLIENT_CONFIGPORTAL_INSTALLATION_SECRET: 
+    inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.configportal.auth.token.installationClientSecret }}
 {{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
-
+{{ end }}
+{{ end }}
+{{ end }}
 
 
 {{- define "hull.vidispine.addon.library.component.secret.data" -}}

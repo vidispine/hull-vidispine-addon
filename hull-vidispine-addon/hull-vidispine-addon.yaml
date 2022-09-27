@@ -109,8 +109,8 @@ hull:
                       ENTRY: authservice
                       ENDPOINT: api
                   env:
-                    clientId: CLIENT_INSTALLER_ID
-                    clientSecret: CLIENT_INSTALLER_SECRET
+                    clientId: CLIENT_AUTHSERVICE_INSTALLATION_ID
+                    clientSecret: CLIENT_AUTHSERVICE_INSTALLATION_SECRET
                   grantType: client_credentials
                   scopes:
                   - 'identityscope'
@@ -151,8 +151,8 @@ hull:
                       ENTRY: authservice
                       ENDPOINT: api
                   env:
-                    clientId: CLIENT_PRODUCT_ID
-                    clientSecret: CLIENT_PRODUCT_SECRET
+                    clientId: CLIENT_CONFIGPORTAL_INSTALLATION_ID
+                    clientSecret: CLIENT_CONFIGPORTAL_INSTALLATION_SECRET
                   grantType: client_credentials
                   scopes:
                   - 'configportalscope'
