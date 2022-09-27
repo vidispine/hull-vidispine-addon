@@ -114,7 +114,6 @@ hull:
                   grantType: client_credentials
                   scopes:
                   - 'identityscope'
-                  - 'configportalscope'
               endpoint:
                 _HULL_TRANSFORMATION_:
                   NAME: hull.vidispine.addon.generalendpoint
@@ -157,7 +156,6 @@ hull:
                   grantType: client_credentials
                   scopes:
                   - 'configportalscope'
-                  - 'identityscope'
               endpoint:
                 _HULL_TRANSFORMATION_:
                   NAME: hull.vidispine.addon.generalendpoint
