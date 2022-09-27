@@ -728,3 +728,6 @@ The `config` here is standard JSON and may have more keys defined directly under
           path: license.json
           key: version
 ```
+
+## The `library` functions
+

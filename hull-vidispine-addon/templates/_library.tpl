@@ -246,12 +246,12 @@
     valueFrom:
       secretKeyRef:
         name: "auth"
-        key:  "CLIENT_{{ $component | upper }}_ID"
+        key:  "CLIENT_{{ regexReplaceAll "-" ($component | upper) "_" }}_ID"
   'CLIENTSECRET__CLIENTSECRET':
     valueFrom:
       secretKeyRef:
         name: "auth"
-        key:  "CLIENT_{{ $component | upper }}_SECRET"
+        key:  "CLIENT_{{ regexReplaceAll "-" ($component | upper) "_" }}_SECRET"
 {{- end -}}
 {{ if (index $parent.Values.hull.config.specific.components $component).database }}
 {{ if (hasKey (index $parent.Values.hull.config.specific.components $component).database "connectionStringEnvVarSuffix") }}
