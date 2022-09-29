@@ -47,13 +47,10 @@
 {{- end -}}
 {{- end -}}
 {{- if (or (not $keyFound) (not (typeIs "string" $current))) -}}
-""
 {{- else -}}
 {{- $current -}}
 {{- end -}}
 {{- end -}}
-
-
 
 
 
@@ -269,7 +266,7 @@ false
         name: "{{ $component }}"
         key:  database-connectionString
 {{ end }}
-{{ if (include "hull.vidispine.addon.library.get.endpoint.uri.exists" (dict "PARENT_CONTEXT" $parent "ENDPOINT" "rabbitmq" "URI" "amq")) }}
+{{ if (eq (include "hull.vidispine.addon.library.get.endpoint.uri.exists" (dict "PARENT_CONTEXT" $parent "KEY" "rabbitmq" "URI" "amq")) "true") }}
   'ENDPOINTS__RABBITMQCONNECTIONSTRING':
     valueFrom:
       secretKeyRef:
@@ -509,7 +506,7 @@ false
     database-connectionString:
       inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "connectionString" "COMPONENT" $component) }}
 {{- end -}}
-{{ if (include "hull.vidispine.addon.library.get.endpoint.uri.exists" (dict "PARENT_CONTEXT" $parent "ENDPOINT" "rabbitmq" "URI" "amq")) }}
+{{ if (eq (include "hull.vidispine.addon.library.get.endpoint.uri.exists" (dict "PARENT_CONTEXT" $parent "KEY" "rabbitmq" "URI" "amq")) "true") }}
     rabbitmq-connectionString:
       inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "messagebus" "INFO" "connectionString" "COMPONENT" $component "KEY" "rabbitmq") }}
 {{- end -}}
