@@ -274,7 +274,7 @@ false
     valueFrom:
       secretKeyRef:
         name: "{{ $component }}"
-        key: messagebus-connectionString
+        key: rabbitmq-connectionString
 {{- end -}}
 {{- end -}}
 
@@ -510,7 +510,7 @@ false
       inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "connectionString" "COMPONENT" $component) }}
 {{- end -}}
 {{ if (include "hull.vidispine.addon.library.get.endpoint.uri.exists" (dict "PARENT_CONTEXT" $parent "ENDPOINT" "rabbitmq" "URI" "amq")) }}
-    messagebus-connectionString:
-      inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "messagebus" "INFO" "connectionString" "COMPONENT" $component) }}
+    rabbitmq-connectionString:
+      inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "messagebus" "INFO" "connectionString" "COMPONENT" $component "KEY" "rabbitmq") }}
 {{- end -}}
 {{- end -}}
