@@ -55,7 +55,25 @@
 
 
 
-{{- define "hull.vidispine.addon.library.get.endpoint" -}}
+
+
+{{- define "hull.vidispine.addon.library.get.endpoint.uri.exists" -}}
+{{- $parent := (index . "PARENT_CONTEXT") -}}
+{{- $endpoint := (index . "ENDPOINT") }}
+{{- $uri := (index . "URI") }}
+{{- $endpoints := $parent.Values.hull.config.general.data.endpoints -}}
+{{- $external := printf "%s.uri.%s" $endpoint $uri -}}
+{{- $internal := printf "%sInternal" $external -}}
+{{- if (or (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $internal)) "") 
+            (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $external)) "")) -}}
+true
+{{- else -}}
+false    
+{{- end -}}
+{{- end -}}
+
+
+{{- define "hull.vidispine.addon.library.get.endpoint.key" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $endpointType := (index . "TYPE") }}
 {{- $response := "" }}
@@ -69,20 +87,7 @@
   mssql
   {{- end -}}
 {{- else -}}
-  {{- if (eq $endpointType "messagebus") -}}
-    {{- $internal := "rabbitmq.uri.amqInternal" -}}
-    {{- $external := "rabbitmq.uri.amq" -}}
-    {{- if (or (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $internal)) "") 
-               (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $external)) "")) -}}
-    rabbitmq
-    {{- end -}}
-    {{- $internal := "activemq.uri.amqInternal" -}}
-    {{- $external := "activemq.uri.amq" -}}
-    {{- if (or (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $internal)) "") 
-               (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $external)) "")) -}}
-    activemq
-    {{- end -}}
-  {{- else -}}
+  {{- if (eq $endpointType "index") -}}    
     {{- if (eq $endpointType "index") -}}
       {{- $internal := "opensearch.uri.apiInternal" -}}
       {{- $external := "opensearch.uri.api" -}}
@@ -105,8 +110,8 @@
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $info := (index . "INFO") }}
 {{- $endpointType := (index . "TYPE") }}
-{{- $component := (index . "COMPONENT") }}
-{{- $endpointKey := include "hull.vidispine.addon.library.get.endpoint" (dict "PARENT_CONTEXT" $parent "TYPE" $endpointType) }}
+{{- $component := default "" (index . "COMPONENT") }}
+{{- $endpointKey := default (include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" $endpointType)) (index . "KEY") }}
 {{- $endpoint := (index $parent.Values.hull.config.general.data.endpoints $endpointKey) }}
 {{- if (eq $endpointType "database") -}}
   {{- $databasePort := -1 }}
@@ -264,8 +269,7 @@
         name: "{{ $component }}"
         key:  database-connectionString
 {{ end }}
-{{- $messagebus := include "hull.vidispine.addon.library.get.endpoint" (dict "PARENT_CONTEXT" $parent "TYPE" "messagebus") }}
-{{ if (eq $messagebus "rabbitmq") }}
+{{ if (include "hull.vidispine.addon.library.get.endpoint.uri.exists" (dict "PARENT_CONTEXT" $parent "ENDPOINT" "rabbitmq" "URI" "amq")) }}
   'ENDPOINTS__RABBITMQCONNECTIONSTRING':
     valueFrom:
       secretKeyRef:
@@ -280,7 +284,7 @@
 {{- $key := (index . "KEY") -}}
 {{- $component := (index . "COMPONENT") -}}
 {{- $type := (index . "TYPE") -}}
-{{- $databaseKey := include "hull.vidispine.addon.library.get.endpoint" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
+{{- $databaseKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
 {{- $databaseHost := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "host") }}
 {{- $databasePort := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "port") }}
 {{ $key }}:
@@ -396,7 +400,7 @@
 {{- $endpointsList := regexSplit "," ($endpoints | trim) -1 -}}
 {{ $key }}:
 {{ range $endpointInput := $endpointsList }}
-{{ $endpointKey := include "hull.vidispine.addon.library.get.endpoint" (dict "PARENT_CONTEXT" $parent "TYPE" $endpointInput) }}
+{{ $endpointKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" $endpointInput) }}
 {{ if (hasKey (index $parent.Values.hull.config.general.data.endpoints $endpointKey) "auth") }}
 {{ range $authType, $authValue := (index $parent.Values.hull.config.general.data.endpoints $endpointKey).auth }}
 {{ range $entryKey, $entryValue := $authValue }}
@@ -484,7 +488,7 @@
 {{ end }}
 {{ end }}
 {{ if (index $parent.Values.hull.config.specific.components $component).database }}
-{{ $databaseKey := include "hull.vidispine.addon.library.get.endpoint" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
+{{ $databaseKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
 {{ $databaseUsernamesPostfix := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "usernamesPostfix") }}
 {{ if (eq $databaseKey "mssql") }}
     AUTH_BASIC_DATABASE_NAME:
@@ -505,8 +509,7 @@
     database-connectionString:
       inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "connectionString" "COMPONENT" $component) }}
 {{- end -}}
-{{- $messagebus := include "hull.vidispine.addon.library.get.endpoint" (dict "PARENT_CONTEXT" $parent "TYPE" "messagebus") }}
-{{ if (eq $messagebus "rabbitmq") }}
+{{ if (include "hull.vidispine.addon.library.get.endpoint.uri.exists" (dict "PARENT_CONTEXT" $parent "ENDPOINT" "rabbitmq" "URI" "amq")) }}
     messagebus-connectionString:
       inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "messagebus" "INFO" "connectionString" "COMPONENT" $component) }}
 {{- end -}}
