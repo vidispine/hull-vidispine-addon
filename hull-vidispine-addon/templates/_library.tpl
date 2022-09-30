@@ -56,10 +56,10 @@
 
 {{- define "hull.vidispine.addon.library.get.endpoint.uri.exists" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $endpoint := (index . "ENDPOINT") }}
+{{- $endpointKey := (index . "KEY") }}
 {{- $uri := (index . "URI") }}
 {{- $endpoints := $parent.Values.hull.config.general.data.endpoints -}}
-{{- $external := printf "%s.uri.%s" $endpoint $uri -}}
+{{- $external := printf "%s.uri.%s" $endpointKey $uri -}}
 {{- $internal := printf "%sInternal" $external -}}
 {{- if (or (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $internal)) "") 
             (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $external)) "")) -}}
