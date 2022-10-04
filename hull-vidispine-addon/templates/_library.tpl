@@ -33,6 +33,7 @@
 {{- end -}}
 
 
+
 {{- define "hull.vidispine.addon.library.safeGetString" -}}
 {{- $current := (index . "DICTIONARY") }}
 {{- $dotKey := (index . "KEY") }}
@@ -70,6 +71,45 @@ false
 {{- end -}}
 
 
+
+{{- define "hull.vidispine.addon.library.get.endpoint.uri.info" -}}
+{{- $parent := (index . "PARENT_CONTEXT") -}}
+{{- $endpoint := (index . "ENDPOINT") }}
+{{- $uri := (index . "URI") }}
+{{- $info := (index . "INFO") }}
+{{- $endpoints := $parent.Values.hull.config.general.data.endpoints -}}
+{{- $external := printf "%s.uri.%s" $endpoint $uri -}}
+{{- $internal := printf "%sInternal" $external -}}
+{{- if (or (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $internal)) "") 
+            (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $external)) "")) -}}
+    {{- $selectedEndpoint := default (index (index $endpoints $endpoint).uri $uri) (index (index $endpoints $endpoint).uri (printf "%sInternal" $uri)) -}}
+    {{- $host := (regexSplit ":" (urlParse $selectedEndpoint).host -1) | first | trim -}}
+    {{- $port := "0" -}}
+    {{- if (contains ":" (urlParse $selectedEndpoint).host) -}}
+      {{- $port = (regexSplit ":" (urlParse $selectedEndpoint).host -1) | last | trim | int -}}
+    {{- else -}}
+        {{- if (hasPrefix "http" $selectedEndpoint) -}}
+            {{- $port = 80 -}}
+        {{- end -}}
+        {{- if (hasPrefix "https" $selectedEndpoint) -}}
+            {{- $port = 443 -}}
+        {{- end -}}
+    {{- end -}}
+    {{- if (eq $info "uri") -}}
+      {{- $selectedEndpoint -}}
+    {{- end -}}
+    {{- if (or (eq $info "hostname") (eq $info "host")) -}}
+      {{- $host -}}
+    {{- end -}}
+    {{- if (eq $info "port") -}}
+      {{- $port | quote -}}
+    {{- end -}}
+{{- else -}}
+{{- end -}}
+{{- end -}}
+
+
+
 {{- define "hull.vidispine.addon.library.get.endpoint.key" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $endpointType := (index . "TYPE") }}
@@ -101,6 +141,7 @@ false
 ""
 {{- end -}}
 {{- end -}}
+
 
 
 {{- define "hull.vidispine.addon.library.get.endpoint.info" -}}
@@ -276,6 +317,7 @@ false
 {{- end -}}
 
 
+
 {{- define "hull.vidispine.addon.library.component.job.database" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $key := (index . "KEY") -}}
@@ -436,6 +478,7 @@ false
 {{ end }}
 {{ end }}
 {{ end }}
+
 
 
 {{- define "hull.vidispine.addon.library.component.secret.data" -}}
