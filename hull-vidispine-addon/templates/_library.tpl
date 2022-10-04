@@ -1,46 +1,10 @@
----
-{{- define "hull.vidispine.addon.library.component.ingress.rules" -}}
-{{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $key := (index . "KEY") -}}
-{{- $componentInputs := (index . "COMPONENTS") -}}
-{{- $endpoint := default "vidiflow" (index . "ENDPOINT") -}}
-{{- $portName := default "http" (index . "PORTNAME") -}}
-{{- $serviceName := default "" (index . "SERVICENAME") -}}
-{{- $components := regexSplit "," ($componentInputs | trim) -1 -}}
-{{- if $components }}
-{{ $key }}:
-{{ range $componentKebapCase := $components }}
-{{- $componentSnakeCase := (regexReplaceAll "-" $componentKebapCase "_") | trim -}}
-{{- $componentUri := camelcase $componentSnakeCase | untitle | toString }}
-  {{ $componentKebapCase }}:
-    host: "{{ (urlParse (index (index $parent.Values.hull.config.general.data.endpoints $endpoint).uri $componentUri)).hostname }}"
-    http:
-      paths:
-        {{ $componentKebapCase }}:
-          path: {{ (urlParse (index (index $parent.Values.hull.config.general.data.endpoints $endpoint).uri $componentUri)).path }}
-          pathType: ImplementationSpecific
-          backend:
-            service: 
-{{ if (eq $serviceName "") }}
-              name: {{ $componentKebapCase }}
-{{ else }}
-              name: {{ $serviceName }}
-{{ end }}
-              port:
-                name: {{ $portName }}
-{{ end }}
-{{ end }}
-{{- end -}}
-
-
-
 {{- define "hull.vidispine.addon.library.safeGetString" -}}
 {{- $current := (index . "DICTIONARY") }}
 {{- $dotKey := (index . "KEY") }}
 {{- $path := splitList "." $dotKey -}}
 {{- $keyFound := true -}}
 {{- $result := "" }}
-{{- range $key := $path -}}  
+{{- range $key := $path -}}
 {{- if (and (hasKey $current $key) ($keyFound)) -}}
 {{- $current = (index $current $key) }}
 {{- else -}}
@@ -66,7 +30,7 @@
             (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $external)) "")) -}}
 true
 {{- else -}}
-false    
+false
 {{- end -}}
 {{- end -}}
 
@@ -115,28 +79,26 @@ false
 {{- $endpointType := (index . "TYPE") }}
 {{- $response := "" }}
 {{- if (hasKey $parent.Values.hull.config.general.data "endpoints") -}}
-{{- $endpoints := $parent.Values.hull.config.general.data.endpoints -}}
-{{- if (eq $endpointType "database") -}}
-  {{- if (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" "postgres.uri.address")) "") -}}
-  postgres
-  {{- end -}}
-  {{- if (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" "mssql.uri.address")) "") -}}
-  mssql
-  {{- end -}}
-{{- else -}}
-  {{- if (eq $endpointType "index") -}}    
+  {{- $endpoints := $parent.Values.hull.config.general.data.endpoints -}}
+  {{- if (eq $endpointType "database") -}}
+    {{- if (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" "postgres.uri.address")) "") -}}
+    postgres
+    {{- end -}}
+    {{- if (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" "mssql.uri.address")) "") -}}
+    mssql
+    {{- end -}}
+  {{- else -}}
     {{- if (eq $endpointType "index") -}}
       {{- $internal := "opensearch.uri.apiInternal" -}}
       {{- $external := "opensearch.uri.api" -}}
       {{- if (or (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $internal)) "") 
-               (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $external)) "")) -}}
+                (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $external)) "")) -}}
       opensearch
       {{- end -}}
     {{- else -}}
       {{ $endpointType }}
     {{- end -}}
   {{- end -}}
-{{- end -}}
 {{- else -}}
 ""
 {{- end -}}
@@ -233,11 +195,44 @@ false
 
 
 
-{{- define "hull.vidispine.addon.library.component.pod.volumes" -}}
-{{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $key := (index . "KEY") -}}
-{{- $component := (index . "COMPONENT") -}}
-{{ $key }}:
+{{ define "hull.vidispine.addon.library.component.ingress.rules" }}
+{{ $parent := (index . "PARENT_CONTEXT") }}
+{{ $componentInputs := (index . "COMPONENTS") }}
+{{ $endpoint := default "vidiflow" (index . "ENDPOINT") }}
+{{ $portName := default "http" (index . "PORTNAME") }}
+{{ $serviceName := default "" (index . "SERVICENAME") }}
+{{ $components := regexSplit "," ($componentInputs | trim) -1 }}
+{{ if $components }}
+{{ range $componentKebapCase := $components }}
+{{ $componentSnakeCase := (regexReplaceAll "-" $componentKebapCase "_") | trim }}
+{{ $componentUri := camelcase $componentSnakeCase | untitle | toString }}
+rules:
+  {{ $componentKebapCase }}:
+    host: "{{ (urlParse (index (index $parent.Values.hull.config.general.data.endpoints $endpoint).uri $componentUri)).hostname }}"
+    http:
+      paths:
+        {{ $componentKebapCase }}:
+          path: {{ (urlParse (index (index $parent.Values.hull.config.general.data.endpoints $endpoint).uri $componentUri)).path }}
+          pathType: ImplementationSpecific
+          backend:
+            service:
+{{ if (eq $serviceName "") }}
+              name: {{ $componentKebapCase }}
+{{ else }}
+              name: {{ $serviceName }}
+{{ end }}
+              port:
+                name: {{ $portName }}
+{{ end }}
+{{ end }}
+{{ end }}
+
+
+
+{{ define "hull.vidispine.addon.library.component.pod.volumes" }}
+{{ $parent := (index . "PARENT_CONTEXT") }}
+{{ $component := (index . "COMPONENT") }}
+volumes:
   settings:
     secret:
       defaultMode: 0744
@@ -249,16 +244,15 @@ false
   etcssl:
     enabled: $parent.Values.hull.config.general.data.installation.config.customCaCertificates
     emptyDir: {}
-{{- end -}}
+{{ end }}
 
 
 
-{{- define "hull.vidispine.addon.library.component.pod.env" -}}
-{{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $key := (index . "KEY") -}}
-{{- $component := (index . "COMPONENT") -}}
-{{- $connectionstringsuffix := default "" (index . "CONNECTIONSTRINGSUFFIX") -}}
-{{ $key }}:
+{{ define "hull.vidispine.addon.library.component.pod.env" }}
+{{ $parent := (index . "PARENT_CONTEXT") }}
+{{ $component := (index . "COMPONENT") }}
+{{ $connectionstringsuffix := default "" (index . "CONNECTIONSTRINGSUFFIX") }}
+env:
   'DBUSERPOSTFIX':
     valueFrom:
       secretKeyRef:
@@ -295,7 +289,7 @@ false
       secretKeyRef:
         name: "auth"
         key:  "CLIENT_{{ regexReplaceAll "-" ($component | upper) "_" }}_SECRET"
-{{- end -}}
+{{ end }}
 {{ if (index $parent.Values.hull.config.specific.components $component).database }}
 {{ if (hasKey (index $parent.Values.hull.config.specific.components $component).database "connectionStringEnvVarSuffix") }}
   "CONNECTIONSTRINGS__{{ (index $parent.Values.hull.config.specific.components $component).database.connectionStringEnvVarSuffix }}":
@@ -313,20 +307,19 @@ false
       secretKeyRef:
         name: "{{ $component }}"
         key: rabbitmq-connectionString
-{{- end -}}
-{{- end -}}
+{{ end }}
+{{ end }}
 
 
 
-{{- define "hull.vidispine.addon.library.component.job.database" -}}
-{{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $key := (index . "KEY") -}}
-{{- $component := (index . "COMPONENT") -}}
-{{- $type := (index . "TYPE") -}}
-{{- $databaseKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
-{{- $databaseHost := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "host") }}
-{{- $databasePort := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "port") }}
-{{ $key }}:
+{{ define "hull.vidispine.addon.library.component.job.database" }}
+{{ $parent := (index . "PARENT_CONTEXT") }}
+{{ $component := (index . "COMPONENT") }}
+{{ $type := (index . "TYPE") }}
+{{ $databaseKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
+{{ $databaseHost := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "host") }}
+{{ $databasePort := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "port") }}
+pod:
   initContainers:
     check-database-ready:
       image:
@@ -387,7 +380,7 @@ false
       - "/bin/sh"
       - "-c"
       - /scripts/reset-database.sh
-{{ end }}  
+{{ end }}
       image:
         repository: vpms/dbtools
         tag: _HT!"{{ $parent.Values.hull.config.specific.tags.dbTools | toString }}"
@@ -432,12 +425,12 @@ false
 
 
 
-{{- define "hull.vidispine.addon.library.auth.secret.data" -}}
-{{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $key := (index . "KEY") -}}
-{{- $endpoints := (index . "ENDPOINTS") -}}
-{{- $endpointsList := regexSplit "," ($endpoints | trim) -1 -}}
-{{ $key }}:
+{{ define "hull.vidispine.addon.library.auth.secret.data" }}
+{{ $parent := (index . "PARENT_CONTEXT") }}
+{{ $endpoints := (index . "ENDPOINTS") }}
+
+{{ $endpointsList := regexSplit "," ($endpoints | trim) -1 }}
+data:
 {{ range $endpointInput := $endpointsList }}
 {{ $endpointKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" $endpointInput) }}
 {{ if (hasKey (index $parent.Values.hull.config.general.data.endpoints $endpointKey) "auth") }}
@@ -454,22 +447,22 @@ false
   {{ regexReplaceAll "-" ((printf "CLIENT_%s_ID" $k) | upper) "_" }}:
     inline: {{ $v.auth.clientId }}
   {{ regexReplaceAll "-" ((printf "CLIENT_%s_SECRET" $k) | upper) "_" }}:
-    inline: {{ $v.auth.clientSecret }}  
+    inline: {{ $v.auth.clientSecret }}
 {{ end }}
 {{ end }}
 {{ if (hasKey $parent.Values.hull.config.general.data.endpoints "authservice") }}
 {{ if (hasKey $parent.Values.hull.config.general.data.endpoints.authservice "auth") }}
 {{ if (hasKey $parent.Values.hull.config.general.data.endpoints.authservice.auth "token") }}
-  CLIENT_AUTHSERVICE_INSTALLATION_ID: 
+  CLIENT_AUTHSERVICE_INSTALLATION_ID:
     inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.installationClientId }}
   CLIENT_AUTHSERVICE_INSTALLATION_SECRET:
     inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.installationClientSecret }}
 {{ if (hasKey $parent.Values.hull.config.general.data.endpoints "configportal") }}
 {{ if (hasKey $parent.Values.hull.config.general.data.endpoints.configportal "auth") }}
 {{ if (hasKey $parent.Values.hull.config.general.data.endpoints.configportal.auth "token") }}
-  CLIENT_CONFIGPORTAL_INSTALLATION_ID: 
+  CLIENT_CONFIGPORTAL_INSTALLATION_ID:
     inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.configportal.auth.token.installationClientId }}
-  CLIENT_CONFIGPORTAL_INSTALLATION_SECRET: 
+  CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
     inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.configportal.auth.token.installationClientSecret }}
 {{ end }}
 {{ end }}
@@ -481,12 +474,11 @@ false
 
 
 
-{{- define "hull.vidispine.addon.library.component.secret.data" -}}
-{{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $key := (index . "KEY") -}}
-{{- $component := (index . "COMPONENT") -}}
-{{- $timeout := default "60" (index . "TIMEOUT") }}
-{{ $key }}:
+{{ define "hull.vidispine.addon.library.component.secret.data" }}
+{{ $parent := (index . "PARENT_CONTEXT") }}
+{{ $component := (index . "COMPONENT") }}
+{{ $timeout := default "60" (index . "TIMEOUT") }}
+data:
 {{ $mountsSpecified := false }}
 {{ $componentSpecified := false }}
 {{ if (hasKey $parent.Values.hull.config.specific "components") }}
@@ -505,13 +497,13 @@ false
 {{ end }}
 {{ end }}
 {{ if (not $mountSpecified) }}
-    {{ $path | base }}:
-      path: {{ $path}}
+  {{ $path | base }}:
+    path: {{ $path}}
 {{ end }}
 {{ end }}
 {{ if $mountsSpecified }}
 {{ range $filename, $filecontent := (index $parent.Values.hull.config.specific.components $component).mounts }}
-    {{ $filename }}:
+  {{ $filename }}:
 {{ if (hasSuffix ".json" $filename) }}
 {{ $json := $filecontent | toPrettyJson }}
 {{ if (hasKey $parent.Values.hull.config.specific.components "common") }}
@@ -521,9 +513,9 @@ false
 {{ end }}
 {{ end }}
 {{ end }}
-      inline: {{ $json | toPrettyJson }}      
+    inline: {{ $json | toPrettyJson }}
 {{ else }}
-      inline: {{ $filecontent}}      
+    inline: {{ $filecontent}}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -531,26 +523,26 @@ false
 {{ $databaseKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
 {{ $databaseUsernamesPostfix := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "usernamesPostfix") }}
 {{ if (eq $databaseKey "mssql") }}
-    AUTH_BASIC_DATABASE_NAME:
-      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name }}
-    AUTH_BASIC_DATABASE_USERNAME: 
-      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username }}
-        {{- $databaseUsernamesPostfix }}
+  AUTH_BASIC_DATABASE_NAME:
+    inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name }}
+  AUTH_BASIC_DATABASE_USERNAME:
+    inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username }}
+      {{ $databaseUsernamesPostfix }}
 {{ end }}
 {{ if (eq $databaseKey "postgres") }}
-    AUTH_BASIC_DATABASE_NAME:
-      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name | lower }}
-    AUTH_BASIC_DATABASE_USERNAME: 
-      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username | lower }}
-        {{- $databaseUsernamesPostfix | lower }}
+  AUTH_BASIC_DATABASE_NAME:
+    inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name | lower }}
+  AUTH_BASIC_DATABASE_USERNAME:
+    inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username | lower }}
+      {{ $databaseUsernamesPostfix | lower }}
 {{ end }}
-    AUTH_BASIC_DATABASE_PASSWORD:
-      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.password }}    
-    database-connectionString:
-      inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "connectionString" "COMPONENT" $component) }}
-{{- end -}}
+  AUTH_BASIC_DATABASE_PASSWORD:
+    inline: {{ (index $parent.Values.hull.config.specific.components $component).database.password }}
+  database-connectionString:
+    inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "connectionString" "COMPONENT" $component) }}
+{{ end }}
 {{ if (eq (include "hull.vidispine.addon.library.get.endpoint.uri.exists" (dict "PARENT_CONTEXT" $parent "KEY" "rabbitmq" "URI" "amq")) "true") }}
-    rabbitmq-connectionString:
-      inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "messagebus" "INFO" "connectionString" "COMPONENT" $component "KEY" "rabbitmq") }}
-{{- end -}}
-{{- end -}}
+  rabbitmq-connectionString:
+    inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "messagebus" "INFO" "connectionString" "COMPONENT" $component "KEY" "rabbitmq") }}
+{{ end }}
+{{ end }}
