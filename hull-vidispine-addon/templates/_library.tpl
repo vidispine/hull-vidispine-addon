@@ -66,7 +66,7 @@ false
       {{- $host -}}
     {{- end -}}
     {{- if (eq $info "port") -}}
-      {{- $port | quote -}}
+      {{- $port -}}
     {{- end -}}
 {{- else -}}
 {{- end -}}
@@ -206,23 +206,22 @@ false
 {{ range $componentKebapCase := $components }}
 {{ $componentSnakeCase := (regexReplaceAll "-" $componentKebapCase "_") | trim }}
 {{ $componentUri := camelcase $componentSnakeCase | untitle | toString }}
-rules:
-  {{ $componentKebapCase }}:
-    host: "{{ (urlParse (index (index $parent.Values.hull.config.general.data.endpoints $endpoint).uri $componentUri)).hostname }}"
-    http:
-      paths:
-        {{ $componentKebapCase }}:
-          path: {{ (urlParse (index (index $parent.Values.hull.config.general.data.endpoints $endpoint).uri $componentUri)).path }}
-          pathType: ImplementationSpecific
-          backend:
-            service:
+{{ $componentKebapCase }}:
+  host: "{{ (urlParse (index (index $parent.Values.hull.config.general.data.endpoints $endpoint).uri $componentUri)).hostname }}"
+  http:
+    paths:
+      {{ $componentKebapCase }}:
+        path: {{ (urlParse (index (index $parent.Values.hull.config.general.data.endpoints $endpoint).uri $componentUri)).path }}
+        pathType: ImplementationSpecific
+        backend:
+          service:
 {{ if (eq $serviceName "") }}
-              name: {{ $componentKebapCase }}
+            name: {{ $componentKebapCase }}
 {{ else }}
-              name: {{ $serviceName }}
+            name: {{ $serviceName }}
 {{ end }}
-              port:
-                name: {{ $portName }}
+            port:
+              name: {{ $portName }}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -232,18 +231,17 @@ rules:
 {{ define "hull.vidispine.addon.library.component.pod.volumes" }}
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $component := (index . "COMPONENT") }}
-volumes:
-  settings:
-    secret:
-      defaultMode: 0744
-      secretName: {{ $component }}
-  certs:
-    enabled: $parent.Values.hull.config.general.data.installation.config.customCaCertificates
-    secret:
-      secretName: "custom-ca-certificates"
-  etcssl:
-    enabled: $parent.Values.hull.config.general.data.installation.config.customCaCertificates
-    emptyDir: {}
+settings:
+  secret:
+    defaultMode: 0744
+    secretName: {{ $component }}
+certs:
+  enabled: $parent.Values.hull.config.general.data.installation.config.customCaCertificates
+  secret:
+    secretName: "custom-ca-certificates"
+etcssl:
+  enabled: $parent.Values.hull.config.general.data.installation.config.customCaCertificates
+  emptyDir: {}
 {{ end }}
 
 
@@ -252,61 +250,60 @@ volumes:
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $component := (index . "COMPONENT") }}
 {{ $connectionstringsuffix := default "" (index . "CONNECTIONSTRINGSUFFIX") }}
-env:
-  'DBUSERPOSTFIX':
-    valueFrom:
-      secretKeyRef:
-        name: auth
-        key: AUTH_BASIC_DATABASE_USERNAMESPOSTFIX
-  'DBADMINUSER':
-    valueFrom:
-      secretKeyRef:
-        name: auth
-        key: AUTH_BASIC_DATABASE_ADMINUSERNAME
-  'DBADMINPASSWORD':
-    valueFrom:
-      secretKeyRef:
-        name: auth
-        key: AUTH_BASIC_DATABASE_ADMINPASSWORD
-  'ELASTICSEARCH__USERNAME':
-    valueFrom:
-      secretKeyRef:
-        name: auth
-        key: AUTH_BASIC_INDEX_USERNAME
-  'ELASTICSEARCH__PASSWORD':
-    valueFrom:
-      secretKeyRef:
-        name: auth
-        key: AUTH_BASIC_INDEX_PASSWORD
+'DBUSERPOSTFIX':
+  valueFrom:
+    secretKeyRef:
+      name: auth
+      key: AUTH_BASIC_DATABASE_USERNAMESPOSTFIX
+'DBADMINUSER':
+  valueFrom:
+    secretKeyRef:
+      name: auth
+      key: AUTH_BASIC_DATABASE_ADMINUSERNAME
+'DBADMINPASSWORD':
+  valueFrom:
+    secretKeyRef:
+      name: auth
+      key: AUTH_BASIC_DATABASE_ADMINPASSWORD
+'ELASTICSEARCH__USERNAME':
+  valueFrom:
+    secretKeyRef:
+      name: auth
+      key: AUTH_BASIC_INDEX_USERNAME
+'ELASTICSEARCH__PASSWORD':
+  valueFrom:
+    secretKeyRef:
+      name: auth
+      key: AUTH_BASIC_INDEX_PASSWORD
 {{ if (index $parent.Values.hull.config.specific.components $component).auth }}
-  'CLIENTSECRET__CLIENTID':
-    valueFrom:
-      secretKeyRef:
-        name: "auth"
-        key:  "CLIENT_{{ regexReplaceAll "-" ($component | upper) "_" }}_ID"
-  'CLIENTSECRET__CLIENTSECRET':
-    valueFrom:
-      secretKeyRef:
-        name: "auth"
-        key:  "CLIENT_{{ regexReplaceAll "-" ($component | upper) "_" }}_SECRET"
+'CLIENTSECRET__CLIENTID':
+  valueFrom:
+    secretKeyRef:
+      name: "auth"
+      key:  "CLIENT_{{ regexReplaceAll "-" ($component | upper) "_" }}_ID"
+'CLIENTSECRET__CLIENTSECRET':
+  valueFrom:
+    secretKeyRef:
+      name: "auth"
+      key:  "CLIENT_{{ regexReplaceAll "-" ($component | upper) "_" }}_SECRET"
 {{ end }}
 {{ if (index $parent.Values.hull.config.specific.components $component).database }}
 {{ if (hasKey (index $parent.Values.hull.config.specific.components $component).database "connectionStringEnvVarSuffix") }}
-  "CONNECTIONSTRINGS__{{ (index $parent.Values.hull.config.specific.components $component).database.connectionStringEnvVarSuffix }}":
+"CONNECTIONSTRINGS__{{ (index $parent.Values.hull.config.specific.components $component).database.connectionStringEnvVarSuffix }}":
 {{ else }}
-  "CONNECTIONSTRINGS":
+"CONNECTIONSTRINGS":
 {{ end }}
-    valueFrom:
-      secretKeyRef:
-        name: "{{ $component }}"
-        key:  database-connectionString
+  valueFrom:
+    secretKeyRef:
+      name: "{{ $component }}"
+      key:  database-connectionString
 {{ end }}
 {{ if (eq (include "hull.vidispine.addon.library.get.endpoint.uri.exists" (dict "PARENT_CONTEXT" $parent "KEY" "rabbitmq" "URI" "amq")) "true") }}
-  'ENDPOINTS__RABBITMQCONNECTIONSTRING':
-    valueFrom:
-      secretKeyRef:
-        name: "{{ $component }}"
-        key: rabbitmq-connectionString
+'ENDPOINTS__RABBITMQCONNECTIONSTRING':
+  valueFrom:
+    secretKeyRef:
+      name: "{{ $component }}"
+      key: rabbitmq-connectionString
 {{ end }}
 {{ end }}
 
@@ -319,108 +316,107 @@ env:
 {{ $databaseKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
 {{ $databaseHost := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "host") }}
 {{ $databasePort := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "port") }}
-pod:
-  initContainers:
-    check-database-ready:
-      image:
-        repository: vpms/dbtools
-        tag: _HT!"{{ $parent.Values.hull.config.specific.tags.dbTools | toString }}"
-      env:
-        DBHOST:
-          value: {{ $databaseHost }}
-        DBPORT:
-          value: {{ $databasePort | toString | quote }}
-        DBTYPE:
-          value: {{ $databaseKey }}
-        DBADMINUSER:
-          valueFrom:
-            secretKeyRef:
-              name: auth
-              key: AUTH_BASIC_DATABASE_ADMINUSERNAME
-        DBADMINPASSWORD:
-          valueFrom:
-            secretKeyRef:
-              name: auth
-              key: AUTH_BASIC_DATABASE_ADMINPASSWORD
-        DBUSERPOSTFIX:
-          valueFrom:
-            secretKeyRef:
-              name: auth
-              key: AUTH_BASIC_DATABASE_USERNAMESPOSTFIX
-        DBNAME:
-          valueFrom:
-            secretKeyRef:
-              name: "{{ $component }}"
-              key: AUTH_BASIC_DATABASE_NAME
-        DBUSER:
-          valueFrom:
-            secretKeyRef:
-              name: "{{ $component }}"
-              key: AUTH_BASIC_DATABASE_USERNAME
-        DBPASSWORD:
-          valueFrom:
-            secretKeyRef:
-              name: "{{ $component }}"
-              key: AUTH_BASIC_DATABASE_PASSWORD
-      args:
-      - "/bin/sh"
-      - "-c"
-      - /scripts/check-database-server-ready.sh
-  containers:
+initContainers:
+  check-database-ready:
+    image:
+      repository: vpms/dbtools
+      tag: _HT!"{{ $parent.Values.hull.config.specific.tags.dbTools | toString }}"
+    env:
+      DBHOST:
+        value: {{ $databaseHost }}
+      DBPORT:
+        value: {{ $databasePort }}
+      DBTYPE:
+        value: {{ $databaseKey }}
+      DBADMINUSER:
+        valueFrom:
+          secretKeyRef:
+            name: auth
+            key: AUTH_BASIC_DATABASE_ADMINUSERNAME
+      DBADMINPASSWORD:
+        valueFrom:
+          secretKeyRef:
+            name: auth
+            key: AUTH_BASIC_DATABASE_ADMINPASSWORD
+      DBUSERPOSTFIX:
+        valueFrom:
+          secretKeyRef:
+            name: auth
+            key: AUTH_BASIC_DATABASE_USERNAMESPOSTFIX
+      DBNAME:
+        valueFrom:
+          secretKeyRef:
+            name: "{{ $component }}"
+            key: AUTH_BASIC_DATABASE_NAME
+      DBUSER:
+        valueFrom:
+          secretKeyRef:
+            name: "{{ $component }}"
+            key: AUTH_BASIC_DATABASE_USERNAME
+      DBPASSWORD:
+        valueFrom:
+          secretKeyRef:
+            name: "{{ $component }}"
+            key: AUTH_BASIC_DATABASE_PASSWORD
+    args:
+    - "/bin/sh"
+    - "-c"
+    - /scripts/check-database-server-ready.sh
+containers:
 {{ if (eq $type "create") }}
-    create-database:
-      args:
-      - "/bin/sh"
-      - "-c"
-      - /scripts/create-database.sh
+  create-database:
+    args:
+    - "/bin/sh"
+    - "-c"
+    - /scripts/create-database.sh
 {{ end }}
 {{ if (eq $type "reset") }}
-    reset-database:
-      args:
-      - "/bin/sh"
-      - "-c"
-      - /scripts/reset-database.sh
+  reset-database:
+    args:
+    - "/bin/sh"
+    - "-c"
+    - /scripts/reset-database.sh
 {{ end }}
-      image:
-        repository: vpms/dbtools
-        tag: _HT!"{{ $parent.Values.hull.config.specific.tags.dbTools | toString }}"
-      env:
-        DBHOST:
-          value: {{ $databaseHost }}
-        DBPORT:
-          value: {{ $databasePort | toString | quote }}
-        DBTYPE:
-          value: {{ $databaseKey }}
-        DBADMINUSER:
-          valueFrom:
-            secretKeyRef:
-              name: auth
-              key: AUTH_BASIC_DATABASE_ADMINUSERNAME
-        DBADMINPASSWORD:
-          valueFrom:
-            secretKeyRef:
-              name: auth
-              key: AUTH_BASIC_DATABASE_ADMINPASSWORD
-        DBUSERPOSTFIX:
-          valueFrom:
-            secretKeyRef:
-              name: auth
-              key: AUTH_BASIC_DATABASE_USERNAMESPOSTFIX
-        DBNAME:
-          valueFrom:
-            secretKeyRef:
-              name: "{{ $component }}"
-              key: AUTH_BASIC_DATABASE_NAME
-        DBUSER:
-          valueFrom:
-            secretKeyRef:
-              name: "{{ $component }}"
-              key: AUTH_BASIC_DATABASE_USERNAME
-        DBPASSWORD:
-          valueFrom:
-            secretKeyRef:
-              name: "{{ $component }}"
-              key: AUTH_BASIC_DATABASE_PASSWORD
+    image:
+      repository: vpms/dbtools
+      tag: _HT!"{{ $parent.Values.hull.config.specific.tags.dbTools | toString }}"
+    env:
+      DBHOST:
+        value: {{ $databaseHost }}
+      DBPORT:
+        value: {{ $databasePort }}
+      DBTYPE:
+        value: {{ $databaseKey }}
+      DBADMINUSER:
+        valueFrom:
+          secretKeyRef:
+            name: auth
+            key: AUTH_BASIC_DATABASE_ADMINUSERNAME
+      DBADMINPASSWORD:
+        valueFrom:
+          secretKeyRef:
+            name: auth
+            key: AUTH_BASIC_DATABASE_ADMINPASSWORD
+      DBUSERPOSTFIX:
+        valueFrom:
+          secretKeyRef:
+            name: auth
+            key: AUTH_BASIC_DATABASE_USERNAMESPOSTFIX
+      DBNAME:
+        valueFrom:
+          secretKeyRef:
+            name: "{{ $component }}"
+            key: AUTH_BASIC_DATABASE_NAME
+      DBUSER:
+        valueFrom:
+          secretKeyRef:
+            name: "{{ $component }}"
+            key: AUTH_BASIC_DATABASE_USERNAME
+      DBPASSWORD:
+        valueFrom:
+          secretKeyRef:
+            name: "{{ $component }}"
+            key: AUTH_BASIC_DATABASE_PASSWORD
 {{ end }}
 
 
@@ -428,42 +424,40 @@ pod:
 {{ define "hull.vidispine.addon.library.auth.secret.data" }}
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $endpoints := (index . "ENDPOINTS") }}
-
 {{ $endpointsList := regexSplit "," ($endpoints | trim) -1 }}
-data:
 {{ range $endpointInput := $endpointsList }}
 {{ $endpointKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" $endpointInput) }}
 {{ if (hasKey (index $parent.Values.hull.config.general.data.endpoints $endpointKey) "auth") }}
 {{ range $authType, $authValue := (index $parent.Values.hull.config.general.data.endpoints $endpointKey).auth }}
 {{ range $entryKey, $entryValue := $authValue }}
-  {{ regexReplaceAll "-" ((printf "AUTH_%s_%s_%s" $authType $endpointInput $entryKey) | upper) "_" }}:
-    inline: {{ default nil $entryValue }}
+{{ regexReplaceAll "-" ((printf "AUTH_%s_%s_%s" $authType $endpointInput $entryKey) | upper) "_" }}:
+  inline: {{ default nil $entryValue }}
 {{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
 {{ range $k, $v := $parent.Values.hull.config.specific.components }}
 {{ if (hasKey $v "auth") }}
-  {{ regexReplaceAll "-" ((printf "CLIENT_%s_ID" $k) | upper) "_" }}:
-    inline: {{ $v.auth.clientId }}
-  {{ regexReplaceAll "-" ((printf "CLIENT_%s_SECRET" $k) | upper) "_" }}:
-    inline: {{ $v.auth.clientSecret }}
+{{ regexReplaceAll "-" ((printf "CLIENT_%s_ID" $k) | upper) "_" }}:
+  inline: {{ $v.auth.clientId }}
+{{ regexReplaceAll "-" ((printf "CLIENT_%s_SECRET" $k) | upper) "_" }}:
+  inline: {{ $v.auth.clientSecret }}
 {{ end }}
 {{ end }}
 {{ if (hasKey $parent.Values.hull.config.general.data.endpoints "authservice") }}
 {{ if (hasKey $parent.Values.hull.config.general.data.endpoints.authservice "auth") }}
 {{ if (hasKey $parent.Values.hull.config.general.data.endpoints.authservice.auth "token") }}
-  CLIENT_AUTHSERVICE_INSTALLATION_ID:
-    inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.installationClientId }}
-  CLIENT_AUTHSERVICE_INSTALLATION_SECRET:
-    inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.installationClientSecret }}
+CLIENT_AUTHSERVICE_INSTALLATION_ID:
+  inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.installationClientId }}
+CLIENT_AUTHSERVICE_INSTALLATION_SECRET:
+  inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.installationClientSecret }}
 {{ if (hasKey $parent.Values.hull.config.general.data.endpoints "configportal") }}
 {{ if (hasKey $parent.Values.hull.config.general.data.endpoints.configportal "auth") }}
 {{ if (hasKey $parent.Values.hull.config.general.data.endpoints.configportal.auth "token") }}
-  CLIENT_CONFIGPORTAL_INSTALLATION_ID:
-    inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.configportal.auth.token.installationClientId }}
-  CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
-    inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.configportal.auth.token.installationClientSecret }}
+CLIENT_CONFIGPORTAL_INSTALLATION_ID:
+  inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.configportal.auth.token.installationClientId }}
+CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
+  inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.configportal.auth.token.installationClientSecret }}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -478,7 +472,6 @@ data:
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $component := (index . "COMPONENT") }}
 {{ $timeout := default "60" (index . "TIMEOUT") }}
-data:
 {{ $mountsSpecified := false }}
 {{ $componentSpecified := false }}
 {{ if (hasKey $parent.Values.hull.config.specific "components") }}
@@ -497,13 +490,13 @@ data:
 {{ end }}
 {{ end }}
 {{ if (not $mountSpecified) }}
-  {{ $path | base }}:
-    path: {{ $path}}
+{{ $path | base }}:
+  path: {{ $path}}
 {{ end }}
 {{ end }}
 {{ if $mountsSpecified }}
 {{ range $filename, $filecontent := (index $parent.Values.hull.config.specific.components $component).mounts }}
-  {{ $filename }}:
+{{ $filename }}:
 {{ if (hasSuffix ".json" $filename) }}
 {{ $json := $filecontent | toPrettyJson }}
 {{ if (hasKey $parent.Values.hull.config.specific.components "common") }}
@@ -513,9 +506,9 @@ data:
 {{ end }}
 {{ end }}
 {{ end }}
-    inline: {{ $json | toPrettyJson }}
+  inline: {{ $json | toPrettyJson }}
 {{ else }}
-    inline: {{ $filecontent}}
+  inline: {{ $filecontent}}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -523,26 +516,26 @@ data:
 {{ $databaseKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
 {{ $databaseUsernamesPostfix := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "usernamesPostfix") }}
 {{ if (eq $databaseKey "mssql") }}
-  AUTH_BASIC_DATABASE_NAME:
-    inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name }}
-  AUTH_BASIC_DATABASE_USERNAME:
-    inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username }}
-      {{ $databaseUsernamesPostfix }}
+AUTH_BASIC_DATABASE_NAME:
+  inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name }}
+AUTH_BASIC_DATABASE_USERNAME:
+  inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username }}
+    {{ $databaseUsernamesPostfix }}
 {{ end }}
 {{ if (eq $databaseKey "postgres") }}
-  AUTH_BASIC_DATABASE_NAME:
-    inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name | lower }}
-  AUTH_BASIC_DATABASE_USERNAME:
-    inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username | lower }}
-      {{ $databaseUsernamesPostfix | lower }}
+AUTH_BASIC_DATABASE_NAME:
+  inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name | lower }}
+AUTH_BASIC_DATABASE_USERNAME:
+  inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username | lower }}
+    {{ $databaseUsernamesPostfix | lower }}
 {{ end }}
-  AUTH_BASIC_DATABASE_PASSWORD:
-    inline: {{ (index $parent.Values.hull.config.specific.components $component).database.password }}
-  database-connectionString:
-    inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "connectionString" "COMPONENT" $component) }}
+AUTH_BASIC_DATABASE_PASSWORD:
+  inline: {{ (index $parent.Values.hull.config.specific.components $component).database.password }}
+database-connectionString:
+  inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "connectionString" "COMPONENT" $component) }}
 {{ end }}
 {{ if (eq (include "hull.vidispine.addon.library.get.endpoint.uri.exists" (dict "PARENT_CONTEXT" $parent "KEY" "rabbitmq" "URI" "amq")) "true") }}
-  rabbitmq-connectionString:
-    inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "messagebus" "INFO" "connectionString" "COMPONENT" $component "KEY" "rabbitmq") }}
+rabbitmq-connectionString:
+  inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "messagebus" "INFO" "connectionString" "COMPONENT" $component "KEY" "rabbitmq") }}
 {{ end }}
 {{ end }}
