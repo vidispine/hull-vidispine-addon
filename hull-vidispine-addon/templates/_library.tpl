@@ -22,7 +22,7 @@
 {{- define "hull.vidispine.addon.library.get.endpoint.uri.exists" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $endpointKey := (index . "KEY") }}
-{{- $uri := (index . "URI") }}
+{{- $uri := default "api" (index . "URI") }}
 {{- $endpoints := $parent.Values.hull.config.general.data.endpoints -}}
 {{- $external := printf "%s.uri.%s" $endpointKey $uri -}}
 {{- $internal := printf "%sInternal" $external -}}
@@ -39,8 +39,8 @@ false
 {{- define "hull.vidispine.addon.library.get.endpoint.uri.info" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $endpoint := (index . "ENDPOINT") }}
-{{- $uri := (index . "URI") }}
-{{- $info := (index . "INFO") }}
+{{- $uri := default "api" (index . "URI") }}
+{{- $info := default "uri" (index . "INFO") }}
 {{- $endpoints := $parent.Values.hull.config.general.data.endpoints -}}
 {{- $external := printf "%s.uri.%s" $endpoint $uri -}}
 {{- $internal := printf "%sInternal" $external -}}
