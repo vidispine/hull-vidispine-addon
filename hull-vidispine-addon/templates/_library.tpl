@@ -320,12 +320,12 @@ initContainers:
   check-database-ready:
     image:
       repository: vpms/dbtools
-      tag: _HT!"{{ $parent.Values.hull.config.specific.tags.dbTools | toString }}"
+      tag: {{ $parent.Values.hull.config.specific.tags.dbTools | toString | quote }}
     env:
       DBHOST:
         value: {{ $databaseHost }}
       DBPORT:
-        value: {{ $databasePort }}
+        value: {{ $databasePort | toString | quote }}
       DBTYPE:
         value: {{ $databaseKey }}
       DBADMINUSER:
@@ -379,12 +379,12 @@ containers:
 {{ end }}
     image:
       repository: vpms/dbtools
-      tag: _HT!"{{ $parent.Values.hull.config.specific.tags.dbTools | toString }}"
+      tag: {{ $parent.Values.hull.config.specific.tags.dbTools | toString | quote }}
     env:
       DBHOST:
         value: {{ $databaseHost }}
       DBPORT:
-        value: {{ $databasePort }}
+        value: {{ $databasePort | toString | quote }}
       DBTYPE:
         value: {{ $databaseKey }}
       DBADMINUSER:
