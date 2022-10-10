@@ -329,13 +329,23 @@ hull:
             custom-installation-files:
               secret:
                 secretName: custom-installation-files
-            certs:
-              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
-              secret:
-                secretName: "custom-ca-certificates"
             etcssl:
               enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
               emptyDir: {}
+            _HULL_TRANSFORMATION_:
+              NAME: hull.util.transformation.tpl
+              CONTENT: |-
+                {
+                  {{ range $certkey, $certvalue := (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates}}
+                  "custom-ca-certificates-{{ $certkey }}": 
+                    {
+                      enabled: true, 
+                      name: "certs",
+                      mountPath: "/usr/local/share/ca-certificates/custom-ca-certificates-{{ $certkey }}",
+                      subPath: "{{ $certkey }}"
+                    },
+                  {{ end }}
+                }
 
       'hull-configure':
         enabled: false
@@ -389,13 +399,23 @@ hull:
             custom-installation-files:
               secret:
                 secretName: custom-installation-files
-            certs:
-              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
-              secret:
-                secretName: "custom-ca-certificates"
             etcssl:
               enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
               emptyDir: {}
+            _HULL_TRANSFORMATION_:
+              NAME: hull.util.transformation.tpl
+              CONTENT: |-
+                {
+                  {{ range $certkey, $certvalue := (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates}}
+                  "custom-ca-certificates-{{ $certkey }}": 
+                    {
+                      enabled: true, 
+                      name: "certs",
+                      mountPath: "/usr/local/share/ca-certificates/custom-ca-certificates-{{ $certkey }}",
+                      subPath: "{{ $certkey }}"
+                    },
+                  {{ end }}
+                }
 
     secret:
 

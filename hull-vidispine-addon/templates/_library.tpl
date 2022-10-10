@@ -231,7 +231,9 @@ false
 {{ define "hull.vidispine.addon.library.component.pod.volumes" }}
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $component := (index . "COMPONENT") }}
-settings:
+{{ $additionalSecrets := default "" (index . "SECRETS") }}
+{{ $secrets := regexSplit "," ($additionalSecrets | trim) -1 }}
+component:
   secret:
     defaultMode: 0744
     secretName: {{ $component }}
@@ -242,6 +244,13 @@ certs:
 etcssl:
   enabled: $parent.Values.hull.config.general.data.installation.config.customCaCertificates
   emptyDir: {}
+{{ if $secrets }}
+{{ range $secret := $secrets }}
+{{ $secret }}:
+  secret:
+    secretName: {{ $secret }}
+{{ end }}
+{{ end }}
 {{ end }}
 
 
