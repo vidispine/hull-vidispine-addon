@@ -246,9 +246,11 @@ etcssl:
   emptyDir: {}
 {{ if $secrets }}
 {{ range $secret := $secrets }}
+{{ if (ne $secret "") }}
 {{ $secret }}:
   secret:
     secretName: {{ $secret }}
+{{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
