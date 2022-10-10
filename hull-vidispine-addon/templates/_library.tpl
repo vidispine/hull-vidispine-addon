@@ -144,7 +144,11 @@ false
       {{- (index $parent.Values.hull.config.specific.components $component).database.username -}}
       ;Password={{- (index $parent.Values.hull.config.specific.components $component).database.password -}}
       ;Connect Timeout=
+      {{- if (and (hasKey $endpoint "options") (hasKey $endpoint.options "timeout")) -}}
       {{- default 60 $endpoint.options.timeout -}}
+      {{- else -}}
+      {{- printf "%s" 60 -}}
+      {{- end -}}
     {{- end -}}
     {{- if (eq $endpointKey "postgres") -}}
       Server=
@@ -266,6 +270,7 @@ etcssl:
     secretKeyRef:
       name: auth
       key: AUTH_BASIC_DATABASE_USERNAMESPOSTFIX
+      optional: true
 'DBADMINUSER':
   valueFrom:
     secretKeyRef:
@@ -354,6 +359,7 @@ initContainers:
           secretKeyRef:
             name: auth
             key: AUTH_BASIC_DATABASE_USERNAMESPOSTFIX
+            optional: true
       DBNAME:
         valueFrom:
           secretKeyRef:
@@ -413,6 +419,7 @@ containers:
           secretKeyRef:
             name: auth
             key: AUTH_BASIC_DATABASE_USERNAMESPOSTFIX
+            optional: true
       DBNAME:
         valueFrom:
           secretKeyRef:
