@@ -483,6 +483,7 @@ CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $component := (index . "COMPONENT") }}
 {{ $timeout := default "60" (index . "TIMEOUT") }}
+{{ $rendered := include "hull.util.transformation" (dict "PARENT_CONTEXT" $parent "SOURCE" ($parent.Values.hull.config.specific.components)) | fromYaml }}
 {{ $mountsSpecified := false }}
 {{ $componentSpecified := false }}
 {{ if (hasKey $parent.Values.hull.config.specific "components") }}
@@ -508,7 +509,7 @@ CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
 {{ if $mountsSpecified }}
 {{ range $filename, $filecontent := (index $parent.Values.hull.config.specific.components $component).mounts }}
 {{ $filename }}:
-{{ if (hasSuffix ".json" $filename) }}
+{{ if (or (hasSuffix ".json" $filename) (hasSuffix ".yaml" $filename)) }}
 {{ $json := $filecontent | toPrettyJson }}
 {{ if (hasKey $parent.Values.hull.config.specific.components "common") }}
 {{ if (hasKey $parent.Values.hull.config.specific.components.common "mounts") }}
@@ -517,9 +518,32 @@ CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
 {{ end }}
 {{ end }}
 {{ end }}
+{{ if (hasSuffix ".json" $filename) }}
   inline: {{ $json | toPrettyJson }}
+{{ end }}
+{{ if (hasSuffix ".yaml" $filename) }}
+  inline: {{ $json | toYaml | quote }}
+{{ end }}
 {{ else }}
   inline: {{ $filecontent}}
+{{ end }}
+{{ end }}
+{{ end }}
+{{ if (hasKey $parent.Values.hull.config.specific.components "common") }}
+{{ if (hasKey $parent.Values.hull.config.specific.components.common "mounts") }}
+{{ range $commonKey, $commonValue := $parent.Values.hull.config.specific.components.common.mounts }}
+{{ if (not (hasKey (index $parent.Values.hull.config.specific.components $component).mounts $commonKey)) }}
+{{ $commonKey }}:
+{{ if (hasSuffix ".json" $commonKey) }}
+  inline: {{ $commonValue | toPrettyJson }}
+{{ else }}
+{{ if (hasSuffix ".yaml" $commonKey) }}
+  inline: {{ $commonValue | toYaml | quote }}
+{{ else }}
+  inline: {{ $commonValue }}
+{{ end }}
+{{ end }}
+{{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
