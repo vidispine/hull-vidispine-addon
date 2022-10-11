@@ -11,9 +11,8 @@
 {{- $keyFound = false -}}
 {{- end -}}
 {{- end -}}
-{{- if (or (not $keyFound) (not (typeIs "string" $current))) -}}
-{{- else -}}
-{{- $current -}}
+{{- if (or ($keyFound) (not (typeIs "map[string]interface {}" $current)) (not (typeIs "[]interface {}" $current)) (not (kindIs "invalid" $current))) -}}
+{{- $current | toString -}}
 {{- end -}}
 {{- end -}}
 
@@ -144,8 +143,9 @@ false
       {{- (index $parent.Values.hull.config.specific.components $component).database.username -}}
       ;Password={{- (index $parent.Values.hull.config.specific.components $component).database.password -}}
       ;Connect Timeout=
-      {{- if (and (hasKey $endpoint "options") (hasKey $endpoint.options "timeout")) -}}
-      {{- default 60 $endpoint.options.timeout -}}
+      {{- $timeout := include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoint "KEY" "options.timeout") -}}
+      {{- if (ne $timeout "") -}} 
+      {{- printf "%s" $timeout -}}      
       {{- else -}}
       {{- printf "%s" 60 -}}
       {{- end -}}
