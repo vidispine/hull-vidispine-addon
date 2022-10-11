@@ -314,14 +314,24 @@ hull:
                 custom-installation-files:
                   name: custom-installation-files
                   mountPath: /custom-installation-files
-                certs:
-                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
-                  name: certs
-                  mountPath: '/usr/local/share/ca-certificates/'
                 etcssl:
                   enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
                   name: etcssl
                   mountPath: '/etc/ssl/certs'
+                _HULL_TRANSFORMATION_:
+                  NAME: hull.util.transformation.tpl
+                  CONTENT: |-
+                    {
+                      {{ range $certkey, $certvalue := (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates}}
+                      "custom-ca-certificates-{{ $certkey }}": 
+                        {
+                          enabled: true, 
+                          name: "certs",
+                          mountPath: "/usr/local/share/ca-certificates/custom-ca-certificates-{{ $certkey }}",
+                          subPath: "{{ $certkey }}"
+                        },
+                      {{ end }}
+                    }
           volumes:
             installation:
               secret:
@@ -332,21 +342,11 @@ hull:
             etcssl:
               enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
               emptyDir: {}
-            _HULL_TRANSFORMATION_:
-              NAME: hull.util.transformation.tpl
-              CONTENT: |-
-                {
-                  {{ range $certkey, $certvalue := (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates}}
-                  "custom-ca-certificates-{{ $certkey }}": 
-                    {
-                      enabled: true, 
-                      name: "certs",
-                      mountPath: "/usr/local/share/ca-certificates/custom-ca-certificates-{{ $certkey }}",
-                      subPath: "{{ $certkey }}"
-                    },
-                  {{ end }}
-                }
-
+            certs:
+              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+              secret:
+                secretName: "custom-ca-certificates"
+                
       'hull-configure':
         enabled: false
         annotations:
@@ -384,14 +384,24 @@ hull:
                 custom-installation-files:
                   name: custom-installation-files
                   mountPath: /custom-installation-files
-                certs:
-                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
-                  name: certs
-                  mountPath: '/usr/local/share/ca-certificates/'
                 etcssl:
                   enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
                   name: etcssl
                   mountPath: '/etc/ssl/certs'
+                _HULL_TRANSFORMATION_:
+                  NAME: hull.util.transformation.tpl
+                  CONTENT: |-
+                    {
+                      {{ range $certkey, $certvalue := (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates}}
+                      "custom-ca-certificates-{{ $certkey }}": 
+                        {
+                          enabled: true, 
+                          name: "certs",
+                          mountPath: "/usr/local/share/ca-certificates/custom-ca-certificates-{{ $certkey }}",
+                          subPath: "{{ $certkey }}"
+                        },
+                      {{ end }}
+                    }
           volumes:
             installation:
               secret:
@@ -402,20 +412,10 @@ hull:
             etcssl:
               enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
               emptyDir: {}
-            _HULL_TRANSFORMATION_:
-              NAME: hull.util.transformation.tpl
-              CONTENT: |-
-                {
-                  {{ range $certkey, $certvalue := (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates}}
-                  "custom-ca-certificates-{{ $certkey }}": 
-                    {
-                      enabled: true, 
-                      name: "certs",
-                      mountPath: "/usr/local/share/ca-certificates/custom-ca-certificates-{{ $certkey }}",
-                      subPath: "{{ $certkey }}"
-                    },
-                  {{ end }}
-                }
+            certs:
+              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+              secret:
+                secretName: "custom-ca-certificates"
 
     secret:
 
