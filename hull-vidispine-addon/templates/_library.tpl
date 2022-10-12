@@ -11,7 +11,7 @@
 {{- $keyFound = false -}}
 {{- end -}}
 {{- end -}}
-{{- if (or ($keyFound) (not (typeIs "map[string]interface {}" $current)) (not (typeIs "[]interface {}" $current)) (not (kindIs "invalid" $current))) -}}
+{{- if (and $keyFound (not (or (typeIs "map[string]interface {}" $current) (typeIs "[]interface {}" $current) (kindIs "invalid" $current)))) -}}
 {{- $current | toString -}}
 {{- end -}}
 {{- end -}}
