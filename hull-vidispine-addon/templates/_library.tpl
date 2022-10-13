@@ -254,6 +254,7 @@ etcssl:
 {{ $secret }}:
   secret:
     secretName: {{ $secret }}
+    staticName: true
 {{ end }}
 {{ end }}
 {{ end }}
