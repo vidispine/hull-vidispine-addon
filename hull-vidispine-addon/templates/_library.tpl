@@ -232,15 +232,42 @@ false
 
 
 
+
+
+
 {{ define "hull.vidispine.addon.library.component.pod.volumes" }}
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $component := (index . "COMPONENT") }}
 {{ $additionalSecrets := default "" (index . "SECRETS") }}
+{{ $additionalConfigMaps := default "" (index . "CONFIGMAPS") }}
 {{ $secrets := regexSplit "," ($additionalSecrets | trim) -1 }}
-component:
+{{ $configmaps := regexSplit "," ($additionalConfigMaps | trim) -1 }}
+{{ $secretMountsSpecified := false }}
+{{ $configmapMountsSpecified := false }}
+{{ if (ne nil (dig $component "mounts" "secrets" nil $parent.Values.hull.config.specific.components)) }}
+{{ $secretMountsSpecified = true }}
+{{ end }}
+{{ if (ne nil (dig $component "mounts" "configmaps" nil $parent.Values.hull.config.specific.components)) }}
+{{ $configmapMountsSpecified = true }}
+{{ end }}
+{{ range $path, $_ := $parent.Files.Glob (printf "files/%s/mounts/%s/*" $component "secrets") }}
+{{ $secretMountsSpecified = true }}
+{{ end }}
+{{ range $path, $_ := $parent.Files.Glob (printf "files/%s/mounts/%s/*" $component "configmaps") }}
+{{ $configmapMountsSpecified = true }}
+{{ end }}
+{{ if $secretMountsSpecified }}
+secrets:
   secret:
     defaultMode: 0744
     secretName: {{ $component }}
+{{ end }}
+{{ if $configmapMountsSpecified }}
+configmaps:
+  configMap:
+    defaultMode: 0744
+    name: {{ $component }}
+{{ end }}
 certs:
   enabled: $parent.Values.hull.config.general.data.installation.config.customCaCertificates
   secret:
@@ -254,6 +281,16 @@ etcssl:
 {{ $secret }}:
   secret:
     secretName: {{ $secret }}
+    staticName: true
+{{ end }}
+{{ end }}
+{{ end }}
+{{ if $configmaps }}
+{{ range $configmap := $configmaps }}
+{{ if (ne $configmap "") }}
+{{ $configmap }}:
+  configMap:
+    name: {{ $configmap }}
     staticName: true
 {{ end }}
 {{ end }}
@@ -463,98 +500,86 @@ containers:
   inline: {{ $v.auth.clientSecret }}
 {{ end }}
 {{ end }}
-{{ if (hasKey $parent.Values.hull.config.general.data.endpoints "authservice") }}
-{{ if (hasKey $parent.Values.hull.config.general.data.endpoints.authservice "auth") }}
-{{ if (hasKey $parent.Values.hull.config.general.data.endpoints.authservice.auth "token") }}
+{{ if (ne "" (dig "authservice" "auth" "token" "installationClientId" "" $parent.Values.hull.config.general.data.endpoints)) }}
 CLIENT_AUTHSERVICE_INSTALLATION_ID:
   inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.installationClientId }}
+{{ end }}
+{{ if (ne "" (dig "authservice" "auth" "token" "installationClientSecret" "" $parent.Values.hull.config.general.data.endpoints)) }}
 CLIENT_AUTHSERVICE_INSTALLATION_SECRET:
   inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.authservice.auth.token.installationClientSecret }}
-{{ if (hasKey $parent.Values.hull.config.general.data.endpoints "configportal") }}
-{{ if (hasKey $parent.Values.hull.config.general.data.endpoints.configportal "auth") }}
-{{ if (hasKey $parent.Values.hull.config.general.data.endpoints.configportal.auth "token") }}
+{{ end }}
+{{ if (ne "" (dig "configportal" "auth" "token" "installationClientId" "" $parent.Values.hull.config.general.data.endpoints)) }}
 CLIENT_CONFIGPORTAL_INSTALLATION_ID:
   inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.configportal.auth.token.installationClientId }}
+{{ end }}
+{{ if (ne "" (dig "configportal" "auth" "token" "installationClientSecret" "" $parent.Values.hull.config.general.data.endpoints)) }}
 CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
   inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.configportal.auth.token.installationClientSecret }}
-{{ end }}
-{{ end }}
-{{ end }}
-{{ end }}
-{{ end }}
 {{ end }}
 {{ end }}
 
 
 
 {{ define "hull.vidispine.addon.library.component.secret.data" }}
+{{ include "hull.vidispine.addon.library.component.data" (merge . (dict "OBJECT_TYPE" "secret")) }}
+{{ end }}
+
+
+
+{{ define "hull.vidispine.addon.library.component.configmap.data" }}
+{{ include "hull.vidispine.addon.library.component.data" (merge . (dict "OBJECT_TYPE" "configmap")) }}
+{{ end }}
+
+
+
+{{ define "hull.vidispine.addon.library.component.data" }}
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $component := (index . "COMPONENT") }}
 {{ $timeout := default "60" (index . "TIMEOUT") }}
-{{ $rendered := include "hull.util.transformation" (dict "PARENT_CONTEXT" $parent "SOURCE" ($parent.Values.hull.config.specific.components)) | fromYaml }}
-{{ $mountsSpecified := false }}
-{{ $componentSpecified := false }}
-{{ if (hasKey $parent.Values.hull.config.specific "components") }}
-{{ if (hasKey (index $parent.Values.hull.config.specific.components) $component) }}
-{{ $componentSpecified = true }}
-{{ if (hasKey (index $parent.Values.hull.config.specific.components $component) "mounts") }}
-{{ $mountsSpecified = true }}
+{{ $objectType := default "secret" (index . "OBJECT_TYPE") }}
+{{ $objectTypePlural := printf "%ss" $objectType }}
+{{ $rendered := include "hull.util.transformation" (dict "PARENT_CONTEXT" $parent "SOURCE" ($parent.Values.hull.config)) | fromYaml }}
+{{ $componentMounts := dig $component "mounts" $objectTypePlural dict $parent.Values.hull.config.specific.components }}
+{{ $commonMounts := dig "common" "mounts" $objectTypePlural dict $parent.Values.hull.config.specific.components }}
+{{ $components := keys $componentMounts $commonMounts | uniq | sortAlpha }}
+{{ range $fileKey := $components }}
+{{ $fileContent := "" }}
+{{ if (or (hasSuffix ".json" $fileKey) (hasSuffix ".yaml" $fileKey)) }}
+{{ $componentValue := dig $component "mounts" $objectTypePlural $fileKey dict $parent.Values.hull.config.specific.components }}
+{{ $commonValue := dig "common" "mounts" $objectTypePlural $fileKey dict $parent.Values.hull.config.specific.components }}
+{{ $fileContent = merge $componentValue $commonValue }}
+{{ if (eq $objectType "secret") }}
+{{ $fileContent = $fileContent | toPrettyJson  }}
+{{ else }}
+{{ $fileContent = $fileContent | toPrettyJson }}
+{{ end }}
+{{ else }}
+{{ if (ne "" (dig $component "mounts" $objectTypePlural $fileKey "" $parent.Values.hull.config.specific.components)) }}
+{{ $fileContent = dig $component "mounts" $objectTypePlural $fileKey "" $parent.Values.hull.config.specific.components }}
+{{ else }}
+{{ if (ne "" (dig "common" "mounts" $objectTypePlural $fileKey "" $parent.Values.hull.config.specific.components)) }}
+{{ $fileContent = dig "common" "mounts" $objectTypePlural $fileKey "" $parent.Values.hull.config.specific.components }}
 {{ end }}
 {{ end }}
 {{ end }}
-{{ range $path, $_ := $parent.Files.Glob (printf "files/mounts/%s/*" $component) }}
-{{ $mountSpecified := false }}
-{{ if $mountsSpecified }}
-{{ if (hasKey (index $parent.Values.hull.config.specific.components $component).mounts ($path | base) ) }}
-{{ $mountSpecified = true }}
+{{ $fileKey }}:
+{{ if (hasSuffix ".json" $fileKey) }}
+  inline: {{ $fileContent | toPrettyJson }}
+{{ else }}
+{{ if (hasSuffix ".yaml" $fileKey) }}
+  inline: {{ $fileContent | toYaml | quote }}
+{{ else }}
+  inline: {{ $fileContent }}
 {{ end }}
 {{ end }}
-{{ if (not $mountSpecified) }}
+{{ end }}
+{{ range $path, $_ := $parent.Files.Glob (printf "files/%s/mounts/%s/*" $component $objectTypePlural) }}
+{{ if (not (hasKey $components ($path | base))) }}
 {{ $path | base }}:
   path: {{ $path}}
 {{ end }}
 {{ end }}
-{{ if $mountsSpecified }}
-{{ range $filename, $filecontent := (index $parent.Values.hull.config.specific.components $component).mounts }}
-{{ $filename }}:
-{{ if (or (hasSuffix ".json" $filename) (hasSuffix ".yaml" $filename)) }}
-{{ $json := $filecontent | toPrettyJson }}
-{{ if (hasKey $parent.Values.hull.config.specific.components "common") }}
-{{ if (hasKey $parent.Values.hull.config.specific.components.common "mounts") }}
-{{ if (hasKey $parent.Values.hull.config.specific.components.common.mounts $filename) }}
-{{ $json = merge $filecontent (index $parent.Values.hull.config.specific.components.common.mounts $filename) | toPrettyJson }}
-{{ end }}
-{{ end }}
-{{ end }}
-{{ if (hasSuffix ".json" $filename) }}
-  inline: {{ $json | toPrettyJson }}
-{{ end }}
-{{ if (hasSuffix ".yaml" $filename) }}
-  inline: {{ $json | toYaml | quote }}
-{{ end }}
-{{ else }}
-  inline: {{ $filecontent}}
-{{ end }}
-{{ end }}
-{{ end }}
-{{ if (hasKey $parent.Values.hull.config.specific.components "common") }}
-{{ if (hasKey $parent.Values.hull.config.specific.components.common "mounts") }}
-{{ range $commonKey, $commonValue := $parent.Values.hull.config.specific.components.common.mounts }}
-{{ if (not (hasKey (index $parent.Values.hull.config.specific.components $component).mounts $commonKey)) }}
-{{ $commonKey }}:
-{{ if (hasSuffix ".json" $commonKey) }}
-  inline: {{ $commonValue | toPrettyJson }}
-{{ else }}
-{{ if (hasSuffix ".yaml" $commonKey) }}
-  inline: {{ $commonValue | toYaml | quote }}
-{{ else }}
-  inline: {{ $commonValue }}
-{{ end }}
-{{ end }}
-{{ end }}
-{{ end }}
-{{ end }}
-{{ end }}
+{{ if (eq $objectType "secret") }}
 {{ if (index $parent.Values.hull.config.specific.components $component).database }}
 {{ $databaseKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
 {{ $databaseUsernamesPostfix := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "usernamesPostfix") }}
@@ -580,5 +605,6 @@ database-connectionString:
 {{ if (eq (include "hull.vidispine.addon.library.get.endpoint.uri.exists" (dict "PARENT_CONTEXT" $parent "KEY" "rabbitmq" "URI" "amq")) "true") }}
 rabbitmq-connectionString:
   inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "messagebus" "INFO" "connectionString" "COMPONENT" $component "KEY" "rabbitmq") }}
+{{ end }}
 {{ end }}
 {{ end }}
