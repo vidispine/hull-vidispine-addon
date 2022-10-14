@@ -241,9 +241,11 @@ false
 {{ $additionalSecrets := default "" (index . "SECRETS") }}
 {{ $additionalConfigMaps := default "" (index . "CONFIGMAPS") }}
 {{ $additionalEmptyDirs := default "" (index . "EMPTYDIRS") }}
+{{ $additionalPvcs := default "" (index . "PVCS") }}
 {{ $secrets := regexSplit "," ($additionalSecrets | trim) -1 }}
 {{ $configmaps := regexSplit "," ($additionalConfigMaps | trim) -1 }}
 {{ $emptydirs := regexSplit "," ($additionalEmptyDirs | trim) -1 }}
+{{ $pvcs := regexSplit "," ($additionalPvcs | trim) -1 }}
 {{ $secretMountsSpecified := false }}
 {{ $configmapMountsSpecified := false }}
 {{ if (ne nil (dig $component "mounts" "secrets" nil $parent.Values.hull.config.specific.components)) }}
@@ -261,13 +263,13 @@ false
 {{ if $secretMountsSpecified }}
 secrets:
   secret:
-    defaultMode: 0744
+    defaultMode: 0777
     secretName: {{ $component }}
 {{ end }}
 {{ if $configmapMountsSpecified }}
 configmaps:
   configMap:
-    defaultMode: 0744
+    defaultMode: 0777
     name: {{ $component }}
 {{ end }}
 certs:
@@ -302,6 +304,16 @@ etcssl:
 {{ if (ne $emptydir "") }}
 {{ $emptydir }}:
   emptyDir: {}
+{{ end }}
+{{ end }}
+{{ end }}
+{{ if $pvcs }}
+{{ range $pvc := $pvcs }}
+{{ if (ne $pvc "") }}
+{{ $pvc }}:
+  persistentVolumeClaim:     
+    claimName: {{ $pvc }}
+    staticName: true
 {{ end }}
 {{ end }}
 {{ end }}
