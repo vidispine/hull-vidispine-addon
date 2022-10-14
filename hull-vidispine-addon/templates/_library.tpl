@@ -584,7 +584,7 @@ CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
 {{ end }}
 {{ end }}
 {{ range $path, $_ := $parent.Files.Glob (printf "files/%s/mounts/%s/*" $component $objectTypePlural) }}
-{{ if (not (hasKey $components ($path | base))) }}
+{{ if (not (has ($path | base) $components )) }}
 {{ $path | base }}:
   path: {{ $path}}
 {{ end }}
