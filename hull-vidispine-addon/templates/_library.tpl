@@ -240,8 +240,10 @@ false
 {{ $component := (index . "COMPONENT") }}
 {{ $additionalSecrets := default "" (index . "SECRETS") }}
 {{ $additionalConfigMaps := default "" (index . "CONFIGMAPS") }}
+{{ $additionalEmptyDirs := default "" (index . "EMPTYDIRS") }}
 {{ $secrets := regexSplit "," ($additionalSecrets | trim) -1 }}
 {{ $configmaps := regexSplit "," ($additionalConfigMaps | trim) -1 }}
+{{ $emptydirs := regexSplit "," ($additionalEmptyDirs | trim) -1 }}
 {{ $secretMountsSpecified := false }}
 {{ $configmapMountsSpecified := false }}
 {{ if (ne nil (dig $component "mounts" "secrets" nil $parent.Values.hull.config.specific.components)) }}
@@ -292,6 +294,14 @@ etcssl:
   configMap:
     name: {{ $configmap }}
     staticName: true
+{{ end }}
+{{ end }}
+{{ end }}
+{{ if $emptydirs }}
+{{ range $emptydir := $emptydirs }}
+{{ if (ne $emptydir "") }}
+{{ $emptydir }}:
+  emptyDir: {}
 {{ end }}
 {{ end }}
 {{ end }}
