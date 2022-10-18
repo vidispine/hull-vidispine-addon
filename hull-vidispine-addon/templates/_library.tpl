@@ -248,26 +248,26 @@ false
 {{ $pvcs := regexSplit "," ($additionalPvcs | trim) -1 }}
 {{ $secretMountsSpecified := false }}
 {{ $configmapMountsSpecified := false }}
-{{ if (ne nil (dig $component "mounts" "secrets" nil $parent.Values.hull.config.specific.components)) }}
+{{ if (ne nil (dig $component "mounts" "secret" nil $parent.Values.hull.config.specific.components)) }}
 {{ $secretMountsSpecified = true }}
 {{ end }}
-{{ if (ne nil (dig $component "mounts" "configmaps" nil $parent.Values.hull.config.specific.components)) }}
+{{ if (ne nil (dig $component "mounts" "configmap" nil $parent.Values.hull.config.specific.components)) }}
 {{ $configmapMountsSpecified = true }}
 {{ end }}
-{{ range $path, $_ := $parent.Files.Glob (printf "files/%s/mounts/%s/*" $component "secrets") }}
+{{ range $path, $_ := $parent.Files.Glob (printf "files/%s/mounts/%s/*" $component "secret") }}
 {{ $secretMountsSpecified = true }}
 {{ end }}
-{{ range $path, $_ := $parent.Files.Glob (printf "files/%s/mounts/%s/*" $component "configmaps") }}
+{{ range $path, $_ := $parent.Files.Glob (printf "files/%s/mounts/%s/*" $component "configmap") }}
 {{ $configmapMountsSpecified = true }}
 {{ end }}
 {{ if $secretMountsSpecified }}
-secrets:
+secret:
   secret:
     defaultMode: 0777
     secretName: {{ $component }}
 {{ end }}
 {{ if $configmapMountsSpecified }}
-configmaps:
+configmap:
   configMap:
     defaultMode: 0777
     name: {{ $component }}
