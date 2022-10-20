@@ -559,16 +559,15 @@ CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
 {{ $component := (index . "COMPONENT") }}
 {{ $timeout := default "60" (index . "TIMEOUT") }}
 {{ $objectType := default "secret" (index . "OBJECT_TYPE") }}
-{{ $objectTypePlural := printf "%ss" $objectType }}
 {{ $rendered := include "hull.util.transformation" (dict "PARENT_CONTEXT" $parent "SOURCE" ($parent.Values.hull.config)) | fromYaml }}
-{{ $componentMounts := dig $component "mounts" $objectTypePlural dict $parent.Values.hull.config.specific.components }}
-{{ $commonMounts := dig "common" "mounts" $objectTypePlural dict $parent.Values.hull.config.specific.components }}
+{{ $componentMounts := dig $component "mounts" $objectType dict $parent.Values.hull.config.specific.components }}
+{{ $commonMounts := dig "common" "mounts" $objectType dict $parent.Values.hull.config.specific.components }}
 {{ $components := keys $componentMounts $commonMounts | uniq | sortAlpha }}
 {{ range $fileKey := $components }}
 {{ $fileContent := "" }}
 {{ if (or (hasSuffix ".json" $fileKey) (hasSuffix ".yaml" $fileKey)) }}
-{{ $componentValue := dig $component "mounts" $objectTypePlural $fileKey dict $parent.Values.hull.config.specific.components }}
-{{ $commonValue := dig "common" "mounts" $objectTypePlural $fileKey dict $parent.Values.hull.config.specific.components }}
+{{ $componentValue := dig $component "mounts" $objectType $fileKey dict $parent.Values.hull.config.specific.components }}
+{{ $commonValue := dig "common" "mounts" $objectType $fileKey dict $parent.Values.hull.config.specific.components }}
 {{ $fileContent = merge $componentValue $commonValue }}
 {{ if (eq $objectType "secret") }}
 {{ $fileContent = $fileContent | toPrettyJson  }}
@@ -576,11 +575,11 @@ CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
 {{ $fileContent = $fileContent | toPrettyJson }}
 {{ end }}
 {{ else }}
-{{ if (ne "" (dig $component "mounts" $objectTypePlural $fileKey "" $parent.Values.hull.config.specific.components)) }}
-{{ $fileContent = dig $component "mounts" $objectTypePlural $fileKey "" $parent.Values.hull.config.specific.components }}
+{{ if (ne "" (dig $component "mounts" $objectType $fileKey "" $parent.Values.hull.config.specific.components)) }}
+{{ $fileContent = dig $component "mounts" $objectType $fileKey "" $parent.Values.hull.config.specific.components }}
 {{ else }}
-{{ if (ne "" (dig "common" "mounts" $objectTypePlural $fileKey "" $parent.Values.hull.config.specific.components)) }}
-{{ $fileContent = dig "common" "mounts" $objectTypePlural $fileKey "" $parent.Values.hull.config.specific.components }}
+{{ if (ne "" (dig "common" "mounts" $objectType $fileKey "" $parent.Values.hull.config.specific.components)) }}
+{{ $fileContent = dig "common" "mounts" $objectType $fileKey "" $parent.Values.hull.config.specific.components }}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -595,7 +594,7 @@ CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
 {{ end }}
 {{ end }}
 {{ end }}
-{{ range $path, $_ := $parent.Files.Glob (printf "files/%s/mounts/%s/*" $component $objectTypePlural) }}
+{{ range $path, $_ := $parent.Files.Glob (printf "files/%s/mounts/%s/*" $component $objectType) }}
 {{ if (not (has ($path | base) $components )) }}
 {{ $path | base }}:
   path: {{ $path}}
