@@ -569,8 +569,8 @@ CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
 {{ $componentValue := dig $component "mounts" $objectType $fileKey dict $parent.Values.hull.config.specific.components }}
 {{ $commonValue := dig "common" "mounts" $objectType $fileKey dict $parent.Values.hull.config.specific.components }}
 {{ $fileContent = merge $componentValue $commonValue }}
-{{ if (eq $objectType "secret") }}
-{{ $fileContent = $fileContent | toPrettyJson  }}
+{{ if (hasSuffix ".yaml" $fileKey) }}
+{{ $fileContent = $fileContent  }}
 {{ else }}
 {{ $fileContent = $fileContent | toPrettyJson }}
 {{ end }}
@@ -585,7 +585,7 @@ CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
 {{ end }}
 {{ $fileKey }}:
 {{ if (hasSuffix ".json" $fileKey) }}
-  inline: {{ $fileContent | toPrettyJson }}
+  inline: {{ $fileContent | toPrettyJson | toPrettyJson }}
 {{ else }}
 {{ if (hasSuffix ".yaml" $fileKey) }}
   inline: {{ $fileContent | toYaml | quote }}

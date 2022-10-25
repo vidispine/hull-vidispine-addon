@@ -18,13 +18,9 @@ hull:
               auth:
                 basic:
                   env:
-                    username: AUTH_BASIC_VIDICORE_ADMINUSER
+                    username: AUTH_BASIC_VIDICORE_ADMINUSERNAME
                     password: AUTH_BASIC_VIDICORE_ADMINPASSWORD
-              endpoint:
-                _HULL_TRANSFORMATION_:
-                  NAME: hull.vidispine.addon.generalendpoint
-                  ENTRY: vidicore
-                  ENDPOINT: api
+              endpoint: _HT/hull.vidispine.addon.library.get.endpoint.uri.info:ENDPOINT:"vidicore":URI:"api"
               subresources:
                 10_metadatafields:
                   apiPath: "metadata-field"
@@ -103,22 +99,14 @@ hull:
             20_authservice:
               auth:
                 token:
-                  authenticationServiceEndpoint:
-                    _HULL_TRANSFORMATION_:
-                      NAME: hull.vidispine.addon.generalendpoint
-                      ENTRY: authservice
-                      ENDPOINT: api
+                  authenticationServiceEndpoint: _HT/hull.vidispine.addon.library.get.endpoint.uri.info:ENDPOINT:"authservice":URI:"api"
                   env:
                     clientId: CLIENT_AUTHSERVICE_INSTALLATION_ID
                     clientSecret: CLIENT_AUTHSERVICE_INSTALLATION_SECRET
                   grantType: client_credentials
                   scopes:
                   - 'identityscope'
-              endpoint:
-                _HULL_TRANSFORMATION_:
-                  NAME: hull.vidispine.addon.generalendpoint
-                  ENTRY: authservice
-                  ENDPOINT: api
+              endpoint: _HT/hull.vidispine.addon.library.get.endpoint.uri.info:ENDPOINT:"authservice":URI:"api"
               subresources:
                 10_resources:
                   apiPath: "v1/Resource/ApiResource"
@@ -145,22 +133,14 @@ hull:
             30_configportal:
               auth:
                 token:
-                  authenticationServiceEndpoint:
-                    _HULL_TRANSFORMATION_:
-                      NAME: hull.vidispine.addon.generalendpoint
-                      ENTRY: authservice
-                      ENDPOINT: api
+                  authenticationServiceEndpoint: _HT/hull.vidispine.addon.library.get.endpoint.uri.info:ENDPOINT:"authservice":URI:"api"
                   env:
                     clientId: CLIENT_CONFIGPORTAL_INSTALLATION_ID
                     clientSecret: CLIENT_CONFIGPORTAL_INSTALLATION_SECRET
                   grantType: client_credentials
                   scopes:
                   - 'configportalscope'
-              endpoint:
-                _HULL_TRANSFORMATION_:
-                  NAME: hull.vidispine.addon.generalendpoint
-                  ENTRY: configportal
-                  ENDPOINT: api
+              endpoint: _HT/hull.vidispine.addon.library.get.endpoint.uri.info:ENDPOINT:"configportal":URI:"api"
               subresources:
                 10_product:
                   apiPath: "v2/Products"
