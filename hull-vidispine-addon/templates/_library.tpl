@@ -168,25 +168,20 @@ false
 {{- if (eq $endpointType "messagebus") -}}
   {{- if (eq $info "connectionString") -}}
     {{- if (eq $endpointKey "rabbitmq") -}}
-      {{ printf "%s" "amqp://" }}
+      {{- $url := default $endpoint.uri.amq $endpoint.uri.amqInternal }}
+      {{- $start := (regexSplit ":" $url -1) | first | trim -}}      
+      {{- printf "%s://" $start -}}
       {{- $endpoint.auth.basic.username -}}
       {{- printf "%s" ":" }}
-      {{- $endpoint.auth.basic.password -}}
-      {{- printf "%s" "@" }}
-      {{- $url := default $endpoint.uri.amq $endpoint.uri.amqInternal }}
-      {{- $end := (regexSplit ":" $url -1) | last | trim -}}
-      {{- $vhost := "" -}}
-      {{- $port := (regexSplit "/" $end -1) | first -}}
-      {{- if (and (contains "/" $end) (not (hasSuffix "/" $end))) -}}
-      {{- $vhost = (regexSplit "/" $end -1) | last -}}
-      {{- end -}}
-      {{- printf "%s:%s/%s" (urlParse $url).hostname $port $vhost }}
-      {{- end -}}
+      {{- $endpoint.auth.basic.password -}}   
+      {{- printf "@%s" (trimPrefix (printf "%s://" $start) $url) }}        
+    {{- end -}}    
   {{- end -}}
   {{- if (eq $info "vhost") -}}
     {{- if (eq $endpointKey "rabbitmq") -}}
       {{- $url := default $endpoint.uri.amq $endpoint.uri.amqInternal }}
-      {{- $end := (regexSplit ":" $url -1) | last | trim -}}
+      {{- $start := (regexSplit ":" $url -1) | first | trim -}}
+      {{- $end := (trimPrefix (printf "%s://" $start) $url) }}
       {{- $vhost := "" -}}
       {{- if (and (contains "/" $end) (not (hasSuffix "/" $end))) -}}
       {{- $vhost = (regexSplit "/" $end -1) | last -}}
