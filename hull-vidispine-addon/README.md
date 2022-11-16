@@ -731,3 +731,314 @@ The `config` here is standard JSON and may have more keys defined directly under
 
 ## The `library` functions
 
+The library functions in `/templates/_library.tpl` are especially provided to allow minimal effort Helm Chart creation for recurring configuration scenarios of Vidispine products. Some of the methods rely heavily on preconditions which must be met so that they can be used effectively.
+
+The following functions are defined:
+
+### hull.vidispine.addon.library.safeGetString
+
+Parameters:
+
+_DICTIONARY_: A dictionary to traverse
+_KEY_: The key in dot-notation within _DICTIONARY_whose value should be retrieved and converted to a string
+
+Usage:
+
+Simple function to retrieve a value for a key provided in dot-notation from a given dictionary. 
+If the key exists and it's value is neither a dictionary, array or null it is converted to string and returned. In all other cases the nothing/empty string is returned.
+
+Example:
+
+For _DICTIONARY_ `$letters` with:
+
+```
+a: 
+  b:
+    c:
+      d: helloD
+  e:
+    f:
+       g: helloG    
+```
+
+the result will be for _KEY_:
+- `a.b.c.d` --> "helloD"
+- `a.b.c.c` --> ""
+- `a.e.f` --> ""
+- `a.e.f.g` --> "helloG"
+- `a.e.f.h` --> ""
+
+### hull.vidispine.addon.library.get.endpoint.uri.exists
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+_KEY_: The key denoting the endpoint which may contain the _URI_ (works but obsolete, use _ENDPOINT_ instead)
+_ENDPOINT_: The key denoting the endpoint which may contain the _URI_
+_URI_: The particular uri to get
+
+Usage:
+
+This function works with `hull.config.general.data.endpoints` section to return whether a particular URI is defined for a given endpoint named with _ENDPOINT_. The function furthermore checks for whether the _URI_ is defined with a suffix of `Internal` or without it, if at least one of these _URI_'s is defined and has a value, literal string `true` is returned, if not literal string `false`.
+
+Example:
+
+For `hull.config.general.data.endpoints`:
+
+```
+endpoints:
+  vidicore:
+    auth:
+      basic:
+        adminPassword: admin
+        adminUsername: admin
+    uri:
+      api: https://prept1-vidiflow.s4m.de/API
+      apiInternal: http://vidicore-vidicore.preptest1:31060/API
+      apinoauthInternal: http://vidicore-vidicore.preptest1:31060/APInoauth
+      logReport: http://vidicore-vidicore.preptest1:31060/LogReport
+```
+
+the following _ENDPOINT_ and _URI_ combinations yield:
+
+- _ENDPOINT_="vidicore" _URI_="api" --> "true"
+- _ENDPOINT_="vidicore" _URI_="apinoauth" --> "true"
+- _ENDPOINT_="vidicore" _URI_="logReport" --> "true"
+- _ENDPOINT_="vidicore" _URI_="crashReport" --> "false"
+- _ENDPOINT_="vidividividi" _URI_="api" --> "false"
+
+### hull.vidispine.addon.library.get.endpoint.uri.info
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+_ENDPOINT_: The key denoting the endpoint which may contain the _URI_
+_URI_: The particular uri to get
+_INFO_: The kind of information to get. Allowed values: uri|host|hostname|netloc|path|scheme|port|base
+
+Usage:
+
+This function works with `hull.config.general.data.endpoints` section to return a particular aspect of an _URI_ which is defined for a given endpoint named with _ENDPOINT_. The function furthermore checks for whether the _URI_ is defined with a suffix of `Internal` or without it. If an `Internal` suffixes _URI_ exists it has precedence over an _URI_ without the suffix for the evaluation of _INFO_.
+
+Allowed values for _INFO_:
+- `uri`: return the complete URI as it is configured
+- `host` or `hostname`: return the hostname (excluding port) of the URI
+- `netloc`: return the hostname (with port if defined) of the URI
+- `path`: returns the relative path of the URI
+- `scheme`: return the scheme of the URI
+- `port`: return the port of the URI. If not explicitly set returns 80 for scheme 'http' and 443 for scheme 'https'
+- `base`: return the scheme plus hostname and port (excluding any subpaths)
+
+
+Example:
+
+For `hull.config.general.data.endpoints`:
+
+```
+endpoints:
+  vidicore:
+    auth:
+      basic:
+        adminPassword: admin
+        adminUsername: admin
+    uri:
+      api: https://prept1-vidiflow.s4m.de/API
+      apiInternal: http://vidicore-vidicore.preptest1:31060/API
+      apinoauthInternal: http://vidicore-vidicore.preptest1:31060/APInoauth
+      logReport: http://vidicore-vidicore.preptest1:31060/LogReport
+```
+
+the following _ENDPOINT_ and _URI_ combinations yield:
+
+- _ENDPOINT_="vidicore" _URI_="api" _INFO_="uri" --> "http://vidicore-vidicore.preptest1:31060/API"
+- _ENDPOINT_="vidicore" _URI_="api" _INFO_="host" --> "vidicore-vidicore.preptest1"
+- _ENDPOINT_="vidicore" _URI_="api" _INFO_="hostname" --> "vidicore-vidicore.preptest1"
+- _ENDPOINT_="vidicore" _URI_="api" _INFO_="netloc" --> "vidicore-vidicore.preptest1:31060"
+- _ENDPOINT_="vidicore" _URI_="api" _INFO_="path" --> "/API"
+- _ENDPOINT_="vidicore" _URI_="api" _INFO_="scheme" --> "http"
+- _ENDPOINT_="vidicore" _URI_="api" _INFO_="port" --> "31060"
+- _ENDPOINT_="vidicore" _URI_="api" _INFO_="base" --> "http://vidicore-vidicore.preptest1:31060"
+- _ENDPOINT_="vidicore" _URI_="crashReport" _INFO_="uri" --> ""
+- _ENDPOINT_="vidividividi" _URI_="api" _INFO_="uri" --> ""
+
+### hull.vidispine.addon.library.get.endpoint.key
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+_TYPE_: The type of the endpoint to get the concrete specificaton of. Allowed values: database|index
+
+Usage:
+
+This function queries for a given endpoint _TYPE_ and returns the best result. 
+
+For _TYPE_ `database`, the value `postgres` is returned if an `endpoint` value that is not empty exists for the `postgres` endpoint.  If an `endpoint` value that is not empty exists for the `mssql` endpoint otherwise, the value `mssql` is returned. 
+
+For _TYPE_ `index`, `opensearch` is returned if either the URI `api` or `apiInternal` is defined for an endpoint `opensearch`.
+
+### hull.vidispine.addon.library.get.endpoint.info
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+_INFO_: The kind of information to get. Allowed values: host|hostname|port|usernamesPostfix|connectionString|vhost
+_TYPE_: The type of the endpoint to get the concrete specificaton of. Allowed values: database|messagebus|index
+_COMPONENT_: The `component` from `hull.config.specific.components` which may be required in calulation of the returned value. Needed for some _INFO_ queries. 
+
+Usage:
+
+This function returns special values which are calculated on the fly from the given endpoints.
+- _INFO="host" or _INFO="hostname" in combination with _TYPE_="database" returns the selected database `adresss`'s host without port
+- _INFO="port" in combination with _TYPE_="database" returns the selected database `address`'s port. Can be contained in the `address` and returned as defined or if not returns defaults (1433 for `mssql` and 4532 for `postgres`)
+- `usernamesPostfix` in combination with _TYPE_="database" returns the value of the database endpoints `auth.basic.usernamesPostfix` if defined or empty string if not
+- `connectionString` in combination with _TYPE_="database" returns the calculated value of the database connectionString as used by e.g. VidiFlow agents. Requires a _COMPONENT_ to be selected containing a `database.username` and `database.password` to embedd into the connectionString returned.
+- `connectionString` in combination with _TYPE_="messagebus" returns the calculated value of the RabbitMQ connectionString as used by e.g. VidiFlow agents. This connectionString includes "username:password@" infix opposed to the `amq`/`amqInternal` URIs that don't contain credentials. Requires that an endpoint for `rabbitmq` and an `amq`/`amqInternal` URI is defined as well as `rabbitmq.auth.basic.username` and `rabbitmq.auth.basic.password`.
+- `vhost` in combination with _TYPE_="messagebus" returns the vhost of the RabbitMQ connectionString. Requires that an endpoint for `rabbitmq` and an `amq`/`amqInternal` URI is defined.
+
+### hull.vidispine.addon.library.auth.secret.data
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+_EDNPOINTS_: The endpoints for which `auth` data is to be included as a comma-separated list. Can be either resolvable types (`database` and `index`) or an exact key name found in the endpoints.
+
+Usage:
+
+The purpose of this function is to create the data section for a unique secret named `auth` for the Helm Chart which contains all relevant sensitive data that is general and not specific to a particular component (so excluding components database credentials etc). However the exception is that all OAuth relevant clientIds and clientSecrets are added as well (so that hull-install can use them if needed). For storing each components other sensitive data (database connection) exists a dedicated secret named same as the component.
+
+The `auth` secret contains:
+1. all key-value pairs which are defined in an `auth` subkey of an endpoint which is in the list of _ENDPOINTS_. The script iterates all endpoints and if the have an `auth` subkey the data is added to the secret by creating an uppercase secret data key name unique to the key-value pair. The secret data key name creation follows this rule: `AUTH_<ENDPOINT>_<AUTHKIND>_<AUTHKEY` where the <ENDPOINT> is either `database`, `index` or a concrete endpoints name, the <AUTHKIND> is the subkey of `auth` (`basic` or `token`) and <AUTHKEY> is the actual key. 
+2. all `clientId` and `clientSecret` values defined for all components in the form `CLIENT_<COMPONENT>_ID` and `CLIENT_<COMPONENT>_SECRET`.
+3. authservice specific OAuth clients for compatibility and direct usage within the hull-install job. For this - if defined - the values for `endpoints.authservice.auth.token.installationClientId` and `endpoints.authservice.auth.token.installationClientSecret` are stored as keys `CLIENT_AUTHSERVICE_INSTALLATION_ID` and `CLIENT_AUTHSERVICE_INSTALLATION_SECRET` respectively.
+4. configportal specific OAuth clients for compatibility and direct usage within the hull-install job. For this - if defined - the values for `endpoints.configportal.auth.token.installationClientId` and `endpoints.authservice.auth.token.installationClientSecret` are stored as keys `CLIENT_CONFIGPORTAL_INSTALLATION_ID` and `CLIENT_CONFIGPORTAL_INSTALLATION_SECRET` respectively.
+
+### hull.vidispine.addon.library.component.secret.data
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+_COMPONENT_: The component to create the secret data for
+
+Usage:
+
+With calling this function the data section for a component specific secret is created. The secret contains automatically the following data keys and contents:
+1. First it traverses the _COMPONENT_ in `hull.config.specific.components` and adds all `mounts.secret`'s contents defined to the volume. It also adds all Secrets defined as physical files which are stored under the `files/_COMPONENT_/mounts/secret` folders.
+2. Database connection information is added from the components `database` specification if it exists, the keys `AUTH_BASIC_DATABASE_NAME`, `AUTH_BASIC_DATABASE_USERNAME` and `AUTH_BASIC_DATABASE_PASSWORD` are added with their defined values . Furthermore a key `database-connectionString` is added which contains a ready to use database connectionString including credential data.
+3. If an `amq` or `amqInternal` endpoint is specified, the key `rabbitmq-connectionString` is added and the RabbitMQ connectionstring is assembled as its value
+
+### hull.vidispine.addon.library.component.configmap.data
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+_COMPONENT_: The component to create the ConfigMap data for
+
+
+Usage:
+
+To add all defined ConfigMaps for a _COMPONENT_, this function traverses the _COMPONENT_ in `hull.config.specific.components` and adds all `mounts.configmap`'s contents defined to the volume. It also adds all ConfigMaps defined as physical files which are stored under the `files/_COMPONENT_/mounts/configmap` folders.
+
+### hull.vidispine.addon.library.component.ingress.rules
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+_COMPONENTS_: The `component`s from `hull.config.specific.components` as a comma-separated list. The input values need to be lowercase seperated with '-' (kebapcase) and are converted to the URI keys by making them camelCase.
+_ENDPOINT_: The endpoint for which the URIs created from _COMPONENTS_ are all defined
+_PORTNAME_: The name of the port that is targeted, defaults to "http" if not set
+_SERVICENAME_: The name of the service that is targeted
+
+Usage:
+
+With this function it is possible to render ingress rules based on minimal input. Given that one or more URIs are given in kebap-case notation as _COMPONENTS_, and they are specified under the given _ENDPOINT_ in `hull.config.general.data.endpoints`, for each of them an ingress rule is created with the ingress host set to the hostname contained in the resolved _COMPONENT_ URI and one path for the _COMPONENT_ URI's subpath. The targeted service is defined by _SERVICENAME_ and _PORTNAME_. Note that for ingresses, only set URIs that exclude the `Internal` suffix are considered because ingresses deal with traffic incoming to the cluster.
+
+Example:
+
+Given `hull.config.general.data.endpoints`:
+
+```
+endpoints:
+  vidicore:
+    auth:
+      basic:
+        adminPassword: admin
+        adminUsername: admin
+    uri:
+      api: https://prept1-vidiflow.s4m.de/API
+      apiInternal: http://vidicore-vidicore.preptest1:31060/API
+      apinoauthInternal: http://vidicore-vidicore.preptest1:31060/APInoauth
+      logReport: http://vidicore-vidicore.preptest1:31060/LogReport
+```
+
+and _COMPONENTS_="api,log-report", _ENDPOINT_="vidicore", _SERVICENAME_="vidicore" this creates two ingress rules where host is 'prept1-vidiflow.s4m.de' and the targeted service/port is vidicore/http for all three. The paths are however different with '/API' and '/LogReport'.
+
+### hull.vidispine.addon.library.component.job.database
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+_COMPONENT_: The `component` to create a database job for
+_TYPE_: The type of Job. Allowed values: create|reset
+Usage:
+
+This function full renders job objects that either create or reset a database defined for _COMPONENT_. The container used for these database operations is the 'vpms/dbtools' and the tag to use is given in the `hull.config.specific.tags.dbTools` field. In order to work correctly, the following environment variables are provided to each 'vpms/dbtools' instance executed:
+- DBHOST: retrieved from the database endpoints (`postgres` or `mssql`) `uri.address` field
+- DBPORT: retrieved from the database endpoints (`postgres` or `mssql`) `uri.address` field
+- DBTYPE: `postgres` or `mssql`, determined by hull.vidispine.addon.library.get.endpoint.key function
+- DBADMINUSER: retrieved from key AUTH_BASIC_DATABASE_ADMINUSERNAME from _COMPONENT_-auth secret (see 'hull.vidispine.addon.library.auth.secret.data')
+- DBUSERPOSTFIX: retrieved from key AUTH_BASIC_DATABASE_USERNAMESPOSTFIX from _COMPONENT_-auth secret (see 'hull.vidispine.addon.library.auth.secret.data')
+- DBADMINPASSWORD: retrieved from key AUTH_BASIC_DATABASE_ADMINPASSWORD from _COMPONENT_-auth secret (see 'hull.vidispine.addon.library.auth.secret.data')
+- DBNAME: retrieved from key AUTH_BASIC_DATABASE_NAME from _COMPONENT_ secret (see 'hull.vidispine.addon.library.component.secret.data')
+- DBUSER: retrieved from key AUTH_BASIC_DATABASE_USERNAME from _COMPONENT_ secret (see 'hull.vidispine.addon.library.component.secret.data')
+- DBPASSWORD: retrieved from key AUTH_BASIC_DATABASE_PASSWORD from _COMPONENT_ secret (see 'hull.vidispine.addon.library.component.secret.data')
+
+For _TYPE_=create the following is happening:
+1. Check if database server can be reached
+2. Verify the database with name DBNAME is accessible for DBUSER. If DBADMINUSER and DBADMINPASSWORD is given, the DBNAME and DBUSER are created in the database so that database with name DBNAME is also accessible for DBUSER. If no DBADMINUSER and DBADMINPASSWORD is given, only successful access for DBUSER to DBNAME is checked.
+
+For _TYPE_=delete the following is happening:
+1. Check if database server can be reached
+2. Reset the database with DBNAME.
+
+### hull.vidispine.addon.library.component.pod.volumes
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+_COMPONENT_: The `component` to create a volume section for
+need to be lowercase seperated with '-' (kebapcase) and are converted to the URI keys by making them camelCase.
+_SECRETS_: The additional Secrets to add to the volumes as comma-seperated list
+_CONFIGMAPS_: The additional configMap volumes to add to the volumes as comma-seperated list
+_EMPTYDIRS_: The additional emptyDir volumes to add to the volumes as comma-seperated list
+_PVCS_:  The additional persistentVolumeClaim volumes to add to the volumes as comma-seperated list
+
+Usage:
+
+This function renders a pods volumes section based on the arguments and rest of the charts configuration:
+First it traverses the _COMPONENT_ in `hull.config.specific.components` and adds all `mounts.secret`'s and `mounts.configmap`'s names as references to the volumes secret and configMap volumes. It also adds all Secrets and ConfigMaps names as references for all defined physical files which are stored under the `files/_COMPONENT_/mounts/secret` and `files/_COMPONENT_/mounts/configmap` folders. Then it adds all addional secret's, configMap's, emptyDir's and persistentVolumeClaim's static reference names provided as additional arguments where the name of the reference is the full object name which is being referenced.
+
+### hull.vidispine.addon.library.component.pod.env
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+_COMPONENT_: The `component` to create an env section for
+
+Usage:
+
+This function renders the `env` section of a pod in a standardized form that is used by VidiFlow agents mostly. Each VidiFlow agent expects a standard number of environment variables to work as demanded, those are always:
+- DBUSERPOSTFIX: retrieved from key AUTH_BASIC_DATABASE_USERNAMESPOSTFIX from _COMPONENT_-auth secret (see 'hull.vidispine.addon.library.auth.secret.data')
+- DBADMINUSER: retrieved from key AUTH_BASIC_DATABASE_ADMINUSERNAME from _COMPONENT_-auth secret (see 'hull.vidispine.addon.library.auth.secret.data')
+- DBADMINPASSWORD: retrieved from key AUTH_BASIC_DATABASE_ADMINPASSWORD from _COMPONENT_-auth secret (see 'hull.vidispine.addon.library.auth.secret.data')
+
+Additional env vars are added if preconditions are met:
+- if an _TYPE_ 'index' endpoint is configured(see hull.vidispine.addon.library.get.endpoint.key):
+  - ELASTICSEARCH__USERNAME: retrieved from key AUTH_BASIC_INDEX_USERNAME from _COMPONENT_-auth secret (see 'hull.vidispine.addon.library.auth.secret.data')
+  - ELASTICSEARCH__PASSWORD: retrieved from key AUTH_BASIC_INDEX_PASSWORD from _COMPONENT_-auth secret (see 'hull.vidispine.addon.library.auth.secret.data')
+- if for the _COMPONENT_ the `auth` block exists with `clientId` and `clientSecret`:
+  - CLIENTSECRET__CLIENTID: retrieved from key CLIENT_<_COMPONENT_>_ID from _COMPONENT_-auth secret (see 'hull.vidispine.addon.library.auth.secret.data')
+  - CLIENTSECRET__CLIENTSECRET: retrieved from key CLIENT_<_COMPONENT_>_SECRET from _COMPONENT_-auth secret (see 'hull.vidispine.addon.library.auth.secret.data')
+- if for the _COMPONENT_ the `database` block exists:
+  - CONNECTIONSTRINGS__<database.connectionStringEnvVarSuffix>: retrieved from key database-connectionString from _COMPONENT_ secret (see 'hull.vidispine.addon.library.component.secret.data')
+- if an `amq` or `amqInternal` endpoint is defined for endpoint `rabbitmq`:
+  - ENDPOINTS__RABBITMQCONNECTIONSTRING: retrieved from key rabbitmq-connectionString from _COMPONENT_ secret (see 'hull.vidispine.addon.library.component.secret.data')
