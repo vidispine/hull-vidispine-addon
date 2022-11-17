@@ -263,7 +263,7 @@ When the `hull-vidispine-addon` detects the presence of files and folders matchi
 
 To wrap up the example, the contents of 
 
-`files/hull-vidispine-addon/installation/endpoints/20_authservice.yaml` 
+`files/hull-vidispine-addon/installation/endpoints/20_authservice/20_clients.yaml` 
 
 could for example be:
 
