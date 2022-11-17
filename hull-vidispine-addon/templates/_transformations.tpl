@@ -14,7 +14,7 @@
         {{- if typeIs "map[string]interface {}" $value -}}
             {{- $params := default nil $value._HULL_TRANSFORMATION_ -}}
             {{- range $sfKey, $sfValue := $shortForms -}}
-                {{- if (hasKey $value $sfKey) -}}}}
+                {{- if (hasKey $value $sfKey) -}}
                     {{- $params = dict "NAME" (first $sfValue) (last $sfValue) (first (values (index $value $sfKey))) -}}
                 {{- end -}} 
             {{- end -}} 
@@ -34,7 +34,7 @@
             {{- $params := default nil nil -}}
             {{- if (or (hasPrefix "_HULL_TRANSFORMATION_" $value) (hasPrefix "_HT?" $value) (hasPrefix "_HT*" $value) (hasPrefix "_HT!" $value) (hasPrefix "_HT^" $value)) -}}
                 {{- range $sfKey, $sfValue := $shortForms -}}
-                    {{- if (hasPrefix $sfKey $value) -}}}}
+                    {{- if (hasPrefix $sfKey $value) -}}
                         {{- $params = dict "NAME" (first $sfValue) (last $sfValue) (trimPrefix $sfKey $value) -}}
                     {{- end -}} 
                 {{- end -}} 
@@ -57,14 +57,14 @@
     {{- end -}}
 {{- end -}}
 {{- if typeIs "[]interface {}" $source -}}
-
     {{- range $listentry := $source -}}
-        {{- $newlistentry := include "hull.vidispine.addon.transformation" (dict "PARENT_CONTEXT" $parent "SOURCE" $listentry "CALLER" nil "CALLER_KEY" nil) -}}
-        
+        {{- $newlistentry := include "hull.vidispine.addon.transformation" (dict "PARENT_CONTEXT" $parent "SOURCE" $listentry "CALLER" nil "CALLER_KEY" nil) -}}     
     {{- end -}}
     {{- $t2 := set $caller $callerKey $source -}}
 {{- end -}}
 {{- end -}}
+
+
 
 {{- define "hull.vidispine.addon.producturis" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
@@ -91,6 +91,8 @@
 {{- end -}}
 {{- end -}}
 
+
+
 {{- define "hull.vidispine.addon.coruris" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $key := (index . "KEY") -}}
@@ -113,13 +115,7 @@
 {{- end -}}
 {{- end -}}
 
-{{- define "hull.vidispine.addon.producticon" -}}
-{{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $key := (index . "KEY") -}}
-{{- $iconFile := (index . "ICON_FILE") -}}
-Icon: |-
-{{ $parent.Files.Get (printf "%s" $iconFile) | indent 2}}
-{{- end -}}
+
 
 {{- define "hull.vidispine.addon.generalendpoint" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
@@ -141,16 +137,22 @@ Icon: |-
 {{- end -}}
 {{- end -}}
 
+
+
 {{- define "hull.vidispine.addon.ingress_classname_default" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $key := (index . "KEY") -}}
 {{ $key }}: {{ printf "nginx-%s" ($parent.Release.Name | quote) }}
 {{- end -}}
 
+
+
 {{- define "hull.vidispine.addon.makefullname" -}}
 {{- $key := (index . "KEY") -}}
 {{ $key }}: {{ template "hull.transformation.fullname" . }}
 {{- end -}}
+
+
 
 {{- define "hull.vidispine.addon.imagepullsecrets" -}}
 {{- $key := (index . "KEY") -}}
@@ -158,292 +160,12 @@ Icon: |-
   {{ template "hull.object.pod.imagePullSecrets" (dict "PARENT_CONTEXT" (index . "PARENT") "SPEC" (index . "SPEC") "HULL_ROOT_KEY" "hull") }}
 {{- end -}}
 
-{{- define "hull.vidispine.addon.vidiflow.component.secret.data" -}}
-{{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $key := (index . "KEY") -}}
-{{- $component := (index . "COMPONENT") -}}
-{{- $timeout := default "60" (index . "TIMEOUT") }}
-{{ $key }}:
-{{ if (index $parent.Values.hull.config.specific.components $component).mounts }}
-{{ range $filename, $filecontent := (index $parent.Values.hull.config.specific.components $component).mounts }}
-    {{ $filename }}:
-      path: files/{{ $component }}-{{ $filename }}
-{{ end }}
-{{ end }}
-{{ if (index $parent.Values.hull.config.specific.components $component).database }}
-    database-name:
-      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name }}
-    database-username: 
-      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username }}
-        {{- $parent.Values.hull.config.specific.database.usernamesPostfix }}
-    database-password:
-      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.password }}    
-    database-connection-string:
-      inline: 
-        {{ if (eq $parent.Values.hull.config.specific.database.type "mssql") -}}
-        Data Source=
-        {{- printf "%s,%s" $parent.Values.hull.config.specific.database.host (toString $parent.Values.hull.config.specific.database.port) -}}
-        ;Initial Catalog=
-        {{- (index $parent.Values.hull.config.specific.components $component).database.name -}}
-        ;MultipleActiveResultSets=true;User ID=
-        {{- (index $parent.Values.hull.config.specific.components $component).database.username -}}
-        ;Password={{- (index $parent.Values.hull.config.specific.components $component).database.password -}}
-        ;Connect Timeout=
-        {{- $timeout -}}
-        {{- end -}}
-        {{- if (eq $parent.Values.hull.config.specific.database.type "postgres") -}}
-        Server=
-        {{- $parent.Values.hull.config.specific.database.host -}}
-        ;Port=
-        {{- (toString $parent.Values.hull.config.specific.database.port) -}}
-        ;Database=
-        {{- (index $parent.Values.hull.config.specific.components $component).database.name -}}
-        ;User ID=
-        {{- (index $parent.Values.hull.config.specific.components $component).database.username -}}
-        {{- $parent.Values.hull.config.specific.database.usernamesPostfix -}}
-        ;Password=
-        {{- (index $parent.Values.hull.config.specific.components $component).database.password -}}
-        {{- end -}}
-        {{- end -}}
-{{- end -}}
 
-{{- define "hull.vidispine.addon.vidiflow.component.ingress.rules" -}}
-{{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $key := (index . "KEY") -}}
-{{- $componentInputs := (index . "COMPONENTS") -}}
-{{- $endpoint := default "vidiflow" (index . "ENDPOINT") -}}
-{{- $portName := default "http" (index . "PORTNAME") -}}
-{{- $components := regexSplit "," ($componentInputs | trim) -1 -}}
-{{- if $components }}
-{{ $key }}:
-{{ range $componentKebapCase := $components }}
-{{- $componentSnakeCase := (regexReplaceAll "-" $componentKebapCase "_") | trim -}}
-{{- $componentUri := camelcase $componentSnakeCase | untitle | toString }}
-  {{ $componentKebapCase }}:
-    host: "{{ (urlParse (index (index $parent.Values.hull.config.general.data.endpoints $endpoint).uri $componentUri)).hostname }}"
-    http:
-      paths:
-        {{ $componentKebapCase }}:
-          path: {{ (urlParse (index (index $parent.Values.hull.config.general.data.endpoints $endpoint).uri $componentUri)).path }}
-          pathType: ImplementationSpecific
-          backend:
-            service: 
-              name: {{ $componentKebapCase }}
-              port:
-                name: {{ $portName }}
-{{ end }}
-{{ end }}
-{{- end -}}
 
-{{- define "hull.vidispine.addon.vidiflow.component.pod.volumes" -}}
+{{- define "hull.vidispine.addon.producticon" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $key := (index . "KEY") -}}
-{{- $component := (index . "COMPONENT") -}}
-{{ $key }}:
-  settings:
-    secret:
-      defaultMode: 0744
-      secretName: {{ $component }}
-  certs:
-    enabled: $parent.Values.hull.config.general.data.installation.config.customCaCertificates
-    secret:
-      secretName: "custom-ca-certificates"
-  etcssl:
-    enabled: $parent.Values.hull.config.general.data.installation.config.customCaCertificates
-    emptyDir: {}
+{{- $iconFile := (index . "ICON_FILE") -}}
+Icon: |-
+{{ $parent.Files.Get (printf "%s" $iconFile) | indent 2}}
 {{- end -}}
-
-{{- define "hull.vidispine.addon.vidiflow.component.pod.env" -}}
-{{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $key := (index . "KEY") -}}
-{{- $component := (index . "COMPONENT") -}}
-{{- $connectionstringsuffix := default "" (index . "CONNECTIONSTRINGSUFFIX") -}}
-{{ $key }}:
-  'ENDPOINTS__RABBITMQCONNECTIONSTRING':
-    valueFrom:
-      secretKeyRef:
-        name: messagebus
-        key: connectionString
-  'DBUSERPOSTFIX':
-    valueFrom:
-      secretKeyRef:
-        name: database
-        key: usernamesPostfix
-  'DBADMINUSER':
-    valueFrom:
-      secretKeyRef:
-        name: database
-        key: adminUsername
-  'DBADMINPASSWORD':
-    valueFrom:
-      secretKeyRef:
-        name: database
-        key: adminPassword
-  'ELASTICSEARCH__USERNAME':
-    valueFrom:
-      secretKeyRef:
-        name: index
-        key: username
-  'ELASTICSEARCH__PASSWORD':
-    valueFrom:
-      secretKeyRef:
-        name: index
-        key: password
-{{ if (index $parent.Values.hull.config.specific.components $component).database }}
-{{ if (hasKey (index $parent.Values.hull.config.specific.components $component).database "connectionStringEnvVarSuffix") }}
-  "CONNECTIONSTRINGS__{{ (index $parent.Values.hull.config.specific.components $component).database.connectionStringEnvVarSuffix }}":
-{{ else }}
-  "CONNECTIONSTRINGS":
-{{ end }}
-    valueFrom:
-      secretKeyRef:
-        name: "{{ $component }}"
-        key:  database-connection-string
-{{ end }}
-{{ if (index $parent.Values.hull.config.specific.components $component).auth }}
-  'CLIENTSECRET__CLIENTID':
-    valueFrom:
-      secretKeyRef:
-        name: "authservice-token-secret"
-        key:  "{{ $component }}-client-id"
-  'CLIENTSECRET__CLIENTSECRET':
-    valueFrom:
-      secretKeyRef:
-        name: "authservice-token-secret"
-        key:  "{{ $component }}-client-secret"
-{{- end -}}
-{{- end -}}
-
-{{- define "hull.vidispine.addon.vidiflow.component.job.database" -}}
-{{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $key := (index . "KEY") -}}
-{{- $component := (index . "COMPONENT") -}}
-{{- $type := (index . "TYPE") -}}
-{{ $key }}:
-  initContainers:
-    check-database-ready:
-      image:
-        repository: vpms/dbtools
-        tag: _HT!"{{ $parent.Values.hull.config.specific.tags.dbTools | toString }}"
-      env:
-        DBHOST:
-          value: _HT*hull.config.specific.database.host
-        DBPORT:
-          value: _HT!{{ $parent.Values.hull.config.specific.database.port | toString | quote }}
-        DBTYPE:
-          value: _HT*hull.config.specific.database.type
-        DBADMINUSER:
-          valueFrom:
-            secretKeyRef:
-              name: database
-              key: adminUsername
-        DBADMINPASSWORD:
-          valueFrom:
-            secretKeyRef:
-              name: database
-              key: adminPassword
-        DBUSERPOSTFIX:
-          valueFrom:
-            secretKeyRef:
-              name: database
-              key: usernamesPostfix
-      args:
-      - "/bin/sh"
-      - "-c"
-      - /scripts/check-database-server-ready.sh
-  containers:
-{{ if (eq $type "create") }}
-    create-database:
-      args:
-      - "/bin/sh"
-      - "-c"
-      - /scripts/create-database.sh
-{{ end }}
-{{ if (eq $type "reset") }}
-    reset-database:
-      args:
-      - "/bin/sh"
-      - "-c"
-      - /scripts/reset-database.sh
-{{ end }}  
-      image:
-        repository: vpms/dbtools
-        tag: _HT!"{{ $parent.Values.hull.config.specific.tags.dbTools | toString }}"
-      env:
-        DBHOST:
-          value: _HT*hull.config.specific.database.host
-        DBPORT:
-          value: _HT!{{ $parent.Values.hull.config.specific.database.port | toString | quote }}
-        DBTYPE:
-          value: _HT*hull.config.specific.database.type
-        DBADMINUSER:
-          valueFrom:
-            secretKeyRef:
-              name: database
-              key: adminUsername
-        DBADMINPASSWORD:
-          valueFrom:
-            secretKeyRef:
-              name: database
-              key: adminPassword
-        DBUSERPOSTFIX:
-          valueFrom:
-            secretKeyRef:
-              name: database
-              key: usernamesPostfix
-        DBNAME:
-          valueFrom:
-            secretKeyRef:
-              name: "{{ $component }}"
-              key: database-name
-        DBUSER:
-          valueFrom:
-            secretKeyRef:
-              name: "{{ $component }}"
-              key: database-username
-        DBPASSWORD:
-          valueFrom:
-            secretKeyRef:
-              name: "{{ $component }}"
-              key: database-password
-{{ end }}
-
-{{- define "hull.vidispine.addon.vidiflow.secret.messagebus.connectionstring" -}}
-{{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $key := (index . "KEY") -}}
-{{- $type := (index . "TYPE") -}}
-{{- if (eq $parent.Values.hull.config.specific.messagebus.type "rabbitmq") -}}
-{{ $key }}:
-   {{ printf "%s" "amqp://" }}
-{{- $parent.Values.hull.config.specific.messagebus.username }}
-{{- printf "%s" ":" }}
-{{- $parent.Values.hull.config.specific.messagebus.password }}
-{{- printf "%s" "@" }}
-{{- $url := default $parent.Values.hull.config.general.data.endpoints.rabbitmq.uri.amq $parent.Values.hull.config.general.data.endpoints.rabbitmq.uri.amqInternal }}
-{{- printf "%s:%s" (urlParse $url).hostname ((regexSplit ":" $url -1) | last) }}
-{{- else -}}
-""
-{{- end -}}
-{{- end -}}
-
-{{- define "hull.vidispine.addon.vidiflow.secret.authservicetokensecret" -}}
-{{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $key := (index . "KEY") -}}
-{{ $key }}:
-{{ range $k, $v := $parent.Values.hull.config.specific.components }}
-{{ if (hasKey $v "auth") }}
-  {{ $k }}-client-id: 
-    inline: {{ $v.auth.clientId }}
-  {{ $k }}-client-secret: 
-    inline: {{ $v.auth.clientSecret }}  
-{{ end }}
-{{ end }}
-  installerClientId: 
-    inline: {{ $parent.Values.hull.config.specific.authService.installerClientId }}
-  installerClientSecret: 
-    inline: {{ $parent.Values.hull.config.specific.authService.installerClientSecret }}
-  productClientId: 
-    inline: ""
-  productClientSecret: 
-    inline: "" 
-{{ end }}
