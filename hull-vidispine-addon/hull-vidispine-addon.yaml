@@ -288,16 +288,16 @@ hull:
                   secretRef:
                     name: auth
               volumeMounts:
+                etcssl:
+                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+                  name: etcssl
+                  mountPath: '/etc/ssl/certs'
                 'installation':
                   name: 'installation'
                   mountPath: /script
                 custom-installation-files:
                   name: custom-installation-files
                   mountPath: /custom-installation-files
-                etcssl:
-                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
-                  name: etcssl
-                  mountPath: '/etc/ssl/certs'
                 _HULL_TRANSFORMATION_:
                   NAME: hull.util.transformation.tpl
                   CONTENT: |-
@@ -364,10 +364,6 @@ hull:
                 custom-installation-files:
                   name: custom-installation-files
                   mountPath: /custom-installation-files
-                etcssl:
-                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
-                  name: etcssl
-                  mountPath: '/etc/ssl/certs'
                 _HULL_TRANSFORMATION_:
                   NAME: hull.util.transformation.tpl
                   CONTENT: |-
@@ -382,6 +378,10 @@ hull:
                         },
                       {{ end }}
                     }
+                etcssl:
+                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
+                  name: etcssl
+                  mountPath: '/etc/ssl/certs'
           volumes:
             installation:
               secret:
