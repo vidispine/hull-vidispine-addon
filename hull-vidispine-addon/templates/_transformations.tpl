@@ -14,7 +14,7 @@
         {{- if typeIs "map[string]interface {}" $value -}}
             {{- $params := default nil $value._HULL_TRANSFORMATION_ -}}
             {{- range $sfKey, $sfValue := $shortForms -}}
-                {{- if (hasKey $value $sfKey) -}}}}
+                {{- if (hasKey $value $sfKey) -}}
                     {{- $params = dict "NAME" (first $sfValue) (last $sfValue) (first (values (index $value $sfKey))) -}}
                 {{- end -}} 
             {{- end -}} 
@@ -34,7 +34,7 @@
             {{- $params := default nil nil -}}
             {{- if (or (hasPrefix "_HULL_TRANSFORMATION_" $value) (hasPrefix "_HT?" $value) (hasPrefix "_HT*" $value) (hasPrefix "_HT!" $value) (hasPrefix "_HT^" $value)) -}}
                 {{- range $sfKey, $sfValue := $shortForms -}}
-                    {{- if (hasPrefix $sfKey $value) -}}}}
+                    {{- if (hasPrefix $sfKey $value) -}}
                         {{- $params = dict "NAME" (first $sfValue) (last $sfValue) (trimPrefix $sfKey $value) -}}
                     {{- end -}} 
                 {{- end -}} 
@@ -57,14 +57,14 @@
     {{- end -}}
 {{- end -}}
 {{- if typeIs "[]interface {}" $source -}}
-
     {{- range $listentry := $source -}}
-        {{- $newlistentry := include "hull.vidispine.addon.transformation" (dict "PARENT_CONTEXT" $parent "SOURCE" $listentry "CALLER" nil "CALLER_KEY" nil) -}}
-        
+        {{- $newlistentry := include "hull.vidispine.addon.transformation" (dict "PARENT_CONTEXT" $parent "SOURCE" $listentry "CALLER" nil "CALLER_KEY" nil) -}}     
     {{- end -}}
     {{- $t2 := set $caller $callerKey $source -}}
 {{- end -}}
 {{- end -}}
+
+
 
 {{- define "hull.vidispine.addon.producturis" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
@@ -91,6 +91,8 @@
 {{- end -}}
 {{- end -}}
 
+
+
 {{- define "hull.vidispine.addon.coruris" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $key := (index . "KEY") -}}
@@ -113,13 +115,7 @@
 {{- end -}}
 {{- end -}}
 
-{{- define "hull.vidispine.addon.producticon" -}}
-{{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $key := (index . "KEY") -}}
-{{- $iconFile := (index . "ICON_FILE") -}}
-Icon: |-
-{{ $parent.Files.Get (printf "%s" $iconFile) | indent 2}}
-{{- end -}}
+
 
 {{- define "hull.vidispine.addon.generalendpoint" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
@@ -141,19 +137,35 @@ Icon: |-
 {{- end -}}
 {{- end -}}
 
+
+
 {{- define "hull.vidispine.addon.ingress_classname_default" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $key := (index . "KEY") -}}
 {{ $key }}: {{ printf "nginx-%s" ($parent.Release.Name | quote) }}
 {{- end -}}
 
+
+
 {{- define "hull.vidispine.addon.makefullname" -}}
 {{- $key := (index . "KEY") -}}
 {{ $key }}: {{ template "hull.transformation.fullname" . }}
 {{- end -}}
 
+
+
 {{- define "hull.vidispine.addon.imagepullsecrets" -}}
 {{- $key := (index . "KEY") -}}
 {{ $key }}: 
   {{ template "hull.object.pod.imagePullSecrets" (dict "PARENT_CONTEXT" (index . "PARENT") "SPEC" (index . "SPEC") "HULL_ROOT_KEY" "hull") }}
+{{- end -}}
+
+
+
+{{- define "hull.vidispine.addon.producticon" -}}
+{{- $parent := (index . "PARENT_CONTEXT") -}}
+{{- $key := (index . "KEY") -}}
+{{- $iconFile := (index . "ICON_FILE") -}}
+Icon: |-
+{{ $parent.Files.Get (printf "%s" $iconFile) | indent 2}}
 {{- end -}}
