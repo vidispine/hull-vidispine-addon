@@ -194,12 +194,17 @@ false
   {{- if (eq $info "connectionString") -}}
     {{- if (eq $endpointKey "rabbitmq") -}}
       {{- $url := default $endpoint.uri.amq $endpoint.uri.amqInternal }}
-      {{- $start := (regexSplit ":" $url -1) | first | trim -}}      
-      {{- printf "%s://" $start -}}
-      {{- $endpoint.auth.basic.username -}}
-      {{- printf "%s" ":" }}
-      {{- $endpoint.auth.basic.password -}}   
-      {{- printf "@%s" (trimPrefix (printf "%s://" $start) $url) }}        
+      {{- $start := (regexSplit ":" $url -1) | first | trim -}}  
+      {{- $remainder := trimPrefix (printf "%s://" $start) $url }}
+      {{- if (and (contains ":" $remainder) (contains "@" $remainder)) }}
+        {{- printf "%s" $url }}
+      {{- else -}}      
+        {{- printf "%s://" $start -}}
+        {{- $endpoint.auth.basic.username -}}
+        {{- printf "%s" ":" }}
+        {{- $endpoint.auth.basic.password -}}
+        {{- printf "@%s" $remainder }}
+      {{- end -}}
     {{- end -}}    
   {{- end -}}
   {{- if (eq $info "vhost") -}}
