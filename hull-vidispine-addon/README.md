@@ -947,6 +947,8 @@ _COMPONENTS_: The `component`s from `hull.config.specific.components` as a comma
 _ENDPOINT_: The endpoint for which the URIs created from _COMPONENTS_ are all defined
 _PORTNAME_: The name of the port that is targeted, defaults to "http" if not set
 _SERVICENAME_: The name of the service that is targeted
+_STATIC_SERVICENAME_: Set `staticName` on service name accordingly, default is false
+
 
 Usage:
 
