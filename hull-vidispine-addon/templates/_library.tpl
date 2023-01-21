@@ -360,6 +360,7 @@ rabbitmq-connectionString:
 {{ $endpoint := default "vidiflow" (index . "ENDPOINT") }}
 {{ $portName := default "http" (index . "PORTNAME") }}
 {{ $serviceName := default "" (index . "SERVICENAME") }}
+{{ $staticServiceName := default false (index . "STATIC_SERVICENAME") }}
 {{ $components := regexSplit "," ($componentInputs | trim) -1 }}
 {{ if $components }}
 {{ range $componentKebapCase := $components }}
@@ -379,6 +380,7 @@ rabbitmq-connectionString:
 {{ else }}
             name: {{ $serviceName }}
 {{ end }}
+            staticName: {{ $staticServiceName }}
             port:
               name: {{ $portName }}
 {{ end }}
