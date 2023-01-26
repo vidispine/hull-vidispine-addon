@@ -982,7 +982,7 @@ _COMPONENT_: The `component` to create a database job for
 _TYPE_: The type of Job. Allowed values: create|reset
 Usage:
 
-This function full renders job objects that either create or reset a database defined for _COMPONENT_. The container used for these database operations is the 'vpms/dbtools' and the tag to use is given in the `hull.config.specific.tags.dbTools` field. In order to work correctly, the following environment variables are provided to each 'vpms/dbtools' instance executed:
+This function full renders job objects that either create or reset a database defined for _COMPONENT_. The container used for these database operations is found in the `hull.config.specific.images.dbTools.repository` field (default is 'vpms/dbtools') and the tag to use is given in the `hull.config.specific.images.dbTools.tag` field (default "1.8"). In order to work correctly, the following environment variables are provided to each 'vpms/dbtools' instance executed:
 - DBHOST: retrieved from the database endpoints (`postgres` or `mssql`) `uri.address` field
 - DBPORT: retrieved from the database endpoints (`postgres` or `mssql`) `uri.address` field
 - DBTYPE: `postgres` or `mssql`, determined by hull.vidispine.addon.library.get.endpoint.key function

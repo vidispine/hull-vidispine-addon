@@ -396,11 +396,12 @@ rabbitmq-connectionString:
 {{ $databaseKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
 {{ $databaseHost := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "host") }}
 {{ $databasePort := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "port") }}
+restartPolicy: {{ default "Never" (index . "RESTART_POLICY") }}
 initContainers:
   check-database-ready:
     image:
-      repository: vpms/dbtools
-      tag: {{ $parent.Values.hull.config.specific.tags.dbTools | toString | quote }}
+      repository: {{ default "vpms/dbtools" $parent.Values.hull.config.specific.images.dbTools.repository }}
+      tag: {{ (default "1.8" (default $parent.Values.hull.config.specific.tags.dbTools $parent.Values.hull.config.specific.images.dbTools.tag)) | toString | quote }}
     env:
       DBHOST:
         value: {{ $databaseHost }}
@@ -459,8 +460,8 @@ containers:
     - /scripts/reset-database.sh
 {{ end }}
     image:
-      repository: vpms/dbtools
-      tag: {{ $parent.Values.hull.config.specific.tags.dbTools | toString | quote }}
+      repository: {{ default "vpms/dbtools" $parent.Values.hull.config.specific.images.dbTools.repository }}
+      tag: {{ (default "1.8" (default $parent.Values.hull.config.specific.tags.dbTools $parent.Values.hull.config.specific.images.dbTools.tag)) | toString | quote }}
     env:
       DBHOST:
         value: {{ $databaseHost }}
