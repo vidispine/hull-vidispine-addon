@@ -400,8 +400,8 @@ restartPolicy: {{ default "Never" (index . "RESTART_POLICY") }}
 initContainers:
   check-database-ready:
     image:
-      repository: {{ default "vpms/dbtools" $parent.Values.hull.config.specific.images.dbTools.repository }}
-      tag: {{ (default "1.8" (default $parent.Values.hull.config.specific.tags.dbTools $parent.Values.hull.config.specific.images.dbTools.tag)) | toString | quote }}
+      repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
+      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.8" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
     env:
       DBHOST:
         value: {{ $databaseHost }}
@@ -460,8 +460,8 @@ containers:
     - /scripts/reset-database.sh
 {{ end }}
     image:
-      repository: {{ default "vpms/dbtools" $parent.Values.hull.config.specific.images.dbTools.repository }}
-      tag: {{ (default "1.8" (default $parent.Values.hull.config.specific.tags.dbTools $parent.Values.hull.config.specific.images.dbTools.tag)) | toString | quote }}
+      repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
+      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.8" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
     env:
       DBHOST:
         value: {{ $databaseHost }}
