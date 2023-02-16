@@ -212,9 +212,9 @@ false
       {{- $url := default $endpoint.uri.amq $endpoint.uri.amqInternal }}
       {{- $start := (regexSplit ":" $url -1) | first | trim -}}
       {{- $end := (trimPrefix (printf "%s://" $start) $url) }}
-      {{- $vhost := "" -}}
+      {{- $vhost := "/" -}}
       {{- if (and (contains "/" $end) (not (hasSuffix "/" $end))) -}}
-      {{- $vhost = (regexSplit "/" $end -1) | last -}}
+      {{- $vhost = (regexSplit "/" $end -1) | last | replace "%2F" "/" | replace "%2f" "/" -}}
       {{- end -}}
       {{- $vhost }}
       {{- end -}}
