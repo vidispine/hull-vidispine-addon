@@ -399,30 +399,18 @@ hull:
 
     secret:
 
-      'auth':
+      auth:
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
-          "helm.sh/hook-weight": "-80"
+          "helm.sh/hook-weight": "-100"
           "helm.sh/hook-delete-policy": before-hook-creation
-        data:
-          CLIENT_INSTALLER_ID:
-            inline: ""
-          CLIENT_INSTALLER_SECRET:
-            inline: ""
-          CLIENT_PRODUCT_ID:
-            inline: ""
-          CLIENT_PRODUCT_SECRET:
-            inline: ""
-          AUTH_BASIC_VIDICORE_ADMINUSER:
-            inline: ""
-          AUTH_BASIC_VIDICORE_ADMINPASSWORD:
-            inline: ""
+        data: _HT/hull.vidispine.addon.library.auth.secret.data
 
       'custom-ca-certificates':
         enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
-          "helm.sh/hook-weight": "-80"
+          "helm.sh/hook-weight": "-100"
           "helm.sh/hook-delete-policy": before-hook-creation
         data: |-
           _HT!{
@@ -957,7 +945,8 @@ hull:
                                     $value.noGet,
                                     $contentType,
                                     $this.GetHttpHeaders($authSubresource, $contentType, $extraHeaders, $value),
-                                    $value.getQueryParams
+                                    $value.getQueryParams,
+                                    $value.customGetScriptJsonResponseConfigReplacements
                                 )
 
                                 if (-Not ($this._successes))
@@ -1013,7 +1002,7 @@ hull:
                   }
 
                   # Checks entities and performs required operations (DELETE/PUT/POST)
-                  hidden [PSCustomObject] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $content, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting, [PSCustomObject] $postQueryParams, [bool] $getUriExcludeIdentifier, [string] $getCustomScript, [bool] $noGet, [string] $contentType, [PSCustomObject] $headers, [PSCustomObject] $getQueryParams)
+                  hidden [PSCustomObject] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $content, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting, [PSCustomObject] $postQueryParams, [bool] $getUriExcludeIdentifier, [string] $getCustomScript, [bool] $noGet, [string] $contentType, [PSCustomObject] $headers, [PSCustomObject] $getQueryParams, [PSCustomObject] $customGetScriptJsonResponseConfigReplacements)
                   {
                       $apiEndpoint = $apiEndpoint.Trim('/')
                       $uri = "$apiEndpoint/$identifier"
@@ -1024,6 +1013,7 @@ hull:
                       $message = ""
                       $statusCode = 500
                       $result = $null
+                      $json = "{}"
 
                       $lastMethod = ""
                       $lastUri = ""
@@ -1087,6 +1077,7 @@ hull:
                                     if ($result -ne $null)
                                     {
                                       $json = $result | ConvertFrom-Json
+                                      $this.WriteLog("JSON response from getCustomScript: $($json)")
                                       if ($json.statusCode)
                                       {
                                         $statusCode = $json.statusCode
@@ -1102,6 +1093,12 @@ hull:
                                         $uriDelete = $json.uriDelete
                                         $this.WriteLog("Updated DELETE Uri: $($uriDelete)")
                                       }
+                                      if ($json.identifier)
+                                      {
+                                        $identifier = $json.identifier
+                                        $this.WriteLog("Updated Identifier: $($identifier)")
+                                      }
+
                                     }
                                   }
                               }
@@ -1121,7 +1118,26 @@ hull:
                       }
 
                       $this.WriteLog("**** StatusCode is $($statusCode)")
-
+ 
+                      if ($customGetScriptJsonResponseConfigReplacements)
+                      {
+                        $this.WriteLog("Check customGetScriptJsonResponseConfigReplacements")
+                        foreach($placeholder in $customGetScriptJsonResponseConfigReplacements.Keys)
+                        {
+                          $jsonKey = $customGetScriptJsonResponseConfigReplacements[$placeholder]
+                          $this.WriteLog("Check customGetScriptJsonResponseConfigReplacements key $($jsonKey)")
+                          if ($json.$jsonKey -ne $null)
+                          {
+                            $this.WriteLog("Replacing '$($placeholder)' in config with '$($json.$jsonKey)")
+                            $content = $content.replace($placeholder, $json.$jsonKey)
+                          }
+                          else
+                          {
+                            $this.WriteLog("$($jsonkey) not found in JSON response of getCustomScript") 
+                          }
+                        }
+                      }
+                      $this.WriteLog("Content is '$($content)'")
                       if ($statusCode -eq 200)
                       {
                           if($toBeDeleted) {

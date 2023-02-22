@@ -226,8 +226,11 @@ false
 
 {{ define "hull.vidispine.addon.library.auth.secret.data" }}
 {{ $parent := (index . "PARENT_CONTEXT") }}
-{{ $endpoints := (index . "ENDPOINTS") }}
-{{ $endpointsList := regexSplit "," ($endpoints | trim) -1 }}
+{{ $endpoints := default nil (index . "ENDPOINTS") }}
+{{ $endpointsList := keys $parent.Values.hull.config.general.data.endpoints | sortAlpha }}
+{{ if (ne nil $endpoints) }}
+{{ $endpointsList = regexSplit "," ($endpoints | trim) -1 }}
+{{ end }}
 {{ range $endpointInput := $endpointsList }}
 {{ $endpointKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" $endpointInput) }}
 {{ if (hasKey (index $parent.Values.hull.config.general.data.endpoints $endpointKey) "auth") }}
