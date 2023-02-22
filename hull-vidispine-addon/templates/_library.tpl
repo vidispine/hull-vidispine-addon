@@ -212,9 +212,9 @@ false
       {{- $url := default $endpoint.uri.amq $endpoint.uri.amqInternal }}
       {{- $start := (regexSplit ":" $url -1) | first | trim -}}
       {{- $end := (trimPrefix (printf "%s://" $start) $url) }}
-      {{- $vhost := "" -}}
+      {{- $vhost := "/" -}}
       {{- if (and (contains "/" $end) (not (hasSuffix "/" $end))) -}}
-      {{- $vhost = (regexSplit "/" $end -1) | last -}}
+      {{- $vhost = (regexSplit "/" $end -1) | last | replace "%2F" "/" | replace "%2f" "/" -}}
       {{- end -}}
       {{- $vhost }}
       {{- end -}}
@@ -226,8 +226,11 @@ false
 
 {{ define "hull.vidispine.addon.library.auth.secret.data" }}
 {{ $parent := (index . "PARENT_CONTEXT") }}
-{{ $endpoints := (index . "ENDPOINTS") }}
-{{ $endpointsList := regexSplit "," ($endpoints | trim) -1 }}
+{{ $endpoints := default nil (index . "ENDPOINTS") }}
+{{ $endpointsList := keys $parent.Values.hull.config.general.data.endpoints | sortAlpha }}
+{{ if (ne nil $endpoints) }}
+{{ $endpointsList = regexSplit "," ($endpoints | trim) -1 }}
+{{ end }}
 {{ range $endpointInput := $endpointsList }}
 {{ $endpointKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" $endpointInput) }}
 {{ if (hasKey (index $parent.Values.hull.config.general.data.endpoints $endpointKey) "auth") }}
@@ -360,6 +363,7 @@ rabbitmq-connectionString:
 {{ $endpoint := default "vidiflow" (index . "ENDPOINT") }}
 {{ $portName := default "http" (index . "PORTNAME") }}
 {{ $serviceName := default "" (index . "SERVICENAME") }}
+{{ $staticServiceName := default false (index . "STATIC_SERVICENAME") }}
 {{ $components := regexSplit "," ($componentInputs | trim) -1 }}
 {{ if $components }}
 {{ range $componentKebapCase := $components }}
@@ -379,6 +383,7 @@ rabbitmq-connectionString:
 {{ else }}
             name: {{ $serviceName }}
 {{ end }}
+            staticName: {{ $staticServiceName }}
             port:
               name: {{ $portName }}
 {{ end }}
@@ -394,11 +399,12 @@ rabbitmq-connectionString:
 {{ $databaseKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
 {{ $databaseHost := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "host") }}
 {{ $databasePort := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "port") }}
+restartPolicy: {{ default "Never" (index . "RESTART_POLICY") }}
 initContainers:
   check-database-ready:
     image:
-      repository: vpms/dbtools
-      tag: {{ $parent.Values.hull.config.specific.tags.dbTools | toString | quote }}
+      repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
+      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.8" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
     env:
       DBHOST:
         value: {{ $databaseHost }}
@@ -457,8 +463,8 @@ containers:
     - /scripts/reset-database.sh
 {{ end }}
     image:
-      repository: vpms/dbtools
-      tag: {{ $parent.Values.hull.config.specific.tags.dbTools | toString | quote }}
+      repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
+      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.8" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
     env:
       DBHOST:
         value: {{ $databaseHost }}
