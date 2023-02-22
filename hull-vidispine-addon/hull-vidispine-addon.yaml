@@ -3,6 +3,7 @@ hull:
   config:
     general:
       data:
+        endpoints: {}
         installation:
           config:
             customCaCertificates: {}
