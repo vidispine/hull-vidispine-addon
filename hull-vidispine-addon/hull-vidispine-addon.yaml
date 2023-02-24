@@ -150,7 +150,6 @@ hull:
                   _DEFAULTS_:
                     register: true
                     remove: false
-                    putUriExcludeIdentifier: true
                 10_products: 
                   apiPath: "v2/Products"
                   typeDescription: "Product"
@@ -158,7 +157,6 @@ hull:
                   _DEFAULTS_:
                     register: true
                     remove: false
-                    putUriExcludeIdentifier: true          
                 20_usecasedefinitions:
                   apiPath: "v2/UseCaseDefinitions"
                   typeDescription: "UseCaseDefinitions"
@@ -166,7 +164,6 @@ hull:
                   _DEFAULTS_:
                     register: true
                     remove: false
-                    putUriExcludeIdentifier: true
                 25_migrate:
                   apiPath: "v2/UseCaseDefinitions/Migrate"
                   typeDescription: UseCaseDefinitionsMigrate
@@ -174,7 +171,6 @@ hull:
                   _DEFAULTS_:
                     register: true
                     remove: false
-                    putUriExcludeIdentifier: true
                 30_usecaseconfiguration:
                   apiPath: "v2/UseCaseConfigurations"
                   typeDescription: "UseCaseConfigurations"
@@ -182,7 +178,6 @@ hull:
                   _DEFAULTS_:
                     register: true
                     remove: false
-                    putUriExcludeIdentifier: true
                 30_usecaseconfigurations:
                   apiPath: "v2/UseCaseConfigurations"
                   typeDescription: "UseCaseConfigurations"
@@ -190,7 +185,6 @@ hull:
                   _DEFAULTS_:
                     register: true
                     remove: false
-                    putUriExcludeIdentifier: true
                 40_metadata:
                   apiPath: "v2/Metadata"
                   typeDescription: "Metadata"
@@ -198,7 +192,6 @@ hull:
                   _DEFAULTS_:
                     register: true
                     remove: false
-                    putUriExcludeIdentifier: true
                 45_metadatagroups:
                   apiPath: "v2/MetadataGroup"
                   typeDescription: "MetadataGroup"
@@ -206,7 +199,6 @@ hull:
                   _DEFAULTS_:
                     register: true
                     remove: false
-                    putUriExcludeIdentifier: true
                 50_roles:
                   apiPath: "v2/RoleRightsMapping/Mapping"
                   typeDescription: RoleRightsMapping
@@ -214,7 +206,6 @@ hull:
                   _DEFAULTS_:
                     register: true
                     remove: false
-                    putUriExcludeIdentifier: true
                 60_productcomponents:
                   apiPath: "v2/ProductComponent"
                   typeDescription: ProductComponent
