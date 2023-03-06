@@ -911,14 +911,11 @@ hull:
                               
                               $contentType = "$(if ([String]::IsNullOrEmpty($value.contentType)) { "application/json" } else { $value.contentType })"
                               $content = $value.config
-                              if ($value.remove -eq $true)
-                              {
-                                $content = [string]::empty
-                              }
-                              elseif ($contentType -eq "application/json")
+                              if ($contentType -eq "application/json")
                               {
                                 $content = $content | ConvertTo-Json -Depth 20
                               }
+                              
                               try {
                                 $callResult = $this.CheckEntity(
                                     "$($endpoint)/$($subresource.apiPath)",
@@ -939,7 +936,8 @@ hull:
                                     $this.GetHttpHeaders($authSubresource, $contentType, $extraHeaders, $value),
                                     $value.getQueryParams,
                                     $value.customGetScriptJsonResponseConfigReplacements,
-                                    $value.deleteUriExcludeIdentifier
+                                    $value.deleteUriExcludeIdentifier,
+                                    $value.register -eq $true
                                 )
 
                                 if (-Not ($this._successes))
@@ -995,7 +993,7 @@ hull:
                   }
 
                   # Checks entities and performs required operations (DELETE/PUT/POST)
-                  hidden [PSCustomObject] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $content, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting, [PSCustomObject] $postQueryParams, [bool] $getUriExcludeIdentifier, [string] $getCustomScript, [bool] $noGet, [string] $contentType, [PSCustomObject] $headers, [PSCustomObject] $getQueryParams, [PSCustomObject] $customGetScriptJsonResponseConfigReplacements, [bool] $deleteUriExcludeIdentifier)
+                  hidden [PSCustomObject] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $content, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting, [PSCustomObject] $postQueryParams, [bool] $getUriExcludeIdentifier, [string] $getCustomScript, [bool] $noGet, [string] $contentType, [PSCustomObject] $headers, [PSCustomObject] $getQueryParams, [PSCustomObject] $customGetScriptJsonResponseConfigReplacements, [bool] $deleteUriExcludeIdentifier, [bool] $register)
                   {
                       $apiEndpoint = $apiEndpoint.Trim('/')
                       $uri = "$apiEndpoint/$identifier"
@@ -1159,41 +1157,48 @@ hull:
                           $statusCode = 404
                       }
 
-                      if ($statusCode -eq 200)
+                      if ($register)
                       {
-                          if ($overwriteExisting)
-                          {
-                              $this.WriteLog("**** '$entityType' entry '$identifier' already exists, hence PUTing instead of POSTing to update entity")
-                              $this.PutEntity($uriPut, $content, $auth, $contentType, $headers)
-                              $lastMethod = "PUT"
-                              $lastUri = $uriPut
-                          }
-                          else
-                          {
-                              $this.WriteLog("**** '$entityType' entry '$identifier' already exists, not overwriting due to flag 'overwriteExisting' not being set")
-                          }                      
-                      }
-                      elseif ($noGet -or ($statusCode -eq 404))
-                      {
-                          $this.WriteLog("**** '$entityType' entry '$identifier' does not exist and will be created now")
-                          if ($putInsteadOfPost)
-                          {
-                              $this.WriteLog("**** PUTting '$entityType' entry '$identifier' to create it since 'putInsteadOfPost' is set to true")
-                              $this.PutEntity($uriPut, $content, $auth, $contentType, $headers)
-                              $lastMethod = "PUT"
-                              $lastUri = $uriPut
-                          }
-                          else
-                          {
-                              $this.WriteLog("**** POSTing '$entityType' entry '$identifier' to create it")
-                              $this.PostEntity($apiEndpoint, $content, $auth, $postQueryParams, $contentType, $headers)
-                              $lastMethod = "POST"
-                              $lastUri = $apiEndpoint
-                          }                          
+                        if ($statusCode -eq 200)
+                        {
+                            if ($overwriteExisting)
+                            {
+                                $this.WriteLog("**** '$entityType' entry '$identifier' already exists, hence PUTing instead of POSTing to update entity")
+                                $this.PutEntity($uriPut, $content, $auth, $contentType, $headers)
+                                $lastMethod = "PUT"
+                                $lastUri = $uriPut
+                            }
+                            else
+                            {
+                                $this.WriteLog("**** '$entityType' entry '$identifier' already exists, not overwriting due to flag 'overwriteExisting' not being set")
+                            }                      
+                        }
+                        elseif ($noGet -or ($statusCode -eq 404))
+                        {
+                            $this.WriteLog("**** '$entityType' entry '$identifier' does not exist and will be created now")
+                            if ($putInsteadOfPost)
+                            {
+                                $this.WriteLog("**** PUTting '$entityType' entry '$identifier' to create it since 'putInsteadOfPost' is set to true")
+                                $this.PutEntity($uriPut, $content, $auth, $contentType, $headers)
+                                $lastMethod = "PUT"
+                                $lastUri = $uriPut
+                            }
+                            else
+                            {
+                                $this.WriteLog("**** POSTing '$entityType' entry '$identifier' to create it")
+                                $this.PostEntity($apiEndpoint, $content, $auth, $postQueryParams, $contentType, $headers)
+                                $lastMethod = "POST"
+                                $lastUri = $apiEndpoint
+                            }                          
+                        }
+                        else
+                        {
+                            throw [Exception]::new("ERROR --> Unexpected StatusCode: $($statusCode) - Message: $($message)")
+                        }
                       }
                       else
                       {
-                          throw [Exception]::new("ERROR --> Unexpected StatusCode: $($statusCode) - Message: $($message)")
+                        $this.WriteLog("**** 'Register set to false, not PUTing or POSTing.")
                       }
 
                       return @{ "lastMethod" = $lastMethod; "lastUri" = $lastUri }
