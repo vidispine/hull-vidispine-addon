@@ -116,6 +116,7 @@ hull:
                   _DEFAULTS_:
                     register: true
                     putUriExcludeIdentifier: true
+                    deleteUriExcludeIdentifier: true
                 20_clients:
                   apiPath: "v1/Client"
                   typeDescription: "Client"
@@ -123,6 +124,7 @@ hull:
                   _DEFAULTS_:
                     register: true
                     putUriExcludeIdentifier: true
+                    deleteUriExcludeIdentifier: true
                 30_roles:
                   apiPath: "v1/Roles"
                   typeDescription: "Roles"
@@ -130,6 +132,8 @@ hull:
                   _DEFAULTS_:
                     register: true
                     remove: false
+                    putUriExcludeIdentifier: true
+                    deleteUriExcludeIdentifier: true
 
             30_configportal:
               auth:
