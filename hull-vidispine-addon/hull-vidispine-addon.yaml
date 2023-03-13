@@ -1205,7 +1205,7 @@ hull:
                             if ($overwriteExisting)
                             {
                                 $this.WriteLog("**** '$entityType' entry '$identifier' already exists, hence PUTing instead of POSTing to update entity")
-                                $this.PutEntity($uriPut, $content, $putQueryParams, $auth, $contentType, $headers)
+                                $this.PutEntity($uriPut, $identifier, $content, $putQueryParams, $auth, $contentType, $headers)
                                 $lastMethod = "PUT"
                                 $lastUri = $uriPut
                             }
@@ -1220,7 +1220,7 @@ hull:
                             if ($putInsteadOfPost)
                             {
                                 $this.WriteLog("**** PUTting '$entityType' entry '$identifier' to create it since 'putInsteadOfPost' is set to true")
-                                $this.PutEntity($uriPut, $content, $putQueryParams, $auth, $contentType, $headers)
+                                $this.PutEntity($uriPut, $identifier, $content, $putQueryParams, $auth, $contentType, $headers)
                                 $lastMethod = "PUT"
                                 $lastUri = $uriPut
                             }
@@ -1253,7 +1253,7 @@ hull:
                   }
 
                   # Put an entity
-                  hidden [PSCustomObject] PutEntity([string] $putUrl, [string] $json, [PSCustomObject] $putQueryParams, [PSCustomObject] $auth, [string] $contentType, [PSCustomObject] $headers)
+                  hidden [PSCustomObject] PutEntity([string] $putUrl, [string] $identifier, [string] $json, [PSCustomObject] $putQueryParams, [PSCustomObject] $auth, [string] $contentType, [PSCustomObject] $headers)
                   {
                       $url = $this.AppendQueryParamsToUri($putUrl, $putQueryParams, $identifier, $false)
                       return $this.InvokeWebRequest($url, "PUT", $json, $headers)
