@@ -26,75 +26,63 @@ hull:
                 10_metadatafields:
                   apiPath: "metadata-field"
                   typeDescription: "MetadataField"
-                  identifierQueryParam: ""
                   _DEFAULTS_:
                     register: true
                     putInsteadOfPost: true
                 20_metadatafieldgroups:
                   apiPath: "metadata-field/field-group"
                   typeDescription: "MetadataFieldGroup"
-                  identifierQueryParam: ""
                   _DEFAULTS_:
                     register: true
                     putInsteadOfPost: true
                 90_itemnotification:
                   apiPath: "item/notification"
                   typeDescription: "ItemNotification"
-                  identifierQueryParam: ""
                   _DEFAULTS_:
                     register: true
                 91_collectionnotification:
                   apiPath: "collection/notification"
                   typeDescription: "CollectionNotification"
-                  identifierQueryParam: ""
                   _DEFAULTS_:
                     register: true
                 92_jobnotification:
                   apiPath: "job/notification"
                   typeDescription: "JobNotification"
-                  identifierQueryParam: ""
                   _DEFAULTS_:
                     register: true
                 93_storagenotification:
                   apiPath: "storage/notification"
                   typeDescription: "StorageNotification"
-                  identifierQueryParam: ""
                   _DEFAULTS_:
                     register: true
                 94_storagefilenotification:
                   apiPath: "storage/file/notification"
                   typeDescription: "StorageFileNotification"
-                  identifierQueryParam: ""
                   _DEFAULTS_:
                     register: true
                 95_filenotification:
                   apiPath: "file/notification"
                   typeDescription: "FileNotification"
-                  identifierQueryParam: ""
                   _DEFAULTS_:
                     register: true
                 96_quotanotification:
                   apiPath: "quota/notification"
                   typeDescription: "QuotaNotification"
-                  identifierQueryParam: ""
                   _DEFAULTS_:
                     register: true
                 97_groupnotification:
                   apiPath: "group/notification"
                   typeDescription: "GroupNotification"
-                  identifierQueryParam: ""
                   _DEFAULTS_:
                     register: true
                 98_documentnotification:
                   apiPath: "document/notification"
                   typeDescription: "DocumentNotification"
-                  identifierQueryParam: ""
                   _DEFAULTS_:
                     register: true
                 99_deletionlocknotification:
                   apiPath: "deletion-lock/notification"
                   typeDescription: "DeletionLockNotification"
-                  identifierQueryParam: ""
                   _DEFAULTS_:
                     register: true
             20_authservice:
@@ -112,28 +100,31 @@ hull:
                 10_resources:
                   apiPath: "v1/Resource/ApiResource"
                   typeDescription: "Scope"
-                  identifierQueryParam: "resourceName"
                   _DEFAULTS_:
                     register: true
                     putUriExcludeIdentifier: true
                     deleteUriExcludeIdentifier: true
+                    deleteQueryParams:
+                      resourceName: "$identifier"  
                 20_clients:
                   apiPath: "v1/Client"
                   typeDescription: "Client"
-                  identifierQueryParam: "clientId"
                   _DEFAULTS_:
                     register: true
                     putUriExcludeIdentifier: true
                     deleteUriExcludeIdentifier: true
+                    deleteQueryParams:
+                      clientId: "$identifier"  
                 30_roles:
                   apiPath: "v1/Roles"
                   typeDescription: "Roles"
-                  identifierQueryParam: "id"
                   _DEFAULTS_:
                     register: true
                     remove: false
                     putUriExcludeIdentifier: true
                     deleteUriExcludeIdentifier: true
+                    deleteQueryParams:
+                      id: "$identifier"  
 
             30_configportal:
               auth:
@@ -150,84 +141,72 @@ hull:
                 10_product:
                   apiPath: "v2/Products"
                   typeDescription: "Product"
-                  identifierQueryParam: "Guid"
                   _DEFAULTS_:
                     register: true
                     remove: false
                 10_products: 
                   apiPath: "v2/Products"
                   typeDescription: "Product"
-                  identifierQueryParam: "Guid"
                   _DEFAULTS_:
                     register: true
                     remove: false
                 20_usecasedefinitions:
                   apiPath: "v2/UseCaseDefinitions"
                   typeDescription: "UseCaseDefinitions"
-                  identifierQueryParam: "Guid"
                   _DEFAULTS_:
                     register: true
                     remove: false
                 25_migrate:
                   apiPath: "v2/UseCaseDefinitions/Migrate"
                   typeDescription: UseCaseDefinitionsMigrate
-                  identifierQueryParam: "Guid"
                   _DEFAULTS_:
                     register: true
                     remove: false
                 30_usecaseconfiguration:
                   apiPath: "v2/UseCaseConfigurations"
                   typeDescription: "UseCaseConfigurations"
-                  identifierQueryParam: "Guid"
                   _DEFAULTS_:
                     register: true
                     remove: false
                 30_usecaseconfigurations:
                   apiPath: "v2/UseCaseConfigurations"
                   typeDescription: "UseCaseConfigurations"
-                  identifierQueryParam: "Guid"
                   _DEFAULTS_:
                     register: true
                     remove: false
                 40_metadata:
                   apiPath: "v2/Metadata"
                   typeDescription: "Metadata"
-                  identifierQueryParam: "Guid"
                   _DEFAULTS_:
                     register: true
                     remove: false
                 45_metadatagroups:
                   apiPath: "v2/MetadataGroup"
                   typeDescription: "MetadataGroup"
-                  identifierQueryParam: "Guid"
                   _DEFAULTS_:
                     register: true
                     remove: false
                 50_roles:
                   apiPath: "v2/RoleRightsMapping/Mapping"
                   typeDescription: RoleRightsMapping
-                  identifierQueryParam: "Guid"
                   _DEFAULTS_:
                     register: true
                     remove: false
                 60_productcomponents:
                   apiPath: "v2/ProductComponent"
                   typeDescription: ProductComponent
-                  identifierQueryParam: "Guid"
                   _DEFAULTS_:
                     register: true
                     remove: false
                 70_mappedgroups:
                   apiPath: v2/ActiveDirectoryMappedGroups
                   typeDescription: ActiveDirectoryMappedGroups
-                  identifierQueryParam: Guid
                   _DEFAULTS_:
                     register: true
                     remove: false
                 80_systemendpoints:
                   apiPath: v2/SystemEndpoints
                   typeDescription: SystemEndpoints
-                  identifierQueryParam: Guid
                   _DEFAULTS_:
                     register: true
                     remove: false
@@ -515,6 +494,52 @@ hull:
               )
               Import-Module powershell-yaml
 
+              function Join-Objects($source, $extend)
+              {
+                  if($source.GetType().Name -eq "PSCustomObject" -and $extend.GetType().Name -eq "PSCustomObject")
+                  {
+                      foreach($Property in $source | Get-Member -type NoteProperty, Property)
+                      {
+                          if($extend.$($Property.Name) -eq $null)
+                          {
+                              continue;
+                          }
+                          $source.$($Property.Name) = Join-Objects $source.$($Property.Name) $extend.$($Property.Name)
+                      }
+                  }
+                  else
+                  {
+                    $source = $extend;
+                  }
+                  return $source
+              }
+              
+              function AddPropertyRecurse($source, $toExtend)
+              {
+                  if($source.GetType().Name -eq "PSCustomObject")
+                  {
+                      foreach($Property in $source | Get-Member -type NoteProperty, Property)
+                      {
+                          if($toExtend.$($Property.Name) -eq $null)
+                          {
+                              $toExtend | Add-Member -MemberType NoteProperty -Value $source.$($Property.Name) -Name $Property.Name `
+                          }
+                          else
+                          {
+                              $toExtend.$($Property.Name) = AddPropertyRecurse $source.$($Property.Name) $toExtend.$($Property.Name)
+                          }
+                      }
+                  }
+                  return $toExtend
+              }
+
+              function Json-Merge($source, $extend)
+              {
+                  $merged = Join-Objects $source $extend
+                  $extended = AddPropertyRecurse $source $merged
+                  return $extended
+              }
+
               function ParseErrorForResponseBody($Error)
               {
                   try
@@ -527,7 +552,8 @@ hull:
                               $Reader.BaseStream.Position = 0
                               $Reader.DiscardBufferedData()
                               $ResponseBody = $Reader.ReadToEnd()
-                              if ($ResponseBody.StartsWith('{')) {
+                              if ($ResponseBody.StartsWith('{')) 
+                              {
                                   $ResponseBody = $ResponseBody | ConvertFrom-Json
                               }
                               return $ResponseBody
@@ -910,14 +936,37 @@ hull:
 
                               $this.WriteLog("*** $(if ($value.remove -eq $true) {"Starting to remove"} else {"Starting to register"}) Entity $($name) for entity key '$($entityKey)'")
 
+                              if ($value.config -eq $null)
+                              {
+                                  $this.WriteLog("*** Creating empty config object")
+                                  $value.config = New-Object -TypeName PSCustomObject 
+                              }                              
                               $value.config = $this.ReadConfigFromFile($value)
                               $value.config = $this.ReadConfigValuesFromFiles($value)
                               
                               $contentType = "$(if ([String]::IsNullOrEmpty($value.contentType)) { "application/json" } else { $value.contentType })"
                               $content = $value.config
+                              $this.WriteLog("*** ContentType is '$($value.config)'")
+                                  
                               if ($contentType -eq "application/json")
                               {
-                                $content = $content | ConvertTo-Json -Depth 20
+                                  $this.WriteLog("*** ContentType is 'application/json', converting config to JSON object")
+                                  $content = $content | ConvertTo-Json -Depth 100
+                              }
+                              
+                              $deleteQueryParams = @{}
+                              if ($value.deleteQueryParams)
+                              {
+                                  $this.WriteLog("*** Using deleteQueryParams from entity config")
+                                  $deleteQueryParams = $value.deleteQueryParams
+                              }
+                              else 
+                              {
+                                  if ($value.remove -eq $true)
+                                  {
+                                      $this.WriteLog("*** Using legacy parameter 'identifierQueryParam' for specifying object to delete")
+                                      $deleteQueryParams = @{ $subresource.identifierQueryParam = $name }
+                                  }
                               }
                               
                               try {
@@ -927,7 +976,7 @@ hull:
                                     $content,
                                     $subresource.typeDescription,
                                     $value.remove -eq $true,
-                                    "$(if ($value.remove -eq $true) {$subresource.identifierQueryParam} else {''})",
+                                    $deleteQueryParams,
                                     $authSubresource,
                                     $value.putInsteadOfPost -eq $true,
                                     $value.putUriExcludeIdentifier -eq $true,
@@ -941,7 +990,8 @@ hull:
                                     $value.getQueryParams,
                                     $value.customGetScriptJsonResponseConfigReplacements,
                                     $value.deleteUriExcludeIdentifier,
-                                    $value.register -eq $true
+                                    $value.register -eq $true,
+                                    $value.putQueryParams
                                 )
 
                                 if (-Not ($this._successes))
@@ -997,7 +1047,7 @@ hull:
                   }
 
                   # Checks entities and performs required operations (DELETE/PUT/POST)
-                  hidden [PSCustomObject] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $content, [string] $entityType, [bool] $toBeDeleted, [string] $identifierQueryParam, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting, [PSCustomObject] $postQueryParams, [bool] $getUriExcludeIdentifier, [string] $getCustomScript, [bool] $noGet, [string] $contentType, [PSCustomObject] $headers, [PSCustomObject] $getQueryParams, [PSCustomObject] $customGetScriptJsonResponseConfigReplacements, [bool] $deleteUriExcludeIdentifier, [bool] $register)
+                  hidden [PSCustomObject] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $content, [string] $entityType, [bool] $toBeDeleted, [PSCustomObject] $deleteQueryParams, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting, [PSCustomObject] $postQueryParams, [bool] $getUriExcludeIdentifier, [string] $getCustomScript, [bool] $noGet, [string] $contentType, [PSCustomObject] $headers, [PSCustomObject] $getQueryParams, [PSCustomObject] $customGetScriptJsonResponseConfigReplacements, [bool] $deleteUriExcludeIdentifier, [bool] $register, [PSCustomObject] $putQueryParams)
                   {
                       $apiEndpoint = $apiEndpoint.Trim('/')
                       $uri = "$apiEndpoint/$identifier"
@@ -1022,20 +1072,7 @@ hull:
                       {
                         try
                         {
-                            if ($getQueryParams -ne $null)
-                            {
-                                $count = 0
-                                $start = "?"
-                                foreach($key in $getQueryParams.Keys)
-                                {
-                                    if ($count -gt 0)
-                                    {
-                                        $start = "&"
-                                    }
-                                    $uriGet += "$($start)$($key)=$($getQueryParams[$key])"
-                                    $count = $count + 1
-                                }
-                            }
+                            $uriGet = $this.AppendQueryParamsToUri($uriGet, $getQueryParams, $identifier, $false)
 
                             $this.WriteLog("**** Checking if entity exists, GETting uri '$($uriGet)'")
                             $responseGet = Invoke-WebRequest -Uri $uriGet -Method "GET" -headers $headers -UseBasicParsing -SkipCertificateCheck
@@ -1139,7 +1176,7 @@ hull:
                           if ($statusCode -eq 200)
                           {
                               $this.WriteLog("**** '$entityType' entry '$identifier' already exists and is going to be deleted now")
-                              $this.DeleteEntity($uriDelete, $identifier, $identifierQueryParam, $auth, $contentType, $headers)
+                              $this.DeleteEntity($uriDelete, $identifier, $deleteQueryParams, $auth, $contentType, $headers)
                               $lastMethod = "DELETE"
                               $lastUri = $uriDelete
                           }
@@ -1148,7 +1185,7 @@ hull:
                               if($noGet)
                               {
                                   $this.WriteLog("**** Unclear if '$entityType' entry '$identifier' does exist due to 'noGet=true', DELETEing anyway since 'remove=true'")
-                                  $this.DeleteEntity($uriDelete, $identifier, $identifierQueryParam, $auth, $contentType, $headers)
+                                  $this.DeleteEntity($uriDelete, $identifier, $deleteQueryParams, $auth, $contentType, $headers)
                                   $lastMethod = "DELETE"
                                   $lastUri = $uriDelete
                               }
@@ -1168,7 +1205,7 @@ hull:
                             if ($overwriteExisting)
                             {
                                 $this.WriteLog("**** '$entityType' entry '$identifier' already exists, hence PUTing instead of POSTing to update entity")
-                                $this.PutEntity($uriPut, $content, $auth, $contentType, $headers)
+                                $this.PutEntity($uriPut, $identifier, $content, $putQueryParams, $auth, $contentType, $headers)
                                 $lastMethod = "PUT"
                                 $lastUri = $uriPut
                             }
@@ -1183,14 +1220,14 @@ hull:
                             if ($putInsteadOfPost)
                             {
                                 $this.WriteLog("**** PUTting '$entityType' entry '$identifier' to create it since 'putInsteadOfPost' is set to true")
-                                $this.PutEntity($uriPut, $content, $auth, $contentType, $headers)
+                                $this.PutEntity($uriPut, $identifier, $content, $putQueryParams, $auth, $contentType, $headers)
                                 $lastMethod = "PUT"
                                 $lastUri = $uriPut
                             }
                             else
                             {
                                 $this.WriteLog("**** POSTing '$entityType' entry '$identifier' to create it")
-                                $this.PostEntity($apiEndpoint, $content, $auth, $postQueryParams, $contentType, $headers)
+                                $this.PostEntity($apiEndpoint, $identifier, $content, $auth, $postQueryParams, $contentType, $headers)
                                 $lastMethod = "POST"
                                 $lastUri = $apiEndpoint
                             }                          
@@ -1209,41 +1246,23 @@ hull:
                   }
 
                   # Post an entity
-                  hidden [PSCustomObject] PostEntity([string] $postUrl, [string] $json, [PSCustomObject] $auth, [PSCustomObject] $postQueryParams, [string] $contentType, [PSCustomObject] $headers)
+                  hidden [PSCustomObject] PostEntity([string] $postUrl, [string] $identifier, [string] $json, [PSCustomObject] $auth, [PSCustomObject] $postQueryParams, [string] $contentType, [PSCustomObject] $headers)
                   {
-                      $url = "$($postUrl)"
-
-                      if ($postQueryParams -ne $null)
-                      {
-                          $count = 0
-                          $start = "?"
-                          foreach($key in $postQueryParams.Keys)
-                          {
-                              if ($count -gt 0)
-                              {
-                                  $start = "&"
-                              }
-                              $url += "$($start)$($key)=$($postQueryParams[$key])"
-                              $count = $count + 1
-                          }
-                      }
-
+                      $url = $this.AppendQueryParamsToUri($postUrl, $postQueryParams, $identifier, $false)
                       return $this.InvokeWebRequest($url, "POST", $json, $headers)
                   }
 
                   # Put an entity
-                  hidden [PSCustomObject] PutEntity([string] $putUrl, [string] $json, [PSCustomObject] $auth, [string] $contentType, [PSCustomObject] $headers)
+                  hidden [PSCustomObject] PutEntity([string] $putUrl, [string] $identifier, [string] $json, [PSCustomObject] $putQueryParams, [PSCustomObject] $auth, [string] $contentType, [PSCustomObject] $headers)
                   {
-                      $url = "$($putUrl)"
-
+                      $url = $this.AppendQueryParamsToUri($putUrl, $putQueryParams, $identifier, $false)
                       return $this.InvokeWebRequest($url, "PUT", $json, $headers)
                   }
 
                   # Delete an entity
-                  hidden [PSCustomObject] DeleteEntity([string] $deleteUrl, [string] $identifier, [string] $identifierQueryParam, [PSCustomObject] $auth, [string] $contentType, [PSCustomObject] $headers)
+                  hidden [PSCustomObject] DeleteEntity([string] $deleteUrl, [string] $identifier, [string] $deleteQueryParams, [PSCustomObject] $auth, [string] $contentType, [PSCustomObject] $headers)
                   {
-                      $url = "$($deleteUrl.TrimEnd('/'))$(if ([string]::IsNullOrWhitespace($identifierQueryParam)) { [string]::Empty } else { "?$identifierQueryParam=$identifier" })"
-
+                      $url = $this.AppendQueryParamsToUri($deleteUrl, $deleteQueryParams, $identifier, $false)
                       return $this.InvokeWebRequest($url, "DELETE", "", $headers)
                   }
 
@@ -1316,28 +1335,68 @@ hull:
                   [PSCustomObject] ReadConfigFromFile([PSCustomObject] $entity)
                   {
                       if ($entity.readConfigFromFile -ne $null)
-                      {
-                          foreach($configKey in $entity.readConfigValuesFromFile.Keys)
-                          {
-                              $currentPath = (Get-Item -Path "./" -Verbose).FullName
-                              $filePath = Join-Path $currentPath "custom-installation-files" $entity.readConfigFromFile
+                      {    
+                          $currentPath = (Get-Item -Path "./" -Verbose).FullName
 
-                              if (!(Test-Path $filePath))
+                          $filePath = [String]::Empty
+                          
+                          $this.WriteLog("Reading File from 'readConfigFromFile.path' value.")
+                          $filePath = Join-Path $currentPath "custom-installation-files" $entity.readConfigFromFile.path
+                          
+                          if (!(Test-Path $filePath))
+                          {
+                              $this.WriteLog("File '$($filePath)' does not exist")
+                          }
+                          else
+                          {
+                              $fileContent = Get-Content -Path $filePath | Out-String
+                              $this.WriteLog("FileContent of " + $filePath + " is:" + $fileContent)
+                              
+                              if ([string]::IsNullOrWhitespace($entity.readConfigFromFile.key))
                               {
-                                  $this.WriteLog("File '$($filePath)' does not exist")
+                                  $this.WriteLog("No 'key' property provided, mapping full contents of '$($filePath)' to Config")                                  
+                                  $entity.config = $fileContent  
                               }
                               else
                               {
-                                  $fileContent = Get-Content -Path $filePath | Out-String
-                                  
-                                  $this.WriteLog("Updating config from file " + $filePath + " with: " + $fileContent)
-
-                                  $entity.config = $fileContent
-                                  
+                                  $this.WriteLog("Value '$($entity.readConfigFromFile.key)' provided for 'key' property, mapping content of key from JSON file '$($filePath)' to Config")
+                                  $fileContentJson = $fileContent | ConvertFrom-Json
+                                  $this.WriteLog("JSON file content: " + $fileContentJson)
+                                  $entity.config = $fileContentJson.$($entity.readConfigFromFile.key)                                 
                               }
-                          }                              
+                          }
                       }
                       
                       return $entity.config
+                  }
+
+                  [PSCustomObject] AppendQueryParamsToUri([String] $uri, [PSCustomObject] $queryParams, [String] $identifier, [bool] $disableReplacements)
+                  {
+                      
+                      if ($queryParams -ne $null)
+                      {
+                          $count = 0
+                          $start = "?"
+                          foreach($key in $queryParams.Keys)
+                          {
+                              if ($count -gt 0)
+                              {
+                                  $start = "&"
+                              }
+                              $value = ""
+                              if ($disableReplacements)
+                              {
+                                  $value = $queryParams[$key]
+                              }
+                              else
+                              {
+                                  $value = $queryParams[$key].Replace("$identifier", $identifier)
+                              }
+                              $uri += "$($start)$($key)=$($value)"
+                              $count = $count + 1
+                          }
+                      }
+
+                      return $uri
                   }
               }
