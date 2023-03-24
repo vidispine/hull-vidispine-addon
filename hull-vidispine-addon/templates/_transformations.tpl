@@ -169,3 +169,130 @@
 Icon: |-
 {{ $parent.Files.Get (printf "%s" $iconFile) | indent 2}}
 {{- end -}}
+
+
+
+{{ define "hull.vidispine.addon.sources.folder.volumes" }}
+{{ $parent := (index . "PARENT_CONTEXT") }}
+{
+  "installation":
+  { 
+    "secret":{ "secretName": "hull-install" }
+  },
+  "custom-installation-files":
+  {
+    "secret": { "secretName": "custom-installation-files" }
+  },
+  "etcssl":
+  {
+    "enabled": {{ if $parent.Values.hull.config.general.data.installation.config.customCaCertificates }}true{{ else }}false{{ end }},
+    "emptyDir": { }
+  },
+  "certs":
+  {  "enabled": {{ if $parent.Values.hull.config.general.data.installation.config.customCaCertificates }}true{{ else }}false{{ end }},
+     "secret": { "secretName": "custom-ca-certificates" }
+  },
+  {{ $processedDict := dict }}
+  {{ $folderCount := 0 }}
+  {{ range $file, $_ := $parent.Files.Glob "files/hull-vidispine-addon/installation/sources/**/*" }}
+  {{- $folder := base (dir $file) }}
+  {{- if not (hasKey $processedDict $folder) -}}
+  {{ $folderCount = add $folderCount 1 }}
+  {{ $_ := set $processedDict $folder "true" }}
+  "custom-installation-files-{{ $folder }}":  
+  {
+      secret: 
+      {
+        secretName: "custom-installation-files-{{ $folderCount }}"
+      }
+  },
+  {{ end }}
+  {{ end }}
+}
+{{ end }}
+
+
+
+{{ define "hull.vidispine.addon.sources.folder.volumemounts" }}
+{{ $parent := (index . "PARENT_CONTEXT") }}
+{
+  "installation": 
+  {
+    "name": "installation",
+    "mountPath": "/script"
+  },
+  "custom-installation-files":
+  {
+    "name": "custom-installation-files",
+    "mountPath": "/custom-installation-files"
+  },
+  "etcssl": 
+  {
+    "enabled": {{ if $parent.Values.hull.config.general.data.installation.config.customCaCertificates }}true{{ else }}false{{ end }},
+    "name": "etcssl",
+    "mountPath": "/etc/ssl/certs"
+  },
+  {{ range $certkey, $certvalue := $parent.Values.hull.config.general.data.installation.config.customCaCertificates}}
+  "custom-ca-certificates-{{ $certkey }}": 
+  {
+    "enabled": true, 
+    "name": "certs",
+    "mountPath": "/usr/local/share/ca-certificates/custom-ca-certificates-{{ $certkey }}",
+    "subPath": "{{ $certkey }}"
+  },
+  {{ end }}
+  {{ $processedDict := dict }}
+  {{ range $file, $_ := $parent.Files.Glob "files/hull-vidispine-addon/installation/sources/**/*" }}
+  {{- $folder := base (dir $file) }}
+  {{- if not (hasKey $processedDict $folder) -}}
+  {{ $_ := set $processedDict $folder "true" }}
+  "custom-installation-files-{{ $folder }}":
+  {
+      "enabled": true, 
+      "name": "custom-installation-files-{{ $folder }}",
+      "mountPath": "/custom-installation-files-{{ $folder }}"
+  },
+  {{ end }}
+  {{ end }}
+}
+{{ end }}
+
+
+
+{{ define "hull.vidispine.addon.sources.folder.secret" }}
+{{ $parent := (index . "PARENT_CONTEXT") }}
+{{ $folderIndex := (index . "FOLDER_INDEX") }}
+{
+  {{ $processedDict := dict }}
+  {{ $folderCount := 0 }}
+  {{ range $file, $_ := $parent.Files.Glob "files/hull-vidispine-addon/installation/sources/**/*" }}
+  {{- $folder := base (dir $file) }}
+  {{- $fileName := base $file }}
+  {{- if not (hasKey $processedDict $folder) -}}
+  {{- $folderCount = add $folderCount 1 }}
+  {{ $_ := set $processedDict $folder $folderCount }}
+  {{- end -}}
+  {{ if (eq (index $processedDict $folder) $folderIndex) }}
+  {{ $fileName | base | quote }}: { path: {{ $file | quote }} },
+  {{ end }}
+  {{ end }}
+}
+{{ end }}
+
+
+
+{{- define "hull.vidispine.addon.sources.folder.secret.count" -}}
+{{- $parent := (index . "PARENT_CONTEXT") -}}
+{{- $folderIndex := (index . "FOLDER_INDEX") -}}
+{{- $processedDict := dict -}}
+{{- $folderCount := 0 -}}
+{{- $folderExists := false -}}
+{{- range $file, $_ := $parent.Files.Glob "files/hull-vidispine-addon/installation/sources/**/*" -}}
+{{- $folder := base (dir $file) -}}
+{{- if not (hasKey $processedDict $folder) -}}
+{{- $folderCount = add $folderCount 1 -}}
+{{- $_ := set $processedDict $folder $folderCount -}}
+{{- end -}}
+{{- end -}}
+{{- $folderCount -}}
+{{- end -}}
