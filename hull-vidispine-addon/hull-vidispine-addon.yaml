@@ -14,6 +14,8 @@ hull:
               ignoreEntityRestCallErrors: false
               retriesForEntityRestCall: 3
               retriesForAuthServiceCall: 10
+            runtime:
+              sourcesFolders: _HT/hull.vidispine.addon.sources.folder.secret.count
           endpoints:
             10_vidicore:
               auth:
@@ -262,46 +264,9 @@ hull:
                 auth:
                   secretRef:
                     name: auth
-              volumeMounts:
-                etcssl:
-                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
-                  name: etcssl
-                  mountPath: '/etc/ssl/certs'
-                'installation':
-                  name: 'installation'
-                  mountPath: /script
-                custom-installation-files:
-                  name: custom-installation-files
-                  mountPath: /custom-installation-files
-                _HULL_TRANSFORMATION_:
-                  NAME: hull.util.transformation.tpl
-                  CONTENT: |-
-                    {
-                      {{ range $certkey, $certvalue := (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates}}
-                      "custom-ca-certificates-{{ $certkey }}": 
-                        {
-                          enabled: true, 
-                          name: "certs",
-                          mountPath: "/usr/local/share/ca-certificates/custom-ca-certificates-{{ $certkey }}",
-                          subPath: "{{ $certkey }}"
-                        },
-                      {{ end }}
-                    }
-          volumes:
-            installation:
-              secret:
-                secretName: hull-install
-            custom-installation-files:
-              secret:
-                secretName: custom-installation-files
-            etcssl:
-              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
-              emptyDir: {}
-            certs:
-              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
-              secret:
-                secretName: "custom-ca-certificates"
-                
+              volumeMounts: _HT/hull.vidispine.addon.sources.folder.volumemounts
+          volumes: _HT/hull.vidispine.addon.sources.folder.volumes
+
       'hull-configure':
         enabled: false
         annotations:
@@ -332,45 +297,8 @@ hull:
                 auth:
                   secretRef:
                     name: auth
-              volumeMounts:
-                'installation':
-                  name: 'installation'
-                  mountPath: /script
-                custom-installation-files:
-                  name: custom-installation-files
-                  mountPath: /custom-installation-files
-                _HULL_TRANSFORMATION_:
-                  NAME: hull.util.transformation.tpl
-                  CONTENT: |-
-                    {
-                      {{ range $certkey, $certvalue := (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates}}
-                      "custom-ca-certificates-{{ $certkey }}": 
-                        {
-                          enabled: true, 
-                          name: "certs",
-                          mountPath: "/usr/local/share/ca-certificates/custom-ca-certificates-{{ $certkey }}",
-                          subPath: "{{ $certkey }}"
-                        },
-                      {{ end }}
-                    }
-                etcssl:
-                  enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
-                  name: etcssl
-                  mountPath: '/etc/ssl/certs'
-          volumes:
-            installation:
-              secret:
-                secretName: hull-install
-            custom-installation-files:
-              secret:
-                secretName: custom-installation-files
-            etcssl:
-              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
-              emptyDir: {}
-            certs:
-              enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
-              secret:
-                secretName: "custom-ca-certificates"
+              volumeMounts: _HT/hull.vidispine.addon.sources.folder.volumemounts
+          volumes: _HT/hull.vidispine.addon.sources.folder.volumes
 
     secret:
 
@@ -393,7 +321,6 @@ hull:
             {{ $key }}: { inline: {{ $value | quote }} },
             {{ end }}
           }
-      
       'custom-installation-files':
         annotations:
           helm.sh/hook: pre-install,pre-upgrade
@@ -405,7 +332,145 @@ hull:
             {{ $file | base | quote }}: { path: {{ $file | quote }} },
             {{ end }}
           }
-      
+      'custom-installation-files-1':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 1
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:1
+      'custom-installation-files-2':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 2
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:2
+      'custom-installation-files-3':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 3
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:3
+      'custom-installation-files-4':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 4
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:4
+      'custom-installation-files-5':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 5
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:5
+      'custom-installation-files-6':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 6
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:6
+      'custom-installation-files-7':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 7
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:7
+      'custom-installation-files-8':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 8
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:8
+      'custom-installation-files-9':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 9
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:9
+      'custom-installation-files-10':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 10
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:10
+      'custom-installation-files-11':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 11
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:11
+      'custom-installation-files-12':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 12
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:12
+      'custom-installation-files-13':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 13
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:13
+      'custom-installation-files-14':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 14
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:14
+      'custom-installation-files-15':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 15
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:15
+      'custom-installation-files-16':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 16
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:16
+      'custom-installation-files-17':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 17
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:17
+      'custom-installation-files-18':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 18
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:18
+      'custom-installation-files-19':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 19
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:19
+      'custom-installation-files-20':
+        enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 20
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-80"
+          helm.sh/hook-delete-policy: before-hook-creation
+        data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:20
       'hull-install':
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
@@ -493,52 +558,6 @@ hull:
                   [string]$Stage = 'pre-install'
               )
               Import-Module powershell-yaml
-
-              function Join-Objects($source, $extend)
-              {
-                  if($source.GetType().Name -eq "PSCustomObject" -and $extend.GetType().Name -eq "PSCustomObject")
-                  {
-                      foreach($Property in $source | Get-Member -type NoteProperty, Property)
-                      {
-                          if($extend.$($Property.Name) -eq $null)
-                          {
-                              continue;
-                          }
-                          $source.$($Property.Name) = Join-Objects $source.$($Property.Name) $extend.$($Property.Name)
-                      }
-                  }
-                  else
-                  {
-                    $source = $extend;
-                  }
-                  return $source
-              }
-              
-              function AddPropertyRecurse($source, $toExtend)
-              {
-                  if($source.GetType().Name -eq "PSCustomObject")
-                  {
-                      foreach($Property in $source | Get-Member -type NoteProperty, Property)
-                      {
-                          if($toExtend.$($Property.Name) -eq $null)
-                          {
-                              $toExtend | Add-Member -MemberType NoteProperty -Value $source.$($Property.Name) -Name $Property.Name `
-                          }
-                          else
-                          {
-                              $toExtend.$($Property.Name) = AddPropertyRecurse $source.$($Property.Name) $toExtend.$($Property.Name)
-                          }
-                      }
-                  }
-                  return $toExtend
-              }
-
-              function Json-Merge($source, $extend)
-              {
-                  $merged = Join-Objects $source $extend
-                  $extended = AddPropertyRecurse $source $merged
-                  return $extended
-              }
 
               function ParseErrorForResponseBody($Error)
               {
@@ -885,15 +904,15 @@ hull:
                           $value = $this._config.endpoints[$apiKey]
                           if ([string]::IsNullOrWhitespace($value.endpoint))
                           {
-                              $this.WriteLog("")
+                              $this.WriteLog("*")
                               $this.WriteLog("* Ignoring Endpoint $($apiKey) because it does not have an active endpoint set.")
-                              $this.WriteLog("")
+                              $this.WriteLog("*")
                           }
                           else
                           {
-                              $this.WriteLog("")
+                              $this.WriteLog("*")
                               $this.WriteLog("* Starting installation for Endpoint '$($apiKey)'")
-                              $this.WriteLog("")
+                              $this.WriteLog("*")
                               $this.Endpoint($apiKey, $value)
                           }
                       }
@@ -911,7 +930,7 @@ hull:
                           $this.Subresource($subresourceKey, $value, $config.endpoint, $config.auth, $config.stage, $config.extraHeaders, $name)
 
                           $this.WriteLog("** Finished installation for Subresource '$($subresourceKey)'")
-                          $this.WriteLog("")
+                          $this.WriteLog("*")
                       }
                   }
 
@@ -932,66 +951,16 @@ hull:
                           # Either register or remove needs to be enabled
                           if ($value.register -eq $true -or $value.remove -eq $true)
                           {
-                              $name = if ([string]::IsNullOrWhiteSpace($value.identifier)) {$entityKey} else {$value.identifier }
-
-                              $this.WriteLog("*** $(if ($value.remove -eq $true) {"Starting to remove"} else {"Starting to register"}) Entity $($name) for entity key '$($entityKey)'")
-
-                              if ($value.config -eq $null)
-                              {
-                                  $this.WriteLog("*** Creating empty config object")
-                                  $value.config = New-Object -TypeName PSCustomObject 
-                              }                              
-                              $value.config = $this.ReadConfigFromFile($value)
-                              $value.config = $this.ReadConfigValuesFromFiles($value)
-                              
-                              $contentType = "$(if ([String]::IsNullOrEmpty($value.contentType)) { "application/json" } else { $value.contentType })"
-                              $content = $value.config
-                              $this.WriteLog("*** ContentType is '$($value.config)'")
-                                  
-                              if ($contentType -eq "application/json")
-                              {
-                                  $this.WriteLog("*** ContentType is 'application/json', converting config to JSON object")
-                                  $content = $content | ConvertTo-Json -Depth 100
-                              }
-                              
-                              $deleteQueryParams = @{}
-                              if ($value.deleteQueryParams)
-                              {
-                                  $this.WriteLog("*** Using deleteQueryParams from entity config")
-                                  $deleteQueryParams = $value.deleteQueryParams
-                              }
-                              else 
-                              {
-                                  if ($value.remove -eq $true)
-                                  {
-                                      $this.WriteLog("*** Using legacy parameter 'identifierQueryParam' for specifying object to delete")
-                                      $deleteQueryParams = @{ $subresource.identifierQueryParam = $name }
-                                  }
-                              }
-                              
+                              $endpointApiPath = "$($endpoint)/$($subresource.apiPath)"
+                              $this.WriteLog("*** Processing entities for API path '$($endpointApiPath)'")
                               try {
                                 $callResult = $this.CheckEntity(
-                                    "$($endpoint)/$($subresource.apiPath)",
-                                    $name,
-                                    $content,
-                                    $subresource.typeDescription,
-                                    $value.remove -eq $true,
-                                    $deleteQueryParams,
+                                    $endpointApiPath,
+                                    $entityKey,
+                                    $value,
+                                    $subresource,
                                     $authSubresource,
-                                    $value.putInsteadOfPost -eq $true,
-                                    $value.putUriExcludeIdentifier -eq $true,
-                                    $value.overwriteExisting -eq $true,
-                                    $value.postQueryParams,
-                                    $value.getUriExcludeIdentifier,
-                                    $value.getCustomScript,
-                                    $value.noGet,
-                                    $contentType,
-                                    $this.GetHttpHeaders($authSubresource, $contentType, $extraHeaders, $value),
-                                    $value.getQueryParams,
-                                    $value.customGetScriptJsonResponseConfigReplacements,
-                                    $value.deleteUriExcludeIdentifier,
-                                    $value.register -eq $true,
-                                    $value.putQueryParams
+                                    $extraHeaders
                                 )
 
                                 if (-Not ($this._successes))
@@ -1047,13 +1016,54 @@ hull:
                   }
 
                   # Checks entities and performs required operations (DELETE/PUT/POST)
-                  hidden [PSCustomObject] CheckEntity([string] $apiEndpoint, [PSCustomObject] $identifier, [string] $content, [string] $entityType, [bool] $toBeDeleted, [PSCustomObject] $deleteQueryParams, [PSCustomObject] $auth, [bool] $putInsteadOfPost, [bool] $putUriExcludeIdentifier, [bool] $overwriteExisting, [PSCustomObject] $postQueryParams, [bool] $getUriExcludeIdentifier, [string] $getCustomScript, [bool] $noGet, [string] $contentType, [PSCustomObject] $headers, [PSCustomObject] $getQueryParams, [PSCustomObject] $customGetScriptJsonResponseConfigReplacements, [bool] $deleteUriExcludeIdentifier, [bool] $register, [PSCustomObject] $putQueryParams)
+                  hidden [PSCustomObject] CheckEntity(
+                      [string] $endpointApiPath,
+                      [string] $entityKey,
+                      [PSCustomObject] $value,
+                      [PSCustomObject] $subresource,
+                      [PSCustomObject] $auth,
+                      [PSCustomObject] $extraHeaders)
                   {
-                      $apiEndpoint = $apiEndpoint.Trim('/')
+                      $identifier = if ([string]::IsNullOrWhiteSpace($value.identifier)) {$entityKey} else {$value.identifier }
+                      $this.WriteLog("*** $(if ($value.remove -eq $true) {"Starting to remove"} else {"Starting to register"}) entity with identifier '$($identifier)' for entity key '$($entityKey)'")
+
+                      if ($value.config -eq $null)
+                      {
+                          $this.WriteLog("*** Creating empty config object")
+                          $value.config = New-Object -TypeName PSCustomObject 
+                      }
+
+                      $deleteQueryParams = @{}
+                      if ($value.deleteQueryParams)
+                      {
+                          $this.WriteLog("*** Using deleteQueryParams from entity config")
+                          $deleteQueryParams = $value.deleteQueryParams
+                      }
+                      else 
+                      {
+                          if ($value.remove -eq $true)
+                          {
+                              $this.WriteLog("*** Using legacy parameter 'identifierQueryParam' for specifying object to delete")
+                              $deleteQueryParams = @{ $subresource.identifierQueryParam = $identifier }
+                          }
+                      }  
+                      
+                      $contentType = "$(if ([String]::IsNullOrEmpty($value.contentType)) { "application/json" } else { $value.contentType })"
+                      $this.WriteLog("*** ContentType is '$($contentType)'")
+
+                      $entityType = $subresource.typeDescription
+                      $headers = $this.GetHttpHeaders($auth, $contentType, $extraHeaders, $value)
+
+
+                      
+                      $this.WriteLog("*** Headers are '$($headers | ConvertTo-Json)'")
+                      $apiEndpoint = $endpointApiPath.Trim('/')
                       $uri = "$apiEndpoint/$identifier"
-                      $uriPut = if ($putUriExcludeIdentifier) { $apiEndpoint } else { $uri }
-                      $uriGet = if ($getUriExcludeIdentifier) { $apiEndpoint } else { $uri }
-                      $uriDelete =  if ($deleteUriExcludeIdentifier) { $apiEndpoint } else { $uri }
+                      $uriPut = if ($value.putUriExcludeIdentifier -eq $true) { $apiEndpoint } else { $uri }
+                      $uriGet = if ($value.getUriExcludeIdentifier) { $apiEndpoint } else { $uri }
+                      $uriDelete =  if ($value.deleteUriExcludeIdentifier) { $apiEndpoint } else { $uri }
+
+
 
                       $message = ""
                       $statusCode = 500
@@ -1063,7 +1073,7 @@ hull:
                       $lastMethod = ""
                       $lastUri = ""
                       
-                      if ($noGet)
+                      if ($value.noGet)
                       {
                         $statusCode = 404
                         $this.WriteLog("**** NoGet is true, not GETting value. Handle as StatusCode $($statusCode)")
@@ -1072,13 +1082,13 @@ hull:
                       {
                         try
                         {
-                            $uriGet = $this.AppendQueryParamsToUri($uriGet, $getQueryParams, $identifier, $false)
+                            $uriGet = $this.AppendQueryParamsToUri($uriGet, $value.getQueryParams, $identifier, $false)
 
                             $this.WriteLog("**** Checking if entity exists, GETting uri '$($uriGet)'")
                             $responseGet = Invoke-WebRequest -Uri $uriGet -Method "GET" -headers $headers -UseBasicParsing -SkipCertificateCheck
                             $lastMethod = "GET"
                             $lastUri = $uriGet
-                            if ([String]::IsNullOrWhitespace($getCustomScript))
+                            if ([String]::IsNullOrWhitespace($value.getCustomScript))
                             {
                               $statusCode = $responseGet.StatusCode
                               $this.WriteLog("**** SUCCESS --> StatusCode: $($statusCode)")
@@ -1088,7 +1098,7 @@ hull:
                               try
                               {
                                   $this.WriteLog("**** Invoking getCustomScript")
-                                  $scriptblock = [Scriptblock]::Create($getCustomScript)
+                                  $scriptblock = [Scriptblock]::Create($value.getCustomScript)
                                   $this.WriteLog("[- Start Script -]")
                                   $result = $scriptblock.InvokeReturnAsIs()
                                   $this.WriteLog("Type of result: $($result.GetType())")
@@ -1150,13 +1160,24 @@ hull:
                       }
 
                       $this.WriteLog("**** StatusCode is $($statusCode)")
- 
-                      if ($customGetScriptJsonResponseConfigReplacements)
+
+                      $value.config = $this.ReadConfigFromFile($value, $statusCode)
+                      $value.config = $this.UpdateConfigValues($value, $statusCode, "readConfigValuesFromFiles")
+                      $value.config = $this.UpdateConfigValues($value, $statusCode, "updateConfigValues")
+                      $content = $value.config     
+                      
+                      if ($contentType -eq "application/json")
+                      {
+                          $this.WriteLog("*** ContentType is 'application/json', converting config to JSON object")
+                          $content = $content | ConvertTo-Json -Depth 100
+                      }
+
+                      if ($value.customGetScriptJsonResponseConfigReplacements)
                       {
                         $this.WriteLog("Check customGetScriptJsonResponseConfigReplacements")
-                        foreach($placeholder in $customGetScriptJsonResponseConfigReplacements.Keys)
+                        foreach($placeholder in $value.customGetScriptJsonResponseConfigReplacements.Keys)
                         {
-                          $jsonKey = $customGetScriptJsonResponseConfigReplacements[$placeholder]
+                          $jsonKey = $value.customGetScriptJsonResponseConfigReplacements[$placeholder]
                           $this.WriteLog("Check customGetScriptJsonResponseConfigReplacements key $($jsonKey)")
                           if ($json.$jsonKey -ne $null)
                           {
@@ -1169,9 +1190,27 @@ hull:
                           }
                         }
                       }
-                      $this.WriteLog("Content is '$($content)'")
 
-                      if($toBeDeleted) 
+                      $this.WriteLog("Config is '$($content)'")
+
+                      if ($value.processConfigScript)
+                      {
+                          $PUT = $statusCode -eq 200
+                          $POST = $statusCode -eq 404
+                          $CONTENT = $content
+                          $this.WriteLog("**** Found 'processConfigScript': $value.processConfigScript")
+                          $this.WriteLog("**** Invoking processConfigScript")
+                          $scriptblock = [Scriptblock]::Create($value.processConfigScript)
+                          $this.WriteLog("[- Start Script -]")
+                          $result = $scriptblock.InvokeReturnAsIs()
+                          $this.WriteLog("Type of result: $($result.GetType())")
+                          $this.WriteLog("[- End Script -]")
+                          $content = $result
+                          $this.WriteLog("Processed Config is '$($content)'")
+
+                      }
+                      
+                      if($value.remove -eq $true) 
                       {
                           if ($statusCode -eq 200)
                           {
@@ -1180,9 +1219,9 @@ hull:
                               $lastMethod = "DELETE"
                               $lastUri = $uriDelete
                           }
-                          elseif ($noGet -or ($statusCode -eq 404))
+                          elseif ($value.noGet -or ($statusCode -eq 404))
                           {
-                              if($noGet)
+                              if($value.noGet)
                               {
                                   $this.WriteLog("**** Unclear if '$entityType' entry '$identifier' does exist due to 'noGet=true', DELETEing anyway since 'remove=true'")
                                   $this.DeleteEntity($uriDelete, $identifier, $deleteQueryParams, $auth, $contentType, $headers)
@@ -1198,39 +1237,39 @@ hull:
                           $statusCode = 404
                       }
 
-                      if ($register)
+                      if ($value.register -eq $true)
                       {
                         if ($statusCode -eq 200)
                         {
-                            if ($overwriteExisting)
+                            if ($value.overwriteExisting -eq $true)
                             {
                                 $this.WriteLog("**** '$entityType' entry '$identifier' already exists, hence PUTing instead of POSTing to update entity")
-                                $this.PutEntity($uriPut, $identifier, $content, $putQueryParams, $auth, $contentType, $headers)
+                                $this.PutEntity($uriPut, $identifier, $content, $value.putQueryParams, $auth, $contentType, $headers)
                                 $lastMethod = "PUT"
                                 $lastUri = $uriPut
                             }
                             else
                             {
                                 $this.WriteLog("**** '$entityType' entry '$identifier' already exists, not overwriting due to flag 'overwriteExisting' not being set")
-                            }                      
+                            }
                         }
-                        elseif ($noGet -or ($statusCode -eq 404))
+                        elseif ($value.noGet -or ($statusCode -eq 404))
                         {
                             $this.WriteLog("**** '$entityType' entry '$identifier' does not exist and will be created now")
-                            if ($putInsteadOfPost)
+                            if ($value.putInsteadOfPost -eq $true)
                             {
                                 $this.WriteLog("**** PUTting '$entityType' entry '$identifier' to create it since 'putInsteadOfPost' is set to true")
-                                $this.PutEntity($uriPut, $identifier, $content, $putQueryParams, $auth, $contentType, $headers)
+                                $this.PutEntity($uriPut, $identifier, $content, $value.putQueryParams, $auth, $contentType, $headers)
                                 $lastMethod = "PUT"
                                 $lastUri = $uriPut
                             }
                             else
                             {
                                 $this.WriteLog("**** POSTing '$entityType' entry '$identifier' to create it")
-                                $this.PostEntity($apiEndpoint, $identifier, $content, $auth, $postQueryParams, $contentType, $headers)
+                                $this.PostEntity($apiEndpoint, $identifier, $content, $auth, $value.postQueryParams, $contentType, $headers)
                                 $lastMethod = "POST"
                                 $lastUri = $apiEndpoint
-                            }                          
+                            }
                         }
                         else
                         {
@@ -1248,7 +1287,9 @@ hull:
                   # Post an entity
                   hidden [PSCustomObject] PostEntity([string] $postUrl, [string] $identifier, [string] $json, [PSCustomObject] $auth, [PSCustomObject] $postQueryParams, [string] $contentType, [PSCustomObject] $headers)
                   {
+                      $this.WriteLog("**** 'URL before: $($postUrl)")
                       $url = $this.AppendQueryParamsToUri($postUrl, $postQueryParams, $identifier, $false)
+                      $this.WriteLog("**** 'URL after: $($url)")
                       return $this.InvokeWebRequest($url, "POST", $json, $headers)
                   }
 
@@ -1277,53 +1318,150 @@ hull:
                       return $true
                   }
                   
-                  # Map JSON config value from JSON file conten key
-                  [PSCustomObject] ReadConfigValuesFromFiles([PSCustomObject] $entity)
+                  # Map JSON config value from JSON file content key
+                  [PSCustomObject] UpdateConfigValues([PSCustomObject] $entity, [int] $statusCode, [string] $entityConfigValuesKey)
                   {
-                      if ($entity.readConfigValuesFromFiles -ne $null)
+                      if ($entity.$entityConfigValuesKey -ne $null)
                       {
                           if ([String]::IsNullOrEmpty($entity.config))
                           {
-                              $this.WriteLog("Created new empty config dictionary.")
+                              $this.WriteLog("**** Created new empty config dictionary.")
                               $entity.config = @{}
                           }
                           else
                           {
-                              $this.WriteLog("Current config: $($entity.config).")
+                              $this.WriteLog("**** Current config: $($entity.config).")
                           }
                           
-                          foreach($configKey in $entity.readConfigValuesFromFiles.Keys)
+                          foreach($configKey in $entity.$entityConfigValuesKey.Keys)
                           {
-                              $value = $entity.readConfigValuesFromFiles[$configKey]
-                              $path = $value.path
-                              if ([String]::IsNullOrEmpty($path))
-                              {
-                                  throw [Exception]::new("ERROR --> Property 'path' does not exist for Config Key '$($configKey)', cannot identify source file")
-                              }
-                              
-                              $currentPath = (Get-Item -Path ".\" -Verbose).FullName
-                              $filePath = Join-Path $currentPath "custom-installation-files" $value.path
 
-                              if (!(Test-Path $filePath))
+                              $entry = $entity.$entityConfigValuesKey[$configKey]
+                              $updateContent = ""
+                              $updateContentJson = $null
+                              $path = $null
+                              $value = $null
+                              $put = $statusCode -eq 200
+                              $post = $statusCode -eq 404
+                              if ([String]::IsNullOrEmpty($entry.putValue) -and [String]::IsNullOrEmpty($entry.postValue))
                               {
-                                  throw [Exception]::new("ERROR --> File '$($filePath)' does not exist")
-                              }
-                              $this.WriteLog("External Config file found: " + $filePath)
-                              
-                              $fileContent = Get-Content -Path $filePath | Out-String
-                                               
-                              if ([string]::IsNullOrWhitespace($value.key))
-                              {
-                                  $this.WriteLog("No 'key' property provided, mapping full contents of '$($filePath)' to Config Key '$($configKey)'")
-                                  
-                                  $entity.config.$configKey = $fileContent  
+                                  $this.WriteLog("**** Properties 'putValue' and 'postValue' not set, checking for 'value'.")
+                                  if (-not [String]::IsNullOrEmpty($entry.value))
+                                  {
+                                      $this.WriteLog("**** Property 'value' set, using it as source for mapping'.")
+                                      $value = $entry.value
+                                  }
                               }
                               else
                               {
-                                  $this.WriteLog("Value '$($value.key)' provided for 'key' property, mapping content of key from JSON file '$($filePath)' to Config Key '$($configKey)'")
-                                  $fileContentJson = $fileContent | ConvertFrom-Json
-                                  $this.WriteLog("JSON file content: " + $fileContentJson)
-                                  $entity.config[$configKey] = $fileContentJson.$($value.key)                                 
+                                  $this.WriteLog("**** Property 'putValue' or 'postValue' set, defaulting to 'value' if PUT or POST not matched.")
+                                  $value = $entry.value
+                                  if ((-not [String]::IsNullOrEmpty($entry.putValue)) -and $put)
+                                  {
+                                      $this.WriteLog("**** Property 'putValue' set and PUTing, using it as source for mapping'.")
+                                      $value = $entry.putValue
+                                  }
+                                  if ((-not [String]::IsNullOrEmpty($entry.postValue)) -and $post)
+                                  {
+                                      $this.WriteLog("**** Property 'postValue' set and POSTing, using it as source for mapping'.")
+                                      $value = $entry.postValue
+                                  }
+                              }
+                              
+                              if ([String]::IsNullOrEmpty($value))
+                              {
+                                  if ([String]::IsNullOrEmpty($entry.putPath) -and [String]::IsNullOrEmpty($entry.postPath))
+                                  {
+                                      $this.WriteLog("**** Properties 'putPath' and 'postPath' not set, checking for 'path'.")
+                                      if (-not [String]::IsNullOrEmpty($entry.path))
+                                      {
+                                          $this.WriteLog("**** Property 'path' set, using it as source for mapping'.")
+                                          $path = $entry.path
+                                      }
+                                      else
+                                      {
+                                          throw [Exception]::new("ERROR --> Properties 'value' and 'path' do not exist for Config Key '$($configKey)', cannot identify content to update.")
+                                      }
+                                  }
+                                  else
+                                  {
+                                      $this.WriteLog("**** Property 'putPath' or 'postPath' set, defaulting to 'path' if PUT or POST not matched.")
+                                      $path = $entry.path
+                                      if ((-not [String]::IsNullOrEmpty($entry.putPath)) -and $put)
+                                      {
+                                          $this.WriteLog("**** Property 'putPath' set and PUTing, using it as source for mapping'.")
+                                          $path = $entry.putPath
+                                      }
+                                      if ((-not [String]::IsNullOrEmpty($entry.postPath)) -and $post)
+                                      {
+                                          $this.WriteLog("**** Property 'postPath' set and POSTing, using it as source for mapping'.")
+                                          $path = $entry.postPath
+                                      }
+                                  }
+                              }
+
+                              if ([String]::IsNullOrEmpty($value))
+                              {
+                                  $this.WriteLog("**** Determined file path '$($path)' as source for mapping'.")
+                                  $currentPath = (Get-Item -Path ".\" -Verbose).FullName
+                                  $filePath = ""
+                                  if ($path -like "*/*" )
+                                  {
+                                      $split = $path.split('/')
+                                      $filePath = Join-Path $currentPath "custom-installation-files-$($split[0])" $split[1]
+                                  }
+                                  else
+                                  {
+                                      $filePath = Join-Path $currentPath "custom-installation-files" $($path)
+                                  }
+                                  if (!(Test-Path $filePath))
+                                  {
+                                      throw [Exception]::new("ERROR --> File '$($filePath)' does not exist")
+                                  }
+                                  $this.WriteLog("**** External Config file found: " + $filePath)
+                              
+                                  $updateContent = Get-Content -Path $filePath | Out-String
+
+                                  if (-not [string]::IsNullOrWhitespace($entry.key))
+                                  {
+                                      $this.WriteLog("**** Value '$($entry.key)' provided for 'key' property, mapping content of key to Config Key '$($configKey)'")
+                                      $updateContentJson = ($updateContent | ConvertFrom-Json).$($entry.key)
+                                  }
+                              }
+                              else
+                              {
+                                  
+                                  if ($value.GetType() -eq "String")
+                                  {
+                                      $updateContent = $value
+                                  }
+                                  else
+                                  {
+                                      if ($null -ne $value)
+                                      {
+                                          $updateContent = $value | Out-String
+                                          $updateContentJson = $value
+                                      }
+                                      else
+                                      {
+                                          throw [Exception]::new("ERROR --> Properties 'path' or 'value' do not exist for Config Key '$($configKey)', cannot identify content to update.")
+                                      }
+                                  }
+                              }
+                              
+                              if ($null -eq $updateContentJson)
+                              {
+                                  $this.WriteLog("**** No JSON structure found, mapping full contents to Config Key '$($configKey)'")
+                                  $entity.config.$configKey = $updateContent  
+                              }
+                              else
+                              {
+                                  
+                                  $this.WriteLog("**** Entity content: " + $($entity.config | ConvertTo-Json -Depth 100))
+                                  $this.WriteLog("**** JSON content for update: " + $($updateContentJson | ConvertTo-Json -Depth 100))
+                                  
+                                  $this.WriteLog("**** Replacing key '$($configKey)' in entity fully with content: " + $($updateContentJson | ConvertTo-Json -Depth 100))
+                                  $entity.config[$configKey] = $updateContentJson
                               }
                           }
                       }
@@ -1332,16 +1470,47 @@ hull:
                   }
 
                   # Read complete config from file
-                  [PSCustomObject] ReadConfigFromFile([PSCustomObject] $entity)
+                  [PSCustomObject] ReadConfigFromFile([PSCustomObject] $entity, [int] $statusCode)
                   {
                       if ($entity.readConfigFromFile -ne $null)
                       {    
                           $currentPath = (Get-Item -Path "./" -Verbose).FullName
 
                           $filePath = [String]::Empty
+                          $contextPath = ""
                           
-                          $this.WriteLog("Reading File from 'readConfigFromFile.path' value.")
-                          $filePath = Join-Path $currentPath "custom-installation-files" $entity.readConfigFromFile.path
+                          $contextPath = $entity.readConfigFromFile.path
+
+                          if ([string]::IsNullOrWhitespace($entity.readConfigFromFile.putPath) -and 
+                              [string]::IsNullOrWhitespace($entity.readConfigFromFile.postPath))
+                          {
+                              $this.WriteLog("**** Reading File from 'readConfigFromFile.path' value, no 'putPath' or 'postPath' set.")
+                          }
+                          else
+                          {
+                              if ($statusCode == 404 -and (-not [string]::IsNullOrWhitespace($entity.readConfigFromFile.postPath)))
+                              {
+                                  $this.WriteLog("**** Property 'postPath' set and POSTing, using it as source for mapping'.")
+                                  $contextPath = $entity.readConfigFromFile.postPath
+                              }
+                              if ($statusCode == 200 -and (-not [string]::IsNullOrWhitespace($entity.readConfigFromFile.putPath)))
+                              {
+                                  $this.WriteLog("**** Property 'putPath' set and PUTing, using it as source for mapping'.")
+                                  $contextPath = $entity.readConfigFromFile.putPath
+                              }
+                          }
+
+                          
+                          $filePath = ""
+                          if ($contextPath -like "*/*" )
+                          {
+                              $split = $contextPath.split('/')
+                              $filePath = Join-Path $currentPath "custom-installation-files-$($split[0])" $split[1]
+                          }
+                          else
+                          {
+                              $filePath = Join-Path $currentPath "custom-installation-files" $($contextPath)
+                          }
                           
                           if (!(Test-Path $filePath))
                           {
@@ -1350,18 +1519,18 @@ hull:
                           else
                           {
                               $fileContent = Get-Content -Path $filePath | Out-String
-                              $this.WriteLog("FileContent of " + $filePath + " is:" + $fileContent)
+                              $this.WriteLog("**** FileContent of " + $filePath + " is:" + $fileContent)
                               
                               if ([string]::IsNullOrWhitespace($entity.readConfigFromFile.key))
                               {
-                                  $this.WriteLog("No 'key' property provided, mapping full contents of '$($filePath)' to Config")                                  
+                                  $this.WriteLog("**** No 'key' property provided, mapping full contents of '$($filePath)' to Config")                                  
                                   $entity.config = $fileContent  
                               }
                               else
                               {
-                                  $this.WriteLog("Value '$($entity.readConfigFromFile.key)' provided for 'key' property, mapping content of key from JSON file '$($filePath)' to Config")
+                                  $this.WriteLog("**** Value '$($entity.readConfigFromFile.key)' provided for 'key' property, mapping content of key from JSON file '$($filePath)' to Config")
                                   $fileContentJson = $fileContent | ConvertFrom-Json
-                                  $this.WriteLog("JSON file content: " + $fileContentJson)
+                                  $this.WriteLog("**** JSON file content: " + $fileContentJson)
                                   $entity.config = $fileContentJson.$($entity.readConfigFromFile.key)                                 
                               }
                           }

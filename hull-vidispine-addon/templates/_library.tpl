@@ -346,7 +346,11 @@ AUTH_BASIC_DATABASE_USERNAME:
 AUTH_BASIC_DATABASE_PASSWORD:
   inline: {{ (index $parent.Values.hull.config.specific.components $component).database.password }}
 database-connectionString:
+{{ if (hasKey index $parent.Values.hull.config.specific.components $component).database "connectionString" }}
+  inline: {{ (index $parent.Values.hull.config.specific.components $component).database.connectionString }}
+{{ else }}
   inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "connectionString" "COMPONENT" $component) }}
+{{ end }}
 {{ end }}
 {{ if (eq (include "hull.vidispine.addon.library.get.endpoint.uri.exists" (dict "PARENT_CONTEXT" $parent "KEY" "rabbitmq" "URI" "amq")) "true") }}
 rabbitmq-connectionString:
