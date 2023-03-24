@@ -264,16 +264,8 @@ hull:
                 auth:
                   secretRef:
                     name: auth
-              volumeMounts:
-                _HULL_TRANSFORMATION_:
-                  NAME: hull.util.transformation.tpl
-                  CONTENT: |-
-                    _HT/hull.vidispine.addon.sources.folder.volumemounts
-          volumes:
-            _HULL_TRANSFORMATION_:
-              NAME: hull.util.transformation.tpl
-              CONTENT: |-
-                _HT/hull.vidispine.addon.sources.folder.volumes
+              volumeMounts: _HT/hull.vidispine.addon.sources.folder.volumemounts
+          volumes: _HT/hull.vidispine.addon.sources.folder.volumes
 
       'hull-configure':
         enabled: false
@@ -305,16 +297,8 @@ hull:
                 auth:
                   secretRef:
                     name: auth
-              volumeMounts:
-                _HULL_TRANSFORMATION_:
-                  NAME: hull.util.transformation.tpl
-                  CONTENT: |-
-                    _HT/hull.vidispine.addon.sources.folder.volumemounts
-          volumes:
-            _HULL_TRANSFORMATION_:
-              NAME: hull.util.transformation.tpl
-              CONTENT: |-
-                _HT/hull.vidispine.addon.sources.folder.volumes
+              volumeMounts: _HT/hull.vidispine.addon.sources.folder.volumemounts
+          volumes: _HT/hull.vidispine.addon.sources.folder.volumes
 
     secret:
 
