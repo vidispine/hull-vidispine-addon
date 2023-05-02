@@ -1559,7 +1559,7 @@ hull:
                               }
                               else
                               {
-                                  $value = $queryParams[$key].Replace("$identifier", $identifier)
+                                  $value = $queryParams[$key].toString().Replace("$identifier", $identifier)
                               }
                               $uri += "$($start)$($key)=$($value)"
                               $count = $count + 1

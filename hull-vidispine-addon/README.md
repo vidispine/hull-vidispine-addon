@@ -986,6 +986,7 @@ Parameters:
 _PARENT_CONTEXT_: The Helm charts global context
 _COMPONENT_: The `component` to create a database job for
 _TYPE_: The type of Job. Allowed values: create|reset
+_CREATE_SCRIPT_CONFIGMAP: Name of an existing ConfigMap which contains a custom `create-database.sh` script. Only if set to a non-empty ConfigMap name a custom 'create-database.sh'script is executed from the ConfigMap, otherwise the built-in script is executed for _TYPE_ `create`
 Usage:
 
 This function full renders job objects that either create or reset a database defined for _COMPONENT_. The container used for these database operations is found in the `hull.config.specific.images.dbTools.repository` field (default is 'vpms/dbtools') and the tag to use is given in the `hull.config.specific.images.dbTools.tag` field (default "1.8"). In order to work correctly, the following environment variables are provided to each 'vpms/dbtools' instance executed:
@@ -1003,6 +1004,8 @@ For _TYPE_=create the following is happening:
 1. Check if database server can be reached
 2. Verify the database with name DBNAME is accessible for DBUSER. If DBADMINUSER and DBADMINPASSWORD is given, the DBNAME and DBUSER are created in the database so that database with name DBNAME is also accessible for DBUSER. If no DBADMINUSER and DBADMINPASSWORD is given, only successful access for DBUSER to DBNAME is checked.
 
+_Note_: When CUSTOM_SCRIPT_CONFIGMAP is set this overwrites the above step 2. 
+ 
 For _TYPE_=delete the following is happening:
 1. Check if database server can be reached
 2. Reset the database with DBNAME.

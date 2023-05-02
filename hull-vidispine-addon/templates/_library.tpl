@@ -400,11 +400,41 @@ rabbitmq-connectionString:
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $component := (index . "COMPONENT") }}
 {{ $type := (index . "TYPE") }}
+{{ $createScriptConfigMap := default nil (index . "CREATE_SCRIPT_CONFIGMAP") }}
 {{ $databaseKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
 {{ $databaseHost := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "host") }}
 {{ $databasePort := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "port") }}
 restartPolicy: {{ default "Never" (index . "RESTART_POLICY") }}
 initContainers:
+{{ if $createScriptConfigMap }}
+  copy-custom-scripts:
+    image:
+      repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
+      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.8" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
+    args:
+    - "/bin/sh"
+    - "-c"
+    - "cp /configmap/* /custom-scripts"
+    volumeMounts:
+      script-configmap:
+        name: script-configmap
+        mountPath: /configmap
+      custom-scripts:
+        name: custom-scripts
+        mountPath: /custom-scripts
+  set-custom-script-permissions:
+    image:
+      repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
+      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.8" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
+    args:
+    - "/bin/sh"
+    - "-c"
+    - "chmod -R u+x /custom-scripts"
+    volumeMounts:
+      custom-scripts:
+        name: custom-scripts
+        mountPath: /custom-scripts
+{{ end }}
   check-database-ready:
     image:
       repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
@@ -457,7 +487,17 @@ containers:
     args:
     - "/bin/sh"
     - "-c"
+{{ if $createScriptConfigMap }}
+    - /custom-scripts/create-database.sh
+{{ else }}
     - /scripts/create-database.sh
+{{ end }}
+{{ if $createScriptConfigMap }}
+    volumeMounts:
+      custom-scripts:
+        name: custom-scripts
+        mountPath: /custom-scripts
+{{ end }}
 {{ end }}
 {{ if (eq $type "reset") }}
   reset-database:
@@ -507,6 +547,14 @@ containers:
           secretKeyRef:
             name: "{{ $component }}"
             key: AUTH_BASIC_DATABASE_PASSWORD
+{{ if $createScriptConfigMap }}
+volumes:
+  script-configmap:
+    configMap:
+      name: {{ $createScriptConfigMap }}
+  custom-scripts:
+    emptyDir: {}
+{{ end }}
 {{ end }}
 
 
