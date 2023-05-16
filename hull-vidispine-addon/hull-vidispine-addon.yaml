@@ -1301,7 +1301,7 @@ hull:
                   }
 
                   # Delete an entity
-                  hidden [PSCustomObject] DeleteEntity([string] $deleteUrl, [string] $identifier, [string] $deleteQueryParams, [PSCustomObject] $auth, [string] $contentType, [PSCustomObject] $headers)
+                  hidden [PSCustomObject] DeleteEntity([string] $deleteUrl, [string] $identifier, [PSCustomObject] $deleteQueryParams, [PSCustomObject] $auth, [string] $contentType, [PSCustomObject] $headers)
                   {
                       $url = $this.AppendQueryParamsToUri($deleteUrl, $deleteQueryParams, $identifier, $false)
                       return $this.InvokeWebRequest($url, "DELETE", "", $headers)
