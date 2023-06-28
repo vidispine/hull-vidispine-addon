@@ -387,8 +387,8 @@ hull:
                                   }
                                   else
                                   {
-                                    $document.ProductGuid = $existingComponent.Guid
-                                    $document.Guid = $existingComponent.Guid
+                                    $document.ProductGuid = $foundGuid
+                                    $document.Guid = $foundGuid
 
                                     $this.WriteLog("~~~ SBOM: PUTing $($component) with existing Guid $($foundGuid)")
                                     $this.InvokeWebRequest("$($apiEndpoint)/$($foundGuid)", "PUT", ($document | ConvertTo-Json -Depth 20), $headers)
