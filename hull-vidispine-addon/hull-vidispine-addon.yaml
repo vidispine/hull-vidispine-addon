@@ -260,7 +260,7 @@ hull:
                                 return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
                               }
 
-                              if ((Get-ChildItem $discoverJson.manifests | Measure-Object ).Count -eq 0)
+                              if (($discoverJson.manifests | Measure-Object).Count -eq 0)
                               {
                                 $errorMessage = "~~~ SBOM: Manifests field for $($rootArtifact) has zero elements! Skipping license upload ..."
                                 $this.WriteError($errorMessage)
@@ -268,7 +268,7 @@ hull:
                               }
                               else
                               {
-                                if ((Get-ChildItem $discoverJson.manifests | Measure-Object ).Count -gt 1)
+                                if (($discoverJson.manifests | Measure-Object ).Count -gt 1)
                                 {
                                   $errorMessage = "~~~ SBOM: Manifests field for $($rootArtifact) has more than one element! Only considering first element ..."
                                   $this.WriteError($errorMessage)
