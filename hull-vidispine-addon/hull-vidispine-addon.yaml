@@ -286,7 +286,7 @@ hull:
                                 {
                                   # Pulled artifacts to download directory
                                   $this.WriteLog("~~~ SBOM: $($pullCommand) successful:")
-                                  $this.WriteLog("~~~ SBOM: $($pull | ConvertFrom-Json)")
+                                  $this.WriteLog("~~~ SBOM: $($pull)")
                                 }
                                 else
                                 {
@@ -364,7 +364,6 @@ hull:
                                   }
 
                                   # Create document body
-                                  $this.WriteLog("~~~ SBOM: Component $($component) already found in ConfigPortal, use PUT")
                                   $document = @{
                                     Name = $component;
                                     Version = $entity._helm_chart_version_;
