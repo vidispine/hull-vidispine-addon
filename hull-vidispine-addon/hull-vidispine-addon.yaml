@@ -225,12 +225,14 @@ hull:
                             $licenseDirectory = "/oci_license"
                             $downloadDirectory = "$($licenseDirectory)/download"
                             $docDirectory = "$($licenseDirectory)/extracted"
+                            $errorMessage = ""
 
                             # Log in to OCI
                             if ([String]::IsNullOrWhitespace($entity._oci_endpoint_.server))
                             {
-                              $this.WriteError("~~~ SBOM: Did not find OCI registry server name, you may need to configure a registry object for this chart!")
-                              return @{ "statusCode" = 500 } | ConvertTo-Json
+                              $errorMessage = "~~~ SBOM: Did not find OCI registry server name, you may need to configure a registry object for this chart!"
+                              $this.WriteError($errorMessage)
+                              return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
                             }
                             $this.WriteLog("~~~ SBOM: Logging in to $($entity._oci_endpoint_.server)")
                             oras login $entity._oci_endpoint_.server --username $entity._oci_endpoint_.username --password $entity._oci_endpoint_.password
@@ -247,32 +249,58 @@ hull:
                             if ($discoverExitCode -eq 0)
                             {
                               # Found artifacts
-                              $this.WriteLog("~~~ SBOM: $($discoverCommand) successful:")
-                              $this.WriteLog("~~~ SBOM: $($discover | ConvertFrom-Json)")
-
-                              # Download Artifacts
-                              New-Item -ItemType Directory -Path $downloadDirectory
-                              $pullCommand = "oras pull -o $downloadDirectory $rootArtifact@$(($discover | ConvertFrom-Json).manifests[0].digest)"
-                              $pull = (oras pull -o $downloadDirectory $rootArtifact@$(($discover | ConvertFrom-Json).manifests[0].digest)) -join "`n"
-                              $pullExitCode = $LASTEXITCODE
-                              $this.WriteLog("~~~ SBOM: oras pull Exit Code: $($pullExitCode)")
-
-                              if ($pullExitCode -eq 0)
+                              $discoverJson = ($discover | ConvertFrom-Json)
+                              $this.WriteLog("~~~ SBOM: $($discoverCommand) successful:")                              
+                              $this.WriteLog("~~~ SBOM: $($discoverJson)")
+                              
+                              if (-not [bool]$discoverJson.PSObject.Properties['manifests'])
                               {
-                                # Pulled artifacts to download directory
-                                $this.WriteLog("~~~ SBOM: $($pullCommand) successful:")
-                                $this.WriteLog("~~~ SBOM: $($pull | ConvertFrom-Json)")
+                                $errorMessage = "~~~ SBOM: Manifests field for $($rootArtifact) does not exist! Skipping license upload ..."
+                                $this.WriteError($errorMessage)
+                                return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
+                              }
+
+                              if ((Get-ChildItem $discoverJson.manifests | Measure-Object ).Count -eq 0)
+                              {
+                                $errorMessage = "~~~ SBOM: Manifests field for $($rootArtifact) has zero elements! Skipping license upload ..."
+                                $this.WriteError($errorMessage)
+                                return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json                                
                               }
                               else
                               {
-                                $this.WriteError("~~~ SBOM: $($pullCommand) failed!")
-                                return @{ "statusCode" = 500 } | ConvertTo-Json
+                                if ((Get-ChildItem $discoverJson.manifests | Measure-Object ).Count -gt 1)
+                                {
+                                  $errorMessage = "~~~ SBOM: Manifests field for $($rootArtifact) has more than one element! Only considering first element ..."
+                                  $this.WriteError($errorMessage)
+                                  return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
+                                }
+
+                                # Download Artifacts
+                                New-Item -ItemType Directory -Path $downloadDirectory
+                                $pullCommand = "oras pull -o $downloadDirectory $rootArtifact@$(($discover | ConvertFrom-Json).manifests[0].digest)"
+                                $pull = (oras pull -o $downloadDirectory $rootArtifact@$(($discover | ConvertFrom-Json).manifests[0].digest)) -join "`n"
+                                $pullExitCode = $LASTEXITCODE
+                                $this.WriteLog("~~~ SBOM: oras pull Exit Code: $($pullExitCode)")
+
+                                if ($pullExitCode -eq 0)
+                                {
+                                  # Pulled artifacts to download directory
+                                  $this.WriteLog("~~~ SBOM: $($pullCommand) successful:")
+                                  $this.WriteLog("~~~ SBOM: $($pull | ConvertFrom-Json)")
+                                }
+                                else
+                                {
+                                  $errorMessage = "~~~ SBOM: $($pullCommand) failed!"
+                                  $this.WriteError($errorMessage)
+                                  return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
+                                }
                               }
                             }
                             else
                             {
-                              $this.WriteError("~~~ SBOM: $($discoverCommand) failed!")
-                              return @{ "statusCode" = 500 } | ConvertTo-Json
+                              $errorMessage = "~~~ SBOM: $($discoverCommand) failed!"
+                              $this.WriteError($errorMessage)
+                              return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
                             }
 
                             # Iterate over downloaded files
@@ -369,14 +397,16 @@ hull:
                                 }
                                 else
                                 {
-                                  $this.WriteError("~~~ SBOM: Single extracted file '$($docFile)' is not an html file!")
-                                  return @{ "statusCode" = 500 } | ConvertTo-Json
+                                  $errorMessage = "~~~ SBOM: Single extracted file '$($docFile)' is not an html file!"
+                                  $this.WriteError($errorMessage)
+                                  return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
                                 }
                               }
                               else
                               {
-                                $this.WriteError("~~~ SBOM: More than one file extracted from $($tgzFile.Name)!")
-                                return @{ "statusCode" = 500 } | ConvertTo-Json
+                                $errorMessage = "~~~ SBOM: More than one file extracted from $($tgzFile.Name)!"
+                                $this.WriteError($errorMessage)
+                                return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
                               }
 
                               $this.WriteLog("~~~ SBOM: Deleting directory $($docDirectory)")
@@ -1312,6 +1342,11 @@ hull:
                                       {
                                         $statusCode = $json.statusCode
                                         $this.WriteLog("Updated StatusCode: $($statusCode)")
+                                      }
+                                      if ($json.errorMessage)
+                                      {
+                                        $message = $json.errorMessage
+                                        $this.WriteLog("Updated Message from errorMessage: $($message)")
                                       }
                                       if ($json.uriPut)
                                       {
