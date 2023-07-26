@@ -158,6 +158,12 @@ false
   {{- if (eq $info "usernamesPostfix") -}}
     {{- $endpoint.auth.basic.usernamesPostfix -}}
   {{- end -}}
+  {{- if (eq $info "adminUsername") -}}
+    {{- $endpoint.auth.basic.adminUsername -}}
+  {{- end -}}
+  {{- if (eq $info "adminPassword") -}}
+    {{- $endpoint.auth.basic.adminPassword -}}
+  {{- end -}}
   {{- if (eq $info "connectionString") -}}
     {{- if (eq $endpointKey "mssql") -}}
       Data Source=
@@ -366,6 +372,7 @@ rabbitmq-connectionString:
 {{ $componentInputs := (index . "COMPONENTS") }}
 {{ $endpoint := default "vidiflow" (index . "ENDPOINT") }}
 {{ $portName := default "http" (index . "PORTNAME") }}
+{{ $pathType := default "ImplementationSpecific" (index . "PATHTYPE") }}
 {{ $serviceName := default "" (index . "SERVICENAME") }}
 {{ $staticServiceName := default false (index . "STATIC_SERVICENAME") }}
 {{ $components := regexSplit "," ($componentInputs | trim) -1 }}
@@ -379,7 +386,7 @@ rabbitmq-connectionString:
     paths:
       {{ $componentKebapCase }}:
         path: {{ (urlParse (index (index $parent.Values.hull.config.general.data.endpoints $endpoint).uri $componentUri)).path }}
-        pathType: ImplementationSpecific
+        pathType: {{ $pathType }}
         backend:
           service:
 {{ if (eq $serviceName "") }}
