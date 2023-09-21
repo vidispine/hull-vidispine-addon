@@ -19,11 +19,11 @@ Test creation of objects and features.
 ## Installation Job
 * Render
 * Set test object to "release-name-hull-test-hull-install"
-* Test Object has key "spec§template§spec§containers§0§volumeMounts" with array value that has "2" items
+* Test Object has key "spec§template§spec§containers§0§volumeMounts" with array value that has "3" items
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§0§name" with value "custom-installation-files"
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§1§name" with value "installation"
 
-* Test Object has key "spec§template§spec§volumes" with array value that has "2" items
+* Test Object has key "spec§template§spec§volumes" with array value that has "3" items
 * Test Object has key "spec§template§spec§volumes§0§name" with value "custom-installation-files"
 * Test Object has key "spec§template§spec§volumes§1§name" with value "installation"
 
@@ -33,7 +33,7 @@ Test creation of objects and features.
 
 * Set test object to "release-name-hull-test-hull-install"
 
-* Test Object has key "spec§template§spec§containers§0§volumeMounts" with array value that has "5" items
+* Test Object has key "spec§template§spec§containers§0§volumeMounts" with array value that has "6" items
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§0§name" with value "certs"
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§0§mountPath" with value "/usr/local/share/ca-certificates/custom-ca-certificates-test_cert_1"
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§1§name" with value "certs"
@@ -45,7 +45,7 @@ Test creation of objects and features.
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§4§name" with value "installation"
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§4§mountPath" with value "/script"
 
-* Test Object has key "spec§template§spec§volumes" with array value that has "4" items
+* Test Object has key "spec§template§spec§volumes" with array value that has "5" items
 * Test Object has key "spec§template§spec§volumes§0§name" with value "certs"
 * Test Object has key "spec§template§spec§volumes§1§name" with value "custom-installation-files"
 * Test Object has key "spec§template§spec§volumes§2§name" with value "etcssl"

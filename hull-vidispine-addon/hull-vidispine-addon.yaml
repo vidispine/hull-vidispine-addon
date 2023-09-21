@@ -198,8 +198,235 @@ hull:
                   apiPath: "v2/ProductComponent"
                   typeDescription: ProductComponent
                   _DEFAULTS_:
-                    register: true
+                    register: false
                     remove: false
+                    processNoOp: false
+                    getUriExcludeIdentifier: true
+                  entities:
+                    license:
+                      # Declares variables that are available in getCustomScript
+                      _helm_charts_: |- 
+                        _HT![
+                          {
+                            name: {{ (index . "$").Chart.Name }},
+                            version: _HT!{{ (index . "$").Chart.Version }}
+                          }
+                        ]
+                      _oci_endpoint_: |-
+                        _HT!{
+                          {{ if (gt (len (keys (default dict (index . "$").Values.hull.objects.registry))) 1) }}
+                          {{ range $name, $spec := (index . "$").Values.hull.objects.registry }}
+                          {{ if (ne $name "_HULL_OBJECT_TYPE_DEFAULT_") }}
+                          server: {{ $spec.server }},
+                          username: {{ $spec.username }},
+                          password: {{ $spec.password }}
+                          {{ end }}
+                          {{ end }}
+                          {{ end }}
+                        }
+                      getCustomScript: |-
+                            
+                            # Set variables
+                            $licenseDirectory = "/oci_license"
+                            $downloadDirectory = "$($licenseDirectory)/download"
+                            $docDirectory = "$($licenseDirectory)/extracted"
+                            $errorMessage = ""
+
+                            # Log in to OCI
+                            if ([String]::IsNullOrWhitespace($entity._oci_endpoint_.server))
+                            {
+                              $errorMessage = "~~~ SBOM: Did not find OCI registry server name, you may need to configure a registry object for this chart!"
+                              $this.WriteError($errorMessage)
+                              return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
+                            }
+                            $this.WriteLog("~~~ SBOM: Logging in to $($entity._oci_endpoint_.server)")
+                            oras login $entity._oci_endpoint_.server --username $entity._oci_endpoint_.username --password $entity._oci_endpoint_.password
+                            $this.WriteLog("~~~ SBOM: Logged in to $($entity._oci_endpoint_.server)")
+
+                            foreach($chartInfo in $entity._helm_charts_) 
+                            {
+                              # Get artifacts
+                              $this.WriteLog("~~~ SBOM: ---> Processing License for Helm Chart $($chartInfo.name) and Version $($chartInfo.version)")
+                              $rootArtifact = "$($entity._oci_endpoint_.server)/helm-charts/vpms/$($chartInfo.name):$($chartInfo.version)"
+                              $this.WriteLog("~~~ SBOM: Getting related artifact $($rootArtifact)")
+                              $discoverCommand = "oras discover -o json --artifact-type 'mend/sbom' $($rootArtifact)"
+                              $discover = (oras discover -o json --artifact-type 'mend/sbom' $($rootArtifact)) -join "`n"
+                              $discoverExitCode = $LASTEXITCODE
+                              $this.WriteLog("~~~ SBOM: oras discover - Exit Code: $($discoverExitCode)")
+
+                              if ($discoverExitCode -eq 0)
+                              {
+                                # Found artifacts
+                                $discoverJson = ($discover | ConvertFrom-Json)
+                                $this.WriteLog("~~~ SBOM: $($discoverCommand) successful:")                              
+                                $this.WriteLog("~~~ SBOM: $($discoverJson)")
+                                
+                                if (-not [bool]$discoverJson.PSObject.Properties['manifests'])
+                                {
+                                  $errorMessage = "~~~ SBOM: Manifests field for $($rootArtifact) does not exist! Skipping license upload ..."
+                                  $this.WriteError($errorMessage)
+                                  return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
+                                }
+
+                                if (($discoverJson.manifests | Measure-Object).Count -eq 0)
+                                {
+                                  $errorMessage = "~~~ SBOM: Manifests field for $($rootArtifact) has zero elements! Skipping license upload ..."
+                                  $this.WriteError($errorMessage)
+                                  return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json                                
+                                }
+                                else
+                                {
+                                  if (($discoverJson.manifests | Measure-Object ).Count -gt 1)
+                                  {
+                                    $errorMessage = "~~~ SBOM: Manifests field for $($rootArtifact) has more than one element! Only considering first element ..."
+                                    $this.WriteError($errorMessage)
+                                    return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
+                                  }
+
+                                  # Download Artifacts
+                                  New-Item -ItemType Directory -Path $downloadDirectory
+                                  $pullCommand = "oras pull -o $downloadDirectory $rootArtifact@$(($discover | ConvertFrom-Json).manifests[0].digest)"
+                                  $pull = (oras pull -o $downloadDirectory $rootArtifact@$(($discover | ConvertFrom-Json).manifests[0].digest)) -join "`n"
+                                  $pullExitCode = $LASTEXITCODE
+                                  $this.WriteLog("~~~ SBOM: oras pull Exit Code: $($pullExitCode)")
+
+                                  if ($pullExitCode -eq 0)
+                                  {
+                                    # Pulled artifacts to download directory
+                                    $this.WriteLog("~~~ SBOM: $($pullCommand) successful:")
+                                    $this.WriteLog("~~~ SBOM: $($pull)")
+                                  }
+                                  else
+                                  {
+                                    $errorMessage = "~~~ SBOM: $($pullCommand) failed!"
+                                    $this.WriteError($errorMessage)
+                                    return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
+                                  }
+                                }
+                              }
+                              else
+                              {
+                                $errorMessage = "~~~ SBOM: $($discoverCommand) failed!"
+                                $this.WriteError($errorMessage)
+                                return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
+                              }
+
+                              # Iterate over downloaded files
+                              Get-ChildItem $downloadDirectory | Foreach-Object {
+
+                                # Check file
+                                $tgzFile = $_
+                                $this.WriteLog("~~~ SBOM: checking downloaded file $($tgzFile.Name)")
+                                $component = $entity._helm_chart_name_
+                                $subcomponent = $tgzFile.Name -Match "$($entity._helm_chart_version_)(.+).license.tgz"
+
+                                if ($subcomponent)
+                                {
+                                  # File has a subcomponent - multiple files
+                                  $component = "$($component).$($Matches[1])"
+                                  $this.WriteLog("~~~ SBOM: Subcomponent found, setting component to $component")
+                                }
+                                else
+                                {
+                                  $this.WriteLog("~~~ SBOM: No subcomponent found, using component $component")
+                                }
+
+                                # Unzip the tgz
+                                $this.WriteLog("~~~ SBOM: Creating directory $($docDirectory) for unzipped files")
+                                New-Item -ItemType Directory -Path $docDirectory
+                                $this.WriteLog("~~~ SBOM: Extracting files from $($tgzFile.FullName) to $($docDirectory)")
+                                $extract = (tar -xvzf $tgzFile.FullName -C $docDirectory 2>&1) -join "`n"
+                                $this.WriteLog("~~~ SBOM: Extracting tgz result:")
+                                $this.WriteLog("~~~ SBOM: $($extract)")
+
+                                if ((Get-ChildItem $docDirectory | Measure-Object ).Count -eq 1)
+                                {
+                                  # Expect single unzipped file
+                                  $docFile = Get-ChildItem -Path $docDirectory -Force -File | Select-Object -First 1
+
+                                  if ($docFile.Name -imatch '\.html$')
+                                  {
+                                    # Single file must be HTML
+                                    $this.WriteLog("~~~ SBOM: Found expected single HTML file $($docFile.Name) in $docDirectory")
+                                    $this.WriteLog("~~~ SBOM: Base64 encode $($docFile.Name)")
+                                    $extractedFileContent = Get-Content -Path $docFile.FullName
+                                    $encodedText =[Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($extractedFileContent))
+
+                                    $this.WriteLog("~~~ SBOM: Checking if component $($component) for file $($docFile.Name) already exists in ConfigPortal")
+                                    $foundGuid = ""
+                                    $productcomponents = $responseGet | ConvertFrom-Json
+                                    $this.WriteLog("~~~ SBOM: GET Response was '$($productcomponents)'")
+
+                                    foreach($existingComponent in $productcomponents.Result)
+                                    {
+
+                                      $this.WriteLog("~~~ SBOM: Found existing ProductComponent:")
+                                      $this.WriteLog($($existingComponent | ConvertTo-Json))
+                                      $this.WriteLog("~~~ SBOM: Comparing existing ProductComponent name '$($existingComponent.Name)' to component name: '$($component)'")
+                                      if ($existingComponent.Name -iMatch $component)
+                                      {
+                                        $this.WriteLog("~~~ SBOM: Component $($component) already found in ConfigPortal, use PUT")
+                                        $foundGuid = $existingComponent.Guid
+                                      }
+                                    }
+
+                                    # Create document body
+                                    $document = @{
+                                      Name = $component;
+                                      Version = $entity._helm_chart_version_;
+                                      License = $encodedText;
+                                      LicenseType = "text/html"
+                                    }
+                                    $body = $document | ConvertTo-Json -Depth 20
+
+                                    if ([String]::IsNullOrEmpty($foundGuid))
+                                    {
+                                      # Caluclate new GUID from component name
+                                      $md5 = New-Object -TypeName System.Security.Cryptography.MD5CryptoServiceProvider
+                                      $utf8 = New-Object -TypeName System.Text.UTF8Encoding
+                                      $hashGuid = [Guid]::New($md5.ComputeHash($utf8.GetBytes($component)))
+
+                                      $document.ProductGuid = $hashGuid
+                                      $document.Guid = $hashGuid
+
+                                      $this.WriteLog("~~~ SBOM: POSTing component $($component)")
+                                      $this.InvokeWebRequest($apiEndpoint, "POST", ($document | ConvertTo-Json -Depth 20), $headers)
+                                    }
+                                    else
+                                    {
+                                      $document.ProductGuid = $foundGuid
+                                      $document.Guid = $foundGuid
+
+                                      $this.WriteLog("~~~ SBOM: PUTing $($component) with existing Guid $($foundGuid)")
+                                      $this.InvokeWebRequest("$($apiEndpoint)/$($foundGuid)", "PUT", ($document | ConvertTo-Json -Depth 20), $headers)
+                                    }
+                                  }
+                                  else
+                                  {
+                                    $errorMessage = "~~~ SBOM: Single extracted file '$($docFile)' is not an html file!"
+                                    $this.WriteError($errorMessage)
+                                    return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
+                                  }
+                                }
+                                else
+                                {
+                                  $errorMessage = "~~~ SBOM: More than one file extracted from $($tgzFile.Name)!"
+                                  $this.WriteError($errorMessage)
+                                  return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
+                                }
+
+                                $this.WriteLog("~~~ SBOM: Deleting document directory $($docDirectory)")
+                                Remove-Item -Recurse -Path $docDirectory
+                              }
+
+                              $this.WriteLog("~~~ SBOM: Deleting download directory $($downloadDirectory)")
+                              Remove-Item -Recurse -Path $downloadDirectory
+                            }
+                            
+
+                            $this.WriteLog("~~~ SBOM: Done processing all components")
+                            return @{ "statusCode" = 200 } | ConvertTo-Json
+                      config: {}                    
                 70_mappedgroups:
                   apiPath: v2/ActiveDirectoryMappedGroups
                   typeDescription: ActiveDirectoryMappedGroups
@@ -249,8 +476,8 @@ hull:
           containers:
             installation:
               image:
-                repository: vpms/powershellcore-yaml
-                tag: "7.0.3-ubuntu-18.04-20200928"
+                repository: vpms/powershellcore-yaml-oras
+                tag: 7.3-ubuntu-22.04-20230620
               command: ["/bin/sh", "-c"]
               args: _HT![
                 {{ if (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates }}
@@ -282,8 +509,8 @@ hull:
           containers:
             installation:
               image:
-                repository: vpms/powershellcore-yaml
-                tag: "7.0.3-ubuntu-18.04-20200928"
+                repository: vpms/powershellcore-yaml-oras
+                tag: 7.3-ubuntu-22.04-20230620
               command: ["/bin/sh", "-c"]
               args: _HT![
                 {{ if (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates }}
@@ -706,6 +933,7 @@ hull:
 
                               $response = Invoke-WebRequest -Uri $url -Method $method -Body $jsonBody -headers $headers -UseBasicParsing -SkipCertificateCheck
                               $this.AssertResponse($response)
+                              $this.WriteLog("***** $($method.ToUpper()) to '$($url)' was successful!")
                               return $response
                           }
                           catch {
@@ -728,7 +956,7 @@ hull:
                   }
 
                   # Gets the authorization header for either token based or basic auth
-                  hidden [PSCustomObject] GetHttpHeaders([PSCustomObject] $auth, [string] $contentType, [PSCustomObject] $endpointExtraHeaders = $null, [PSCustomObject] $value = $null)
+                  hidden [PSCustomObject] GetHttpHeaders([PSCustomObject] $auth, [string] $contentType, [PSCustomObject] $endpointExtraHeaders = $null, [PSCustomObject] $entity = $null)
                   {
                       $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
 
@@ -774,20 +1002,20 @@ hull:
                           }
                       }
 
-                      if ($value.extraHeaders)
+                      if ($entity.extraHeaders)
                       {
-                          foreach($header in $value.extraHeaders.Keys)
+                          foreach($header in $entity.extraHeaders.Keys)
                           {
                             if ($headers.ContainsKey($header))
                             {
-                              $this.WriteLog("++++ OVerwriting Header '$($header)' with value '$($value.extraHeaders[$header])' from Entity Headers.")                              
+                              $this.WriteLog("++++ OVerwriting Header '$($header)' with value '$($entity.extraHeaders[$header])' from Entity Headers.")                              
                             }
                             else
                             {
-                              $this.WriteLog("++++ Adding Header '$($header)' with value '$($value.extraHeaders[$header])' from Entity Headers.")
+                              $this.WriteLog("++++ Adding Header '$($header)' with value '$($entity.extraHeaders[$header])' from Entity Headers.")
                             }
 
-                            $headers[$header] = $value.extraHeaders[$header]
+                            $headers[$header] = $entity.extraHeaders[$header]
 
                           }
                       }
@@ -946,18 +1174,11 @@ hull:
                       $endpoint = $endpoint.Trim('/')
                       foreach($entityKey in $subresource.entities.Keys)
                       {
-                          $value = $subresource.entities[$entityKey]
 
-                          # Either register or remove needs to be enabled
-                          if ($value.register -eq $true -or $value.remove -eq $true)
-                          {
-                              $endpointApiPath = "$($endpoint)/$($subresource.apiPath)"
-                              $this.WriteLog("*** Processing entities for API path '$($endpointApiPath)'")
                               try {
                                 $callResult = $this.CheckEntity(
-                                    $endpointApiPath,
                                     $entityKey,
-                                    $value,
+                                    $endpoint,
                                     $subresource,
                                     $authSubresource,
                                     $extraHeaders
@@ -1003,11 +1224,6 @@ hull:
                                 }
                               }
                           }
-                          else
-                          {
-                              $this.WriteLog("*** Skipping subresource because neither 'register' nor 'remove' is set to true.")
-                          }
-                      }
                     }
                     else
                     {
@@ -1016,52 +1232,59 @@ hull:
                   }
 
                   # Checks entities and performs required operations (DELETE/PUT/POST)
-                  hidden [PSCustomObject] CheckEntity(
-                      [string] $endpointApiPath,
-                      [string] $entityKey,
-                      [PSCustomObject] $value,
-                      [PSCustomObject] $subresource,
-                      [PSCustomObject] $auth,
-                      [PSCustomObject] $extraHeaders)
+                  hidden [PSCustomObject] CheckEntity([string] $entityKey, [PSCustomObject] $endpoint, [PSCustomObject] $subresource, [PSCustomObject] $auth, [PSCustomObject] $extraHeaders)
                   {
-                      $identifier = if ([string]::IsNullOrWhiteSpace($value.identifier)) {$entityKey} else {$value.identifier }
-                      $this.WriteLog("*** $(if ($value.remove -eq $true) {"Starting to remove"} else {"Starting to register"}) entity with identifier '$($identifier)' for entity key '$($entityKey)'")
 
-                      if ($value.config -eq $null)
+                      $entity = $subresource.entities[$entityKey]
+                      
+                      # Either register or remove needs to be enabled (normally)
+                      if ($entity.register -ne $true -and $entity.remove -ne $true)
                       {
-                          $this.WriteLog("*** Creating empty config object")
-                          $value.config = New-Object -TypeName PSCustomObject 
+                          $lastMethod = ""
+                          $lastUri = ""
+                          if ($entity.processNoOp -eq $true)
+                          {
+                              $this.WriteLog("*** Not skipping subresource because 'processNoOp' is true even though neither 'register' nor 'remove' is set to true.")
+                          }
+                          else
+                          {
+                              $this.WriteLog("*** Skipping subresource because neither 'register' nor 'remove' is set to true.")
+                              return @{ "lastMethod" = $lastMethod; "lastUri" = $lastUri }
+                          }
                       }
+                      
+                      $identifier = if ([string]::IsNullOrWhiteSpace($entity.identifier)) {$entityKey} else {$entity.identifier }
+                      
 
                       $deleteQueryParams = @{}
-                      if ($value.deleteQueryParams)
+                      if ($entity.deleteQueryParams)
                       {
                           $this.WriteLog("*** Using deleteQueryParams from entity config")
-                          $deleteQueryParams = $value.deleteQueryParams
+                          $deleteQueryParams = $entity.deleteQueryParams
                       }
                       else 
                       {
-                          if ($value.remove -eq $true)
+                          if ($entity.remove -eq $true)
                           {
                               $this.WriteLog("*** Using legacy parameter 'identifierQueryParam' for specifying object to delete")
                               $deleteQueryParams = @{ $subresource.identifierQueryParam = $identifier }
                           }
                       }  
                       
-                      $contentType = "$(if ([String]::IsNullOrEmpty($value.contentType)) { "application/json" } else { $value.contentType })"
+                      $contentType = "$(if ([String]::IsNullOrEmpty($entity.contentType)) { "application/json" } else { $entity.contentType })"
                       $this.WriteLog("*** ContentType is '$($contentType)'")
 
                       $entityType = $subresource.typeDescription
-                      $headers = $this.GetHttpHeaders($auth, $contentType, $extraHeaders, $value)
+                      $headers = $this.GetHttpHeaders($auth, $contentType, $extraHeaders, $entity)
 
 
                       
                       $this.WriteLog("*** Headers are '$($headers | ConvertTo-Json)'")
-                      $apiEndpoint = $endpointApiPath.Trim('/')
+                      $apiEndpoint = "$($endpoint)/$($subresource.apiPath)".Trim('/')
                       $uri = "$apiEndpoint/$identifier"
-                      $uriPut = if ($value.putUriExcludeIdentifier -eq $true) { $apiEndpoint } else { $uri }
-                      $uriGet = if ($value.getUriExcludeIdentifier) { $apiEndpoint } else { $uri }
-                      $uriDelete =  if ($value.deleteUriExcludeIdentifier) { $apiEndpoint } else { $uri }
+                      $uriPut = if ($entity.putUriExcludeIdentifier -eq $true) { $apiEndpoint } else { $uri }
+                      $uriGet = if ($entity.getUriExcludeIdentifier -eq $true) { $apiEndpoint } else { $uri }
+                      $uriDelete =  if ($entity.deleteUriExcludeIdentifier -eq $true) { $apiEndpoint } else { $uri }
 
 
 
@@ -1073,7 +1296,7 @@ hull:
                       $lastMethod = ""
                       $lastUri = ""
                       
-                      if ($value.noGet)
+                      if ($entity.noGet)
                       {
                         $statusCode = 404
                         $this.WriteLog("**** NoGet is true, not GETting value. Handle as StatusCode $($statusCode)")
@@ -1082,13 +1305,13 @@ hull:
                       {
                         try
                         {
-                            $uriGet = $this.AppendQueryParamsToUri($uriGet, $value.getQueryParams, $identifier, $false)
+                            $uriGet = $this.AppendQueryParamsToUri($uriGet, $entity.getQueryParams, $identifier, $false)
 
                             $this.WriteLog("**** Checking if entity exists, GETting uri '$($uriGet)'")
                             $responseGet = Invoke-WebRequest -Uri $uriGet -Method "GET" -headers $headers -UseBasicParsing -SkipCertificateCheck
                             $lastMethod = "GET"
                             $lastUri = $uriGet
-                            if ([String]::IsNullOrWhitespace($value.getCustomScript))
+                            if ([String]::IsNullOrWhitespace($entity.getCustomScript))
                             {
                               $statusCode = $responseGet.StatusCode
                               $this.WriteLog("**** SUCCESS --> StatusCode: $($statusCode)")
@@ -1097,8 +1320,9 @@ hull:
                             {
                               try
                               {
+                                  $value = $entity
                                   $this.WriteLog("**** Invoking getCustomScript")
-                                  $scriptblock = [Scriptblock]::Create($value.getCustomScript)
+                                  $scriptblock = [Scriptblock]::Create($entity.getCustomScript)
                                   $this.WriteLog("[- Start Script -]")
                                   $result = $scriptblock.InvokeReturnAsIs()
                                   $this.WriteLog("Type of result: $($result.GetType())")
@@ -1116,6 +1340,11 @@ hull:
                                   }
                                   else
                                   {
+                                    if ($result.GetType().ToString() -eq "System.Object[]")
+                                    {
+                                      $result = $result | Select-Object -Last 1
+                                      $this.WriteLog("Ignoring previous result elements and getting last only: $($result)")
+                                    }
                                     if ($result -ne $null)
                                     {
                                       $json = $result | ConvertFrom-Json
@@ -1124,6 +1353,11 @@ hull:
                                       {
                                         $statusCode = $json.statusCode
                                         $this.WriteLog("Updated StatusCode: $($statusCode)")
+                                      }
+                                      if ($json.errorMessage)
+                                      {
+                                        $message = $json.errorMessage
+                                        $this.WriteLog("Updated Message from errorMessage: $($message)")
                                       }
                                       if ($json.uriPut)
                                       {
@@ -1161,10 +1395,11 @@ hull:
 
                       $this.WriteLog("**** StatusCode is $($statusCode)")
 
-                      $value.config = $this.ReadConfigFromFile($value, $statusCode)
-                      $value.config = $this.UpdateConfigValues($value, $statusCode, "readConfigValuesFromFiles")
-                      $value.config = $this.UpdateConfigValues($value, $statusCode, "updateConfigValues")
-                      $content = $value.config     
+                      $entity.config = $this.ReadConfigFromFile($entity, $statusCode)
+                      $entity.config = $this.UpdateConfigValues($entity, $statusCode, "readConfigValuesFromFiles")
+                      $entity.config = $this.UpdateConfigValues($entity, $statusCode, "updateConfigValues")
+                      
+                      $content = $entity.config
                       
                       if ($contentType -eq "application/json")
                       {
@@ -1172,12 +1407,12 @@ hull:
                           $content = $content | ConvertTo-Json -Depth 100
                       }
 
-                      if ($value.customGetScriptJsonResponseConfigReplacements)
+                      if ($entity.customGetScriptJsonResponseConfigReplacements)
                       {
                         $this.WriteLog("Check customGetScriptJsonResponseConfigReplacements")
-                        foreach($placeholder in $value.customGetScriptJsonResponseConfigReplacements.Keys)
+                        foreach($placeholder in $entity.customGetScriptJsonResponseConfigReplacements.Keys)
                         {
-                          $jsonKey = $value.customGetScriptJsonResponseConfigReplacements[$placeholder]
+                          $jsonKey = $entity.customGetScriptJsonResponseConfigReplacements[$placeholder]
                           $this.WriteLog("Check customGetScriptJsonResponseConfigReplacements key $($jsonKey)")
                           if ($json.$jsonKey -ne $null)
                           {
@@ -1193,14 +1428,14 @@ hull:
 
                       $this.WriteLog("Config is '$($content)'")
 
-                      if ($value.processConfigScript)
+                      if ($entity.processConfigScript)
                       {
                           $PUT = $statusCode -eq 200
                           $POST = $statusCode -eq 404
                           $CONTENT = $content
-                          $this.WriteLog("**** Found 'processConfigScript': $value.processConfigScript")
+                          $this.WriteLog("**** Found 'processConfigScript': $entity.processConfigScript")
                           $this.WriteLog("**** Invoking processConfigScript")
-                          $scriptblock = [Scriptblock]::Create($value.processConfigScript)
+                          $scriptblock = [Scriptblock]::Create($entity.processConfigScript)
                           $this.WriteLog("[- Start Script -]")
                           $result = $scriptblock.InvokeReturnAsIs()
                           $this.WriteLog("Type of result: $($result.GetType())")
@@ -1210,7 +1445,12 @@ hull:
 
                       }
                       
-                      if($value.remove -eq $true) 
+                      if ($statusCode -ne 200 -and $statusCode -ne 404)
+                      {
+                          throw [Exception]::new("ERROR --> Unexpected StatusCode: $($statusCode) - Message: $($message)")
+                      }
+                      
+                      if($entity.remove -eq $true) 
                       {
                           if ($statusCode -eq 200)
                           {
@@ -1219,9 +1459,9 @@ hull:
                               $lastMethod = "DELETE"
                               $lastUri = $uriDelete
                           }
-                          elseif ($value.noGet -or ($statusCode -eq 404))
+                          elseif ($entity.noGet -or ($statusCode -eq 404))
                           {
-                              if($value.noGet)
+                              if($entity.noGet)
                               {
                                   $this.WriteLog("**** Unclear if '$entityType' entry '$identifier' does exist due to 'noGet=true', DELETEing anyway since 'remove=true'")
                                   $this.DeleteEntity($uriDelete, $identifier, $deleteQueryParams, $auth, $contentType, $headers)
@@ -1237,14 +1477,14 @@ hull:
                           $statusCode = 404
                       }
 
-                      if ($value.register -eq $true)
+                      if ($entity.register -eq $true)
                       {
                         if ($statusCode -eq 200)
                         {
-                            if ($value.overwriteExisting -eq $true)
+                            if ($entity.overwriteExisting -eq $true)
                             {
                                 $this.WriteLog("**** '$entityType' entry '$identifier' already exists, hence PUTing instead of POSTing to update entity")
-                                $this.PutEntity($uriPut, $identifier, $content, $value.putQueryParams, $auth, $contentType, $headers)
+                                $this.PutEntity($uriPut, $identifier, $content, $entity.putQueryParams, $auth, $contentType, $headers)
                                 $lastMethod = "PUT"
                                 $lastUri = $uriPut
                             }
@@ -1253,27 +1493,23 @@ hull:
                                 $this.WriteLog("**** '$entityType' entry '$identifier' already exists, not overwriting due to flag 'overwriteExisting' not being set")
                             }
                         }
-                        elseif ($value.noGet -or ($statusCode -eq 404))
+                        elseif ($entity.noGet -or ($statusCode -eq 404))
                         {
                             $this.WriteLog("**** '$entityType' entry '$identifier' does not exist and will be created now")
-                            if ($value.putInsteadOfPost -eq $true)
+                            if ($entity.putInsteadOfPost -eq $true)
                             {
                                 $this.WriteLog("**** PUTting '$entityType' entry '$identifier' to create it since 'putInsteadOfPost' is set to true")
-                                $this.PutEntity($uriPut, $identifier, $content, $value.putQueryParams, $auth, $contentType, $headers)
+                                $this.PutEntity($uriPut, $identifier, $content, $entity.putQueryParams, $auth, $contentType, $headers)
                                 $lastMethod = "PUT"
                                 $lastUri = $uriPut
                             }
                             else
                             {
                                 $this.WriteLog("**** POSTing '$entityType' entry '$identifier' to create it")
-                                $this.PostEntity($apiEndpoint, $identifier, $content, $auth, $value.postQueryParams, $contentType, $headers)
+                                $this.PostEntity($apiEndpoint, $identifier, $content, $auth, $entity.postQueryParams, $contentType, $headers)
                                 $lastMethod = "POST"
                                 $lastUri = $apiEndpoint
                             }
-                        }
-                        else
-                        {
-                            throw [Exception]::new("ERROR --> Unexpected StatusCode: $($statusCode) - Message: $($message)")
                         }
                       }
                       else
@@ -1301,7 +1537,7 @@ hull:
                   }
 
                   # Delete an entity
-                  hidden [PSCustomObject] DeleteEntity([string] $deleteUrl, [string] $identifier, [string] $deleteQueryParams, [PSCustomObject] $auth, [string] $contentType, [PSCustomObject] $headers)
+                  hidden [PSCustomObject] DeleteEntity([string] $deleteUrl, [string] $identifier, [PSCustomObject] $deleteQueryParams, [PSCustomObject] $auth, [string] $contentType, [PSCustomObject] $headers)
                   {
                       $url = $this.AppendQueryParamsToUri($deleteUrl, $deleteQueryParams, $identifier, $false)
                       return $this.InvokeWebRequest($url, "DELETE", "", $headers)
@@ -1559,7 +1795,7 @@ hull:
                               }
                               else
                               {
-                                  $value = $queryParams[$key].Replace("$identifier", $identifier)
+                                  $value = $queryParams[$key].toString().Replace("$identifier", $identifier)
                               }
                               $uri += "$($start)$($key)=$($value)"
                               $count = $count + 1
