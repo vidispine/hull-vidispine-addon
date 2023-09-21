@@ -847,7 +847,7 @@ hull:
                       {
                           try
                           {
-                              $this.WriteLog("++++ Attempting to contact authenticatiun service. Retry count: " + $retryCount + " of " + $retryLimit)
+                              $this.WriteLog("++++ Attempting to contact authentication service. Retry count: " + $retryCount + " of " + $retryLimit)
                               $response = Invoke-WebRequest -URI ($healthCheckUri) -Method Get -UseBasicParsing -SkipCertificateCheck
                               if($response.StatusCode -ge 200 -And $response.StatusCode -lt 300)
                               {
