@@ -189,9 +189,14 @@ Icon: |-
     "emptyDir": { }
   },
   "certs":
-  {  "enabled": {{ if $parent.Values.hull.config.general.data.installation.config.customCaCertificates }}true{{ else }}false{{ end }},
-     "secret": { "secretName": "custom-ca-certificates" }
+  { 
+    "enabled": {{ if $parent.Values.hull.config.general.data.installation.config.customCaCertificates }}true{{ else }}false{{ end }},
+    "secret": { "secretName": "custom-ca-certificates" }
   },
+  "oci-license":
+  {
+    "emptyDir": { }
+  },    
   {{ $processedDict := dict }}
   {{ $folderCount := 0 }}
   {{ range $file, $_ := $parent.Files.Glob "files/hull-vidispine-addon/installation/sources/**/*" }}
@@ -231,6 +236,11 @@ Icon: |-
     "enabled": {{ if $parent.Values.hull.config.general.data.installation.config.customCaCertificates }}true{{ else }}false{{ end }},
     "name": "etcssl",
     "mountPath": "/etc/ssl/certs"
+  },
+  "oci-license":
+  {  
+    "name": "oci-license",
+    "mountPath": "/oci_license"
   },
   {{ range $certkey, $certvalue := $parent.Values.hull.config.general.data.installation.config.customCaCertificates}}
   "custom-ca-certificates-{{ $certkey }}": 
