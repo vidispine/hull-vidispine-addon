@@ -1018,6 +1018,8 @@ Parameters:
 _PARENT_CONTEXT_: The Helm charts global context
 _COMPONENT_: The `component` to create a volume section for
 need to be lowercase seperated with '-' (kebapcase) and are converted to the URI keys by making them camelCase.
+_HASH_CONFIGMAP_: Determines whether the `hashsumAnnotation` key is set on the ConfigMap volume if it is being created. This does not apply to the additional _CONFIGMAPS_, only to the one created if the component has at least one ConfigMap element. Defaults to true.
+_HASH_SECRET_: Determines whether the `hashsumAnnotation` key is set on the Secret volume if it is being created. This does not apply to the additional _SECRETS_, only to the one created if the component has at least one Secret element. Defaults to true.
 _SECRETS_: The additional Secrets to add to the volumes as comma-seperated list
 _CONFIGMAPS_: The additional configMap volumes to add to the volumes as comma-seperated list
 _EMPTYDIRS_: The additional emptyDir volumes to add to the volumes as comma-seperated list
@@ -1026,7 +1028,7 @@ _PVCS_:  The additional persistentVolumeClaim volumes to add to the volumes as c
 Usage:
 
 This function renders a pods volumes section based on the arguments and rest of the charts configuration:
-First it traverses the _COMPONENT_ in `hull.config.specific.components` and adds all `mounts.secret`'s and `mounts.configmap`'s names as references to the volumes secret and configMap volumes. It also adds all Secrets and ConfigMaps names as references for all defined physical files which are stored under the `files/_COMPONENT_/mounts/secret` and `files/_COMPONENT_/mounts/configmap` folders. Then it adds all addional secret's, configMap's, emptyDir's and persistentVolumeClaim's static reference names provided as additional arguments where the name of the reference is the full object name which is being referenced.
+First it traverses the _COMPONENT_ in `hull.config.specific.components` and adds all `mounts.secret`'s and `mounts.configmap`'s names as references to the volumes secret and configMap volumes. It also adds all Secrets and ConfigMaps names as references for all defined physical files which are stored under the `files/_COMPONENT_/mounts/secret` and `files/_COMPONENT_/mounts/configmap` folders. Then it adds all additional secret's, configMap's, emptyDir's and persistentVolumeClaim's static reference names provided as additional arguments where the name of the reference is the full object name which is being referenced.
 
 ### hull.vidispine.addon.library.component.pod.env
 

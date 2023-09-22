@@ -569,6 +569,9 @@ volumes:
 {{ define "hull.vidispine.addon.library.component.pod.volumes" }}
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $component := (index . "COMPONENT") }}
+{{ $hashSecret := default true (index . "HASH_SECRET") }}
+{{ $hashConfigMap := default true (index . "HASH_CONFIGMAP") }}
+{{ $component := (index . "COMPONENT") }}
 {{ $additionalSecrets := default "" (index . "SECRETS") }}
 {{ $additionalConfigMaps := default "" (index . "CONFIGMAPS") }}
 {{ $additionalEmptyDirs := default "" (index . "EMPTYDIRS") }}
@@ -596,12 +599,14 @@ secret:
   secret:
     defaultMode: 0777
     secretName: {{ $component }}
+    hashsumAnnotation: {{ $hashSecret }}
 {{ end }}
 {{ if $configmapMountsSpecified }}
 configmap:
   configMap:
     defaultMode: 0777
     name: {{ $component }}
+    hashsumAnnotation: {{ $hashConfigMap }}
 {{ end }}
 certs:
   enabled: $parent.Values.hull.config.general.data.installation.config.customCaCertificates
