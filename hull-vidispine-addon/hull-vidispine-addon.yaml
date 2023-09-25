@@ -317,8 +317,8 @@ hull:
                                 # Check file
                                 $tgzFile = $_
                                 $this.WriteLog("~~~ SBOM: checking downloaded file $($tgzFile.Name)")
-                                $component = $entity._helm_chart_name_
-                                $subcomponent = $tgzFile.Name -Match "$($entity._helm_chart_version_)(.+).license.tgz"
+                                $component = $chartInfo.name
+                                $subcomponent = $tgzFile.Name -Match "$($chartInfo.version)(.+).license.tgz"
 
                                 if ($subcomponent)
                                 {
@@ -373,7 +373,7 @@ hull:
                                     # Create document body
                                     $document = @{
                                       Name = $component;
-                                      Version = $entity._helm_chart_version_;
+                                      Version = $chartInfo.version;
                                       License = $encodedText;
                                       LicenseType = "text/html"
                                     }
