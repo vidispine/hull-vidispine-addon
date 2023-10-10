@@ -445,7 +445,6 @@ hull:
   objects:
 
     registry:
-
       _HULL_OBJECT_TYPE_DEFAULT_:
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
@@ -453,7 +452,6 @@ hull:
           "helm.sh/hook-delete-policy": before-hook-creation
 
     serviceaccount:
-
       default:
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
@@ -461,12 +459,28 @@ hull:
           "helm.sh/hook-delete-policy": before-hook-creation
 
     job:
+      hull-install-setup:
+        enabled: false
+        annotations:
+          "helm.sh/hook-delete-policy": before-hook-creation
+        pod:
+          containers:
+            installation:
+              command: ["/bin/sh", "-c"]
+              volumeMounts: _HT/hull.vidispine.addon.sources.folder.volumemounts                
+              envFrom:
+                auth:
+                  secretRef:
+                    name: auth
+          volumes: _HT/hull.vidispine.addon.sources.folder.volumes
 
       'hull-install':
+        sources:
+        - _HULL_OBJECT_TYPE_DEFAULT_
+        - hull-install-setup
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
           "helm.sh/hook-weight": '-10'
-          "helm.sh/hook-delete-policy": before-hook-creation
         parallelism: 1
         completions: 1
         backoffLimit: 6
@@ -478,7 +492,6 @@ hull:
               image:
                 repository: vpms/powershellcore-yaml-oras
                 tag: 7.3-ubuntu-22.04-20230620
-              command: ["/bin/sh", "-c"]
               args: _HT![
                 {{ if (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates }}
                 echo Updating Certificates;
@@ -487,18 +500,14 @@ hull:
                 echo Run hull-install Script;
                 pwsh /script/Installer.ps1 -ConfigFilePath /script/installation.yaml -Stage pre-install;
                 ]
-              envFrom:
-                auth:
-                  secretRef:
-                    name: auth
-              volumeMounts: _HT/hull.vidispine.addon.sources.folder.volumemounts
-          volumes: _HT/hull.vidispine.addon.sources.folder.volumes
 
       'hull-configure':
+        sources:
+        - _HULL_OBJECT_TYPE_DEFAULT_
+        - hull-install-setup
         enabled: false
         annotations:
           "helm.sh/hook": post-install,post-upgrade
-          "helm.sh/hook-delete-policy": before-hook-creation
           "helm.sh/hook-weight": '50'
         parallelism: 1
         completions: 1
@@ -511,7 +520,6 @@ hull:
               image:
                 repository: vpms/powershellcore-yaml-oras
                 tag: 7.3-ubuntu-22.04-20230620
-              command: ["/bin/sh", "-c"]
               args: _HT![
                 {{ if (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates }}
                 echo Updating Certificates;
@@ -520,12 +528,6 @@ hull:
                 echo Run hull-configure Script;
                 pwsh /script/Installer.ps1 -ConfigFilePath /script/installation.yaml -Stage post-install;
                 ]
-              envFrom:
-                auth:
-                  secretRef:
-                    name: auth
-              volumeMounts: _HT/hull.vidispine.addon.sources.folder.volumemounts
-          volumes: _HT/hull.vidispine.addon.sources.folder.volumes
 
     secret:
 
@@ -548,11 +550,18 @@ hull:
             {{ $key }}: { inline: {{ $value | quote }} },
             {{ end }}
           }
-      'custom-installation-files':
+      
+      'custom-installation-files-setup':
+        enabled: false
         annotations:
           helm.sh/hook: pre-install,pre-upgrade
           helm.sh/hook-weight: "-80"
           helm.sh/hook-delete-policy: before-hook-creation
+        
+      'custom-installation-files':
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: |-
           _HT!{
             {{ range $file, $_ := (index . "$").Files.Glob "files/hull-vidispine-addon/installation/sources/*" }}
@@ -561,148 +570,128 @@ hull:
           }
       'custom-installation-files-1':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 1
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:1
       'custom-installation-files-2':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 2
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:2
       'custom-installation-files-3':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 3
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:3
       'custom-installation-files-4':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 4
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:4
       'custom-installation-files-5':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 5
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:5
       'custom-installation-files-6':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 6
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:6
       'custom-installation-files-7':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 7
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:7
       'custom-installation-files-8':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 8
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:8
       'custom-installation-files-9':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 9
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:9
       'custom-installation-files-10':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 10
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:10
       'custom-installation-files-11':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 11
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:11
       'custom-installation-files-12':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 12
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:12
       'custom-installation-files-13':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 13
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:13
       'custom-installation-files-14':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 14
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:14
       'custom-installation-files-15':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 15
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:15
       'custom-installation-files-16':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 16
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:16
       'custom-installation-files-17':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 17
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:17
       'custom-installation-files-18':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 18
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:18
       'custom-installation-files-19':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 19
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:19
       'custom-installation-files-20':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 20
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-80"
-          helm.sh/hook-delete-policy: before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:20
       'hull-install':
-        annotations:
-          "helm.sh/hook": pre-install,pre-upgrade
-          "helm.sh/hook-weight": "-80"
-          "helm.sh/hook-delete-policy": before-hook-creation
+        sources:
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_      
         data:
           installation.yaml:
             inline: |-
