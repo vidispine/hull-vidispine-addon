@@ -445,7 +445,6 @@ hull:
   objects:
 
     registry:
-
       _HULL_OBJECT_TYPE_DEFAULT_:
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
@@ -453,7 +452,6 @@ hull:
           "helm.sh/hook-delete-policy": before-hook-creation
 
     serviceaccount:
-
       default:
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
@@ -461,12 +459,10 @@ hull:
           "helm.sh/hook-delete-policy": before-hook-creation
 
     job:
-
       hull-install-setup:
         enabled: false
         annotations:
           "helm.sh/hook-delete-policy": before-hook-creation
-
         pod:
           containers:
             installation:
@@ -481,6 +477,7 @@ hull:
       'hull-install':
         sources:
         - hull-install-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         annotations:
           "helm.sh/hook": pre-install,pre-upgrade
           "helm.sh/hook-weight": '-10'
@@ -507,6 +504,7 @@ hull:
       'hull-configure':
         sources:
         - hull-install-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         enabled: false
         annotations:
           "helm.sh/hook": post-install,post-upgrade
@@ -563,6 +561,7 @@ hull:
       'custom-installation-files':
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: |-
           _HT!{
             {{ range $file, $_ := (index . "$").Files.Glob "files/hull-vidispine-addon/installation/sources/*" }}
@@ -573,105 +572,126 @@ hull:
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 1
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:1
       'custom-installation-files-2':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 2
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:2
       'custom-installation-files-3':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 3
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:3
       'custom-installation-files-4':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 4
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:4
       'custom-installation-files-5':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 5
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:5
       'custom-installation-files-6':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 6
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:6
       'custom-installation-files-7':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 7
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:7
       'custom-installation-files-8':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 8
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:8
       'custom-installation-files-9':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 9
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:9
       'custom-installation-files-10':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 10
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:10
       'custom-installation-files-11':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 11
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:11
       'custom-installation-files-12':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 12
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:12
       'custom-installation-files-13':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 13
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:13
       'custom-installation-files-14':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 14
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:14
       'custom-installation-files-15':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 15
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:15
       'custom-installation-files-16':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 16
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:16
       'custom-installation-files-17':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 17
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:17
       'custom-installation-files-18':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 18
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:18
       'custom-installation-files-19':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 19
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:19
       'custom-installation-files-20':
         enabled: _HT?ge (int (index . "$").Values.hull.config.general.data.installation.config.runtime.sourcesFolders) 20
         sources:
         - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:20
       'hull-install':
         sources:
-        - custom-installation-files-setup        
+        - custom-installation-files-setup
+        - _HULL_OBJECT_TYPE_DEFAULT_      
         data:
           installation.yaml:
             inline: |-
