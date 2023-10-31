@@ -7,6 +7,7 @@ hull:
         installation:
           config:
             customCaCertificates: {}
+            certificateSecrets: {}
             preScript: ""
             postScript: ""
             productUris: []
@@ -493,7 +494,7 @@ hull:
                 repository: vpms/powershellcore-yaml-oras
                 tag: 7.3-ubuntu-22.04-20230620
               args: _HT![
-                {{ if (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates }}
+                {{ if (or (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates (index . "$").Values.hull.config.general.data.installation.config.certificateSecrets) }}
                 echo Updating Certificates;
                 update-ca-certificates;
                 {{ end }}
@@ -521,7 +522,7 @@ hull:
                 repository: vpms/powershellcore-yaml-oras
                 tag: 7.3-ubuntu-22.04-20230620
               args: _HT![
-                {{ if (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates }}
+                {{ if (or (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates (index . "$").Values.hull.config.general.data.installation.config.certificateSecrets) }}
                 echo Updating Certificates;
                 update-ca-certificates;
                 {{ end }}
