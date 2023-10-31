@@ -608,6 +608,15 @@ certs:
   enabled: $parent.Values.hull.config.general.data.installation.config.customCaCertificates
   secret:
     secretName: "custom-ca-certificates"
+{{ if $parent.Values.hull.config.general.data.installation.config.certificateSecrets }}
+{{ range $secretKey, $secretData := $parent.Values.hull.config.general.data.installation.config.certificateSecrets }}
+"certs-{{ $secretKey }}":
+{ 
+  "enabled": true,
+  "secret": { "secretName": "{{ $secretData.secretName }}", "staticName": true }
+},
+{{ end }}
+{{ end }}
 etcssl:
   enabled: $parent.Values.hull.config.general.data.installation.config.customCaCertificates
   emptyDir: {}

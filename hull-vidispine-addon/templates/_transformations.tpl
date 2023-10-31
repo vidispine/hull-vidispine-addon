@@ -185,7 +185,7 @@ Icon: |-
   },
   "etcssl":
   {
-    "enabled": {{ if $parent.Values.hull.config.general.data.installation.config.customCaCertificates }}true{{ else }}false{{ end }},
+    "enabled": {{ if (or $parent.Values.hull.config.general.data.installation.config.customCaCertificates $parent.Values.hull.config.general.data.installation.config.certificateSecrets) }}true{{ else }}false{{ end }},
     "emptyDir": { }
   },
   "certs":
@@ -193,6 +193,15 @@ Icon: |-
     "enabled": {{ if $parent.Values.hull.config.general.data.installation.config.customCaCertificates }}true{{ else }}false{{ end }},
     "secret": { "secretName": "custom-ca-certificates" }
   },
+  {{ if $parent.Values.hull.config.general.data.installation.config.certificateSecrets }}
+  {{ range $secretKey, $secretData := $parent.Values.hull.config.general.data.installation.config.certificateSecrets }}
+  "certs-{{ $secretKey }}":
+  { 
+    "enabled": true,
+    "secret": { "secretName": "{{ $secretData.secretName }}", "staticName": true }
+  },
+  {{ end }}
+  {{ end }}
   "oci-license":
   {
     "emptyDir": { }
@@ -233,7 +242,7 @@ Icon: |-
   },
   "etcssl": 
   {
-    "enabled": {{ if $parent.Values.hull.config.general.data.installation.config.customCaCertificates }}true{{ else }}false{{ end }},
+    "enabled": {{ if (or $parent.Values.hull.config.general.data.installation.config.customCaCertificates $parent.Values.hull.config.general.data.installation.config.certificateSecrets) }}true{{ else }}false{{ end }},
     "name": "etcssl",
     "mountPath": "/etc/ssl/certs"
   },
@@ -250,6 +259,19 @@ Icon: |-
     "mountPath": "/usr/local/share/ca-certificates/custom-ca-certificates-{{ $certkey }}",
     "subPath": "{{ $certkey }}"
   },
+  {{ end }}
+  {{ if $parent.Values.hull.config.general.data.installation.config.certificateSecrets }}
+  {{ range $secretKey, $secretData := $parent.Values.hull.config.general.data.installation.config.certificateSecrets }}
+  {{ range $secretFile := $secretData.fileNames }}
+  "certs-{{ $secretKey }}-{{ $secretFile }}":
+  { 
+    "enabled": true,
+    "name": "certs-{{ $secretKey }}",
+    "mountPath": "/usr/local/share/ca-certificates/custom-ca-certificates-{{ $secretKey }}-{{ $secretFile }}",
+    "subPath": "{{ $secretFile }}"
+  },
+  {{ end }}
+  {{ end }}
   {{ end }}
   {{ $processedDict := dict }}
   {{ range $file, $_ := $parent.Files.Glob "files/hull-vidispine-addon/installation/sources/**/*" }}
