@@ -733,16 +733,16 @@ hull:
                                   {{- end -}}
                                   {{- $t := mergeOverwrite $mergedDict $entityval -}}
                                   {{- $z := set (index $.Values "hull").config.general.data.installation "endpoints" $configScopeEndpoints }}
-                                  {{- include "hull.vidispine.addon.transformation" (dict "PARENT_CONTEXT" $ "SOURCE" (index $.Values "hull").config.general.data.installation.endpoints) -}}
+                                  {{- include "hull.util.transformation" (dict "PARENT_CONTEXT" $ "SOURCE" (index $.Values "hull").config.general.data.installation.endpoints) -}}
                                   {{- if typeIs "map[string]interface {}" $mergedDict -}}
                                       {{- if hasKey $mergedDict "config" -}}
                                           {{- $configDict := $mergedDict.config -}}
                                           {{- if typeIs "[]interface {}" $configDict -}}
                                               {{- range $listentry := $configDict -}}
-                                                  {{- $newlistentry := include "hull.vidispine.addon.transformation" (dict "PARENT_CONTEXT" $ "SOURCE" $listentry "CALLER" nil "CALLER_KEY" nil) -}}
+                                                  {{- $newlistentry := include "hull.util.transformation" (dict "PARENT_CONTEXT" $ "SOURCE" $listentry "CALLER" nil "CALLER_KEY" nil) -}}
                                               {{- end -}}
                                           {{- else -}}
-                                              {{ include "hull.vidispine.addon.transformation" (dict "PARENT_CONTEXT" $ "SOURCE" $mergedDict.config) }}
+                                              {{ include "hull.util.transformation" (dict "PARENT_CONTEXT" $ "SOURCE" $mergedDict.config) }}
                                           {{- end }}
                                       {{- end }}
                                   {{- end }}
