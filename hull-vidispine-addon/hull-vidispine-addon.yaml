@@ -745,7 +745,7 @@ hull:
                           {{- $configScopeEndpoints = unset $configScopeEndpoints $endpoint -}}
                       {{- end }}
                   {{- end }}
-                  {{- include "hull.util.transformation" (dict "PARENT_CONTEXT" $ "SOURCE" $configScope "CALLER" nil "CALLER_KEY" nil "SOURCE_PATH" list) -}}
+                  {{- $_ := include "hull.util.transformation" (dict "PARENT_CONTEXT" $ "SOURCE" $configScope "CALLER" nil "CALLER_KEY" nil "SOURCE_PATH" list) -}}
                   {{- toYaml $configScope -}}
                 {{ end }}
           Installer.ps1:
