@@ -101,14 +101,14 @@ hull:
               endpoint: _HT/hull.vidispine.addon.library.get.endpoint.uri.info:ENDPOINT:"authservice":URI:"api"
               subresources:
                 10_resources:
-                  apiPath: "v1/Resource/ApiResource"
+                  apiPath: "v1/Resource/ApiScope"
                   typeDescription: "Scope"
                   _DEFAULTS_:
                     register: true
                     putUriExcludeIdentifier: true
                     deleteUriExcludeIdentifier: true
                     deleteQueryParams:
-                      resourceName: "$identifier"  
+                      name: "$identifier"
                 20_clients:
                   apiPath: "v1/Client"
                   typeDescription: "Client"
@@ -117,7 +117,7 @@ hull:
                     putUriExcludeIdentifier: true
                     deleteUriExcludeIdentifier: true
                     deleteQueryParams:
-                      clientId: "$identifier"  
+                      clientId: "$identifier"
                 30_roles:
                   apiPath: "v1/Roles"
                   typeDescription: "Roles"
@@ -127,7 +127,7 @@ hull:
                     putUriExcludeIdentifier: true
                     deleteUriExcludeIdentifier: true
                     deleteQueryParams:
-                      id: "$identifier"  
+                      roleId: "$identifier"
 
             30_configportal:
               auth:
