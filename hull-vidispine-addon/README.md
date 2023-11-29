@@ -47,11 +47,12 @@ To mimic this tree structure the configuration is built around this three-part w
 | `endpoints` | Dictionary of endpoints to communicate with.<br><br>Key: <br>Key for entry in dictionary `endpoints`<br><br>Value: <br>The endpoint definition in form of a `<endpointSpec>` | `10_vidicore:`<br>`20_authservice:`<br>`30_configportal:`
 
 ### ConfigSpec
-Describes configuration options. <br>Has exclusively the following sub-fields: <br><br>`customCaCertificates`<br>`preScript`<br>`postScript`<br>`productUris`<br>`debug`
+Describes configuration options. <br>Has exclusively the following sub-fields: <br><br>`customCaCertificates`<br>`certificateSecrets`<br>`preScript`<br>`postScript`<br>`productUris`<br>`debug`
 
 | Parameter                       | Description                                                     | Defaults                 |                  Example |
 | ------------------------------- | ----------------------------------------------------------------| -----------------------------| -----------------------------------------|
 | `customCaCertificates` | An optional dictionary of custom ca certificates that are being mounted into the`hull-install` and `hull-configure` pods. Presence of certificates may be required for proper communication with the authentication service.
+| `certificateSecrets` | An optional dictionary of keys and secret configurations for certificates that should be included as custom CA certificates at runtime. The keys will be used to create the `volumeMount` name using the schema `cert-<KEY>-<FILENAME>`and the file name of the secrets entry that is mounted into the `/usr/local/share/ca-certificates` folder under the name `custom-ca-certificates-<KEY>-<FILENAME>`.<br><br>Each secret configuration under a key needs the following entries:<br>- `secretName`: the complete name of the secret<br>- `fileNames`: an array of filenames/`data` keys which are to be mounted | `certificateSecrets:`<br>&#160;&#160;`opensearch:`<br>&#160;&#160;&#160;&#160;`secretName:`&#160;`opensearch-node-certs`<br>&#160;&#160;&#160;&#160;`fileNames:`<br>&#160;&#160;&#160;&#160;-&#160;`cert.tls`
 | `preScript` | A Powershell script to be executed before the installation jobs endpoints are processed. 
 | `postScript` | A Powershell script to be executed after the installation jobs endpoints are processed. 
 | `productUris` | Product URIs that are can be used in conjunction with the transformations that populate authentication client data such as `hull.vidispine.addon.coruris` and `hull.vidispine.addon.producturis`. <br><br>When populated the entries here will be manipulated according to the transformation and are added to the fields where the transformation is applied. <br><br>Note that this can be automatically populated by a `hull.util.transformation.tpl` from the `hull.config.general.data.endpoints` fields like in the example. | `[]` | `productUris:`<br>`-`&#160;`https://myapp`<br>`-`&#160;`https://myappalternativehost`<br><br>or<br><br>`productUris:`<br>&#160;&#160;`_HULL_TRANSFORMATION_:`<br>&#160;&#160;&#160;&#160;`NAME:`&#160;`hull.util.transformation.tpl`<br>&#160;&#160;&#160;&#160;`CONTENT:`&#160;`"`<br>&#160;&#160;&#160;&#160;&#160;&#160;`[`<br>&#160;&#160;&#160;&#160;&#160;&#160;`{{-`&#160;`(index`&#160;`.`&#160;`\"PARENT\").Values.hull.config.general.data.endpoints.configportal.uri.api`&#160;`-}},`<br>&#160;&#160;&#160;&#160;&#160;&#160;`{{-`&#160;`(index`&#160;`.`&#160;`\"PARENT\").Values.hull.config.general.data.endpoints.configportal.uri.ui`&#160;`-}}`<br>&#160;&#160;&#160;&#160;&#160;&#160;`]"`
@@ -1018,6 +1019,8 @@ Parameters:
 _PARENT_CONTEXT_: The Helm charts global context
 _COMPONENT_: The `component` to create a volume section for
 need to be lowercase seperated with '-' (kebapcase) and are converted to the URI keys by making them camelCase.
+_HASH_CONFIGMAP_: Determines whether the `hashsumAnnotation` key is set on the ConfigMap volume if it is being created. This does not apply to the additional _CONFIGMAPS_, only to the one created if the component has at least one ConfigMap element. Defaults to true.
+_HASH_SECRET_: Determines whether the `hashsumAnnotation` key is set on the Secret volume if it is being created. This does not apply to the additional _SECRETS_, only to the one created if the component has at least one Secret element. Defaults to true.
 _SECRETS_: The additional Secrets to add to the volumes as comma-seperated list
 _CONFIGMAPS_: The additional configMap volumes to add to the volumes as comma-seperated list
 _EMPTYDIRS_: The additional emptyDir volumes to add to the volumes as comma-seperated list
@@ -1026,7 +1029,7 @@ _PVCS_:  The additional persistentVolumeClaim volumes to add to the volumes as c
 Usage:
 
 This function renders a pods volumes section based on the arguments and rest of the charts configuration:
-First it traverses the _COMPONENT_ in `hull.config.specific.components` and adds all `mounts.secret`'s and `mounts.configmap`'s names as references to the volumes secret and configMap volumes. It also adds all Secrets and ConfigMaps names as references for all defined physical files which are stored under the `files/_COMPONENT_/mounts/secret` and `files/_COMPONENT_/mounts/configmap` folders. Then it adds all addional secret's, configMap's, emptyDir's and persistentVolumeClaim's static reference names provided as additional arguments where the name of the reference is the full object name which is being referenced.
+First it traverses the _COMPONENT_ in `hull.config.specific.components` and adds all `mounts.secret`'s and `mounts.configmap`'s names as references to the volumes secret and configMap volumes. It also adds all Secrets and ConfigMaps names as references for all defined physical files which are stored under the `files/_COMPONENT_/mounts/secret` and `files/_COMPONENT_/mounts/configmap` folders. Then it adds all additional secret's, configMap's, emptyDir's and persistentVolumeClaim's static reference names provided as additional arguments where the name of the reference is the full object name which is being referenced.
 
 ### hull.vidispine.addon.library.component.pod.env
 
