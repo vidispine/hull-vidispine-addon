@@ -158,6 +158,12 @@ false
   {{- if (eq $info "usernamesPostfix") -}}
     {{- $endpoint.auth.basic.usernamesPostfix -}}
   {{- end -}}
+  {{- if (eq $info "adminUsername") -}}
+    {{- $endpoint.auth.basic.adminUsername -}}
+  {{- end -}}
+  {{- if (eq $info "adminPassword") -}}
+    {{- $endpoint.auth.basic.adminPassword -}}
+  {{- end -}}
   {{- if (eq $info "connectionString") -}}
     {{- if (eq $endpointKey "mssql") -}}
       Data Source=
@@ -366,6 +372,7 @@ rabbitmq-connectionString:
 {{ $componentInputs := (index . "COMPONENTS") }}
 {{ $endpoint := default "vidiflow" (index . "ENDPOINT") }}
 {{ $portName := default "http" (index . "PORTNAME") }}
+{{ $pathType := default "ImplementationSpecific" (index . "PATHTYPE") }}
 {{ $serviceName := default "" (index . "SERVICENAME") }}
 {{ $staticServiceName := default false (index . "STATIC_SERVICENAME") }}
 {{ $components := regexSplit "," ($componentInputs | trim) -1 }}
@@ -379,7 +386,7 @@ rabbitmq-connectionString:
     paths:
       {{ $componentKebapCase }}:
         path: {{ (urlParse (index (index $parent.Values.hull.config.general.data.endpoints $endpoint).uri $componentUri)).path }}
-        pathType: ImplementationSpecific
+        pathType: {{ $pathType }}
         backend:
           service:
 {{ if (eq $serviceName "") }}
@@ -400,11 +407,41 @@ rabbitmq-connectionString:
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $component := (index . "COMPONENT") }}
 {{ $type := (index . "TYPE") }}
+{{ $createScriptConfigMap := default nil (index . "CREATE_SCRIPT_CONFIGMAP") }}
 {{ $databaseKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
 {{ $databaseHost := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "host") }}
 {{ $databasePort := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "port") }}
 restartPolicy: {{ default "Never" (index . "RESTART_POLICY") }}
 initContainers:
+{{ if $createScriptConfigMap }}
+  copy-custom-scripts:
+    image:
+      repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
+      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.8" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
+    args:
+    - "/bin/sh"
+    - "-c"
+    - "cp /configmap/* /custom-scripts"
+    volumeMounts:
+      script-configmap:
+        name: script-configmap
+        mountPath: /configmap
+      custom-scripts:
+        name: custom-scripts
+        mountPath: /custom-scripts
+  set-custom-script-permissions:
+    image:
+      repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
+      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.8" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
+    args:
+    - "/bin/sh"
+    - "-c"
+    - "chmod -R u+x /custom-scripts"
+    volumeMounts:
+      custom-scripts:
+        name: custom-scripts
+        mountPath: /custom-scripts
+{{ end }}
   check-database-ready:
     image:
       repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
@@ -457,7 +494,17 @@ containers:
     args:
     - "/bin/sh"
     - "-c"
+{{ if $createScriptConfigMap }}
+    - /custom-scripts/create-database.sh
+{{ else }}
     - /scripts/create-database.sh
+{{ end }}
+{{ if $createScriptConfigMap }}
+    volumeMounts:
+      custom-scripts:
+        name: custom-scripts
+        mountPath: /custom-scripts
+{{ end }}
 {{ end }}
 {{ if (eq $type "reset") }}
   reset-database:
@@ -507,6 +554,14 @@ containers:
           secretKeyRef:
             name: "{{ $component }}"
             key: AUTH_BASIC_DATABASE_PASSWORD
+{{ if $createScriptConfigMap }}
+volumes:
+  script-configmap:
+    configMap:
+      name: {{ $createScriptConfigMap }}
+  custom-scripts:
+    emptyDir: {}
+{{ end }}
 {{ end }}
 
 
@@ -552,6 +607,15 @@ certs:
   enabled: $parent.Values.hull.config.general.data.installation.config.customCaCertificates
   secret:
     secretName: "custom-ca-certificates"
+{{ if $parent.Values.hull.config.general.data.installation.config.certificateSecrets }}
+{{ range $secretKey, $secretData := $parent.Values.hull.config.general.data.installation.config.certificateSecrets }}
+"certs-{{ $secretKey }}":
+{ 
+  "enabled": true,
+  "secret": { "secretName": "{{ $secretData.secretName }}", "staticName": true }
+},
+{{ end }}
+{{ end }}
 etcssl:
   enabled: $parent.Values.hull.config.general.data.installation.config.customCaCertificates
   emptyDir: {}
