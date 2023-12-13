@@ -11,6 +11,10 @@ hull:
             preScript: ""
             postScript: ""
             productUris: []
+            proxy:
+              httpProxy: ""
+              httpsProxy: ""
+              noProxy: ""
             debug:
               ignoreEntityRestCallErrors: false
               retriesForEntityRestCall: 3
@@ -468,11 +472,21 @@ hull:
           containers:
             installation:
               command: ["/bin/sh", "-c"]
-              volumeMounts: _HT/hull.vidispine.addon.sources.folder.volumemounts                
+              volumeMounts: _HT/hull.vidispine.addon.sources.folder.volumemounts
               envFrom:
                 auth:
                   secretRef:
                     name: auth
+              env:
+                HTTP_PROXY:
+                  enabled: _HT?ne (index . "$").Values.hull.config.general.data.installation.config.proxy.httpProxy ""
+                  value: _HT*hull.config.general.data.installation.config.proxy.httpProxy
+                HTTPS_PROXY:
+                  enabled: _HT?ne (index . "$").Values.hull.config.general.data.installation.config.proxy.httpsProxy ""
+                  value: _HT*hull.config.general.data.installation.config.proxy.httpsProxy
+                NO_PROXY:
+                  enabled: _HT?ne (index . "$").Values.hull.config.general.data.installation.config.proxy.noProxy ""
+                  value: _HT*hull.config.general.data.installation.config.proxy.noProxy
           volumes: _HT/hull.vidispine.addon.sources.folder.volumes
 
       'hull-install':
