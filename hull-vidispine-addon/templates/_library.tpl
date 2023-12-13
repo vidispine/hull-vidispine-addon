@@ -569,7 +569,6 @@ volumes:
 {{ define "hull.vidispine.addon.library.component.pod.volumes" }}
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $component := (index . "COMPONENT") }}
-{{ $component := (index . "COMPONENT") }}
 {{ $additionalSecrets := default "" (index . "SECRETS") }}
 {{ $additionalConfigMaps := default "" (index . "CONFIGMAPS") }}
 {{ $additionalEmptyDirs := default "" (index . "EMPTYDIRS") }}
