@@ -46,12 +46,18 @@ false
 {{- $endpoint := (index . "ENDPOINT") }}
 {{- $uri := default "api" (index . "URI") }}
 {{- $info := default "uri" (index . "INFO") }}
+{{- $ignoreInternal := default false (index . "IGNORE_INTERNAL") }}
 {{- $endpoints := $parent.Values.hull.config.general.data.endpoints -}}
 {{- $external := printf "%s.uri.%s" $endpoint $uri -}}
 {{- $internal := printf "%sInternal" $external -}}
 {{- if (or (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $internal)) "") 
             (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $external)) "")) -}}
-    {{- $selectedEndpoint := default (index (index $endpoints $endpoint).uri $uri) (index (index $endpoints $endpoint).uri (printf "%sInternal" $uri)) -}}
+    {{- $selectedEndpoint := "" -}}
+    {{- if $ignoreInternal -}}
+      {{- $selectedEndpoint = index (index $endpoints $endpoint).uri $uri -}}
+    {{- else -}}
+      {{- $selectedEndpoint = default (index (index $endpoints $endpoint).uri $uri) (index (index $endpoints $endpoint).uri (printf "%sInternal" $uri)) -}}
+    {{- end -}}
     {{- $host := (regexSplit ":" (urlParse $selectedEndpoint).host -1) | first | trim -}}
     {{- $netloc := (urlParse $selectedEndpoint).netloc -}}
     {{- $path := (urlParse $selectedEndpoint).path -}}
