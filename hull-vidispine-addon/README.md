@@ -70,16 +70,28 @@ Describes an endpoint which is communicated with. <br>Has exclusively the follow
 | Parameter                       | Description                                                     | Defaults                 |                  Example |
 | ------------------------------- | ----------------------------------------------------------------| -----------------------------| -----------------------------------------|
 | `endpoint` | The HTTP/HTTPS path to the endpoint API <br><br>If this is not defined, nothing will be attempted to be written to this endpoint | | `https://vpms3testsystem.westeurope.cloudapp.azure.com:19081/Authentication/Core`<br>or<br>`http://dv-ndr-plat4.s4m.de:31060` 
-| `auth` | Defines how to authenticate at the given endpoint<br><br>Has one of following keys:<br>`basic`<br>`token` |
+| `auth` | Defines how to authenticate at the given endpoint<br><br>Has one of following keys:<br>`basic`<br>`token`<br>`session` |
 | `auth.basic` | Defines basic authentication for connecting to API | | `env:`<br>&#160;&#160;`username:`&#160;`VIDICORE_ADMIN_USERNAME`<br>&#160;&#160;`password:`&#160;`VIDICORE_ADMIN_PASSWORD`
-| `auth.basic.env.username` | Defines the environment variable that holds the username for basic auth.<br><br>Note:<br>A secret must be mounted to the container which populates the `username` environment variable
-| `auth.basic.env.password` | Defines the environment variable that holds the password for basic auth.<br><br>Note:<br>A secret must be mounted to the container which populates the `password` environment variable
-| `auth.token` | Defines token authentication for connecting to API | | `authenticationServiceEndpoint:`&#160;`"https://vpms3testsystem.westeurope.cloudapp.azure.com:19081/Authentication/Core"`<br>`env:`<br>&#160;&#160;`clientId:`&#160;`AUTHSERVICE_TOKEN_PRODUCT_CLIENT_ID`<br>&#160;&#160;`clientSecret:`&#160;`AUTHSERVICE_TOKEN_PRODUCT_CLIENT_SECRET`<br>`grantType:`&#160;`"client_credentials"`<br>`scopes:`<br>`- 'configportalscope'`<br>`- 'identityscope'`
-| `auth.token.authenticationServiceEndpoint` | Endpoint of AuthenticationService to get token from |
-| `auth.token.env.clientId` | Defines the environment variable that holds the clientId for token auth.<br><br>Note:<br>A secret must be mounted to the container which populates the `clientId` environment variable
-| `auth.token.env.clientSecret` | Defines the environment variable that holds the clientSecret for token auth.<br><br>Note:<br>A secret must be mounted to the container which populates the `clientSecret` environment variable
-| `auth.token.grantType` | Defines the grantType for the token
-| `auth.token.scopes` | Defines the scopes for the token | `[]` 
+| `auth.basic.env.username` | Defines the environment variable that holds the username for basic auth.<br><br>Note:<br>If the `username` to be used is not contained in the automatically created `auth` or pod specific secret, the secret holding the `username` must be mounted to the container to populate the `username` environment variable
+| `auth.basic.env.password` | Defines the environment variable that holds the password for basic auth.<br><br>Note:<br>If the `password` to be used is not contained in the automatically created `auth` or pod specific secret, the secret holding the `password` must be mounted to the container to populate the `password` environment variable
+| `auth.token` | Defines token authentication parameters for connecting to an API. Up to this point this is always the authentication service but may be a changed to a different service providing tokens. | |`endpoint:`<br>&#160;&#160;`baseUri:`&#160;`_HT/hull.vidispine.addon.library.get.endpoint.uri.info:ENDPOINT:"authservice":URI:"api"`<br>&#160;&#160;`healthCheckSubpath:`&#160;`"/v1/HealthCheck?showDetail=false"`<br>&#160;&#160;`requestSubpath:`&#160;`"/connect/token"`<br>`request:`<br>&#160;&#160;`body:`<br>&#160;&#160;&#160;&#160;`client_id:`&#160;`$env:CLIENT_AUTHSERVICE_INSTALLATION_ID`<br>&#160;&#160;&#160;&#160;`client_secret:`&#160;`$env:CLIENT_AUTHSERVICE_INSTALLATION_SECRET`<br>&#160;&#160;&#160;&#160;`grant_type:`&#160;`client_credentials`<br>&#160;&#160;&#160;&#160;`scope:`&#160;`identityscope`<br>&#160;&#160;`headers:`<br>&#160;&#160;&#160;&#160;`Content-Type:`&#160;`"application/x-www-form-urlencoded"`<br>&#160;&#160;&#160;&#160;`Accept:`&#160;`"application/json"`<br>`response:`<br>&#160;&#160;`tokenField:`&#160;`"access_token"`
+| `auth.token.endpoint` | Endpoint specification of service to get token from | | `baseUri:`&#160;`_HT/hull.vidispine.addon.library.get.endpoint.uri.info:ENDPOINT:"authservice":URI:"api"`<br>`healthCheckSubpath:`&#160;`"/v1/HealthCheck?showDetail=false"`<br>`requestSubpath:`&#160;`"/connect/token"`
+| `auth.token.endpoint.baseUri` | Base Uri of authentication service endpoint to which path suffixes are appended to. | | `baseUri:`&#160;`_HT/hull.vidispine.addon.library.get.endpoint.uri.info:ENDPOINT:"authservice":URI:"api"`
+| `auth.token.endpoint.healthCheckSubpath` | If set to a non empty value, a healthcheck is performed before obtaining a token from the endpoint | | `healthCheckSubpath:`&#160;`"/v1/HealthCheck?showDetail=false"`
+| `auth.token.endpoint.requestSubpath` | An optional suffix which is appended to `auth. | | `requestSubpath:`&#160;`"/connect/token"`
+| `auth.token.request` | Specifics of the request that is being sent to the token authentication service to obtain a token | | `body:`<br>&#160;&#160;`client_id:`&#160;`$env:CLIENT_AUTHSERVICE_INSTALLATION_ID`<br>&#160;&#160;`client_secret:`&#160;`$env:CLIENT_AUTHSERVICE_INSTALLATION_SECRET`<br>&#160;&#160;`grant_type:`&#160;`client_credentials`<br>&#160;&#160;`scope:`&#160;`identityscope`<br>`headers:`<br>&#160;&#160;`Content-Type:`&#160;`"application/x-www-form-urlencoded"`<br>&#160;&#160;`Accept:`&#160;`"application/json"`
+| `auth.token.request.body` | The body of the request as a dictionary. It will be formatted appropriately matching the `Content-Type` header before sending, eg. to JSON for `Content-Type: application/json`<br><br> To fill in values that are supplied as environment variables, use the syntax `$env:<ENVIRONMENT_VARIABLE_NAME>` where `<ENVIRONMENT_VARIABLE_NAME>` is the name of the environment variable you want to be substituted in place.| | `client_id:`&#160;`$env:CLIENT_AUTHSERVICE_INSTALLATION_ID`<br>`client_secret:`&#160;`$env:CLIENT_AUTHSERVICE_INSTALLATION_SECRET`<br>`grant_type:`&#160;`client_credentials`<br>`scope:`&#160;`identityscope`
+| `auth.token.request.headers` | The headers of the authentication token request as a dictionary. | | `Content-Type:`&#160;`"application/x-www-form-urlencoded"`<br>`Accept:`&#160;`"application/json"`
+| `auth.token.response` | Information on how to treat the response of a token request to the token authentication service | | `tokenField:`&#160;`"access_token"`
+| `auth.token.response.tokenField` | The optional key in the response JSON which holds the authentication token. The token is stored internally and sent with further requests to the endpoint | | `tokenField:`&#160;`"access_token"`
+| `auth.session` | Defines session authentication parameters for connecting to an API | |`endpoint:`<br>&#160;&#160;`baseUri:`&#160;`_HT*hull.config.general.data.endpoints.opensearch.uri.dashboards`<br>&#160;&#160;`healthCheckSubpath:`&#160;`""`<br>&#160;&#160;`requestSubpath:`&#160;`"/auth/login"`<br>`request:`<br>&#160;&#160;`body:`<br>&#160;&#160;&#160;&#160;`username:`&#160;`$env:AUTH_BASIC_OPENSEARCH_USERNAME`<br>&#160;&#160;&#160;&#160;`password:`&#160;`$env:AUTH_BASIC_OPENSEARCH_PASSWORD`<br>&#160;&#160;&#160;&#160;`grant_type:`&#160;`client_credentials`<br>&#160;&#160;&#160;&#160;`scope:`&#160;`identityscope`<br>&#160;&#160;`headers:`<br>&#160;&#160;&#160;&#160;`Content-Type:`&#160;`"application/json"`<br>&#160;&#160;&#160;&#160;`osd-xsrf:`&#160;`"true"`
+| `auth.session.endpoint` | Endpoint specification of service to get session from | | `baseUri:`&#160;`_HT*hull.config.general.data.endpoints.opensearch.uri.dashboards"`<br>`healthCheckSubpath:`&#160;`""`<br>`requestSubpath:`&#160;`"/auth/login"`
+| `auth.session.endpoint.baseUri` | Base Uri of authentication service endpoint to which path suffixes are appended to. | | `baseUri:`&#160;`_HT*hull.config.general.data.endpoints.opensearch.uri.dashboards"`
+| `auth.session.endpoint.healthCheckSubpath` | If set to a non empty value, a healthcheck is performed before obtaining a token from the endpoint | | `healthCheckSubpath:`&#160;`""`
+| `auth.session.endpoint.requestSubpath` | An optional suffix which is appended to `auth. | | `requestSubpath:`&#160;`"/auth/login"`
+| `auth.session.request` | Specifics of the request that is being sent to the session authentication service to obtain session cookies | | `body:`<br>&#160;&#160;`username:`&#160;`$env:AUTH_BASIC_OPENSEARCH_USERNAME`<br>&#160;&#160;`password:`&#160;`$env:AUTH_BASIC_OPENSEARCH_PASSWORD`<br>`headers:`<br>&#160;&#160;`Content-Type:`&#160;`"application/json"`<br>&#160;&#160;`osd-xsrf:`&#160;`"true"`
+| `auth.session.request.body` | The body of the request as a dictionary. It will be formatted appropriately matching the `Content-Type` header before sending, eg. to JSON for `Content-Type: application/json`<br><br> To fill in values that are supplied as environment variables, use the syntax `$env:<ENVIRONMENT_VARIABLE_NAME>` where `<ENVIRONMENT_VARIABLE_NAME>` is the name of the environment variable you want to be substituted in place.| | `username:`&#160;`$env:AUTH_BASIC_OPENSEARCH_USERNAME`<br>`password:`&#160;`$env:AUTH_BASIC_OPENSEARCH_PASSWORD`
+| `auth.session.request.headers` | The headers of the authentication token request as a dictionary. | | `Content-Type:`&#160;`"application/json"`<br>`osd-xsrf:`&#160;`"true"`
 | `stage` | Global stage where the defined `subresources` are processed. Can be overwritten at `subresource` level individually. <br>All subresources are by default processed during execution of the `hull-install` job by setting stage `pre-install` before installation of the main product of the parent Helm Chart. If you for example need to communicate to the API of a product you just installed within the parents Helm chart, set the `stage` to `post-install` and the processing takes places within the `hull-configure` job after the main product installation is done. | `pre-install` | `post-install`
 | `extraHeaders` | Globally added extra headers to HTTP calls. Header keys defined on the `endpoint` level will be set for all entities with the headers value when sending HTTP requests. However header values can be overwritten or added individually on the `entity` level via the local `extraHeaders` dictionary. | `` | `extraHeaders:`<br>&#160;&#160;`added_header_1:`&#160;`header_value`<br>&#160;&#160;`added_header_2:`&#160;`another_header_value`
 | `subresources` | Dictionary of individual API routes to communicate with.<br><br>Key: <br>Key for entry in dictionary `subresources`<br><br>Value: <br>The subresource definition  in form of a `<subresourceSpec>`
@@ -132,21 +144,7 @@ By default the `hull-install` job is enabled but already pre-configured so that 
 
 - the container needed to run the job is defined so that it 
   - automatically loads the configuration section from `hull.config.general.data.installation`
-  - mounts sensitive data as environment variables from secrets (which by default are created with the respective keys but without values). If you use the `hull-install` job in product installation you need to set the appropriate values in the secrets:
-    - from `vidicore-secret` the `data` keys 
-      - `adminUsername` to env var `VIDICORE_ADMIN_USERNAME` 
-      - `adminPassword` to env var `VIDICORE_ADMIN_PASSWORD` 
-    
-        if communication with VidiCore is required.
-
-    - from `authservice-token-secret` the `data` keys
-      - `installerClientId` to env var `AUTHSERVICE_TOKEN_INSTALLER_CLIENT_ID` 
-      - `installerClientSecret` to env var `AUTHSERVICE_TOKEN_INSTALLER_CLIENT_SECRET` 
-      - `productClientId` to env var `AUTHSERVICE_TOKEN_PRODUCT_CLIENT_ID` 
-      - `productClientSecret` to env var `AUTHSERVICE_TOKEN_PRODUCT_CLIENT_SECRET`
-
-        if communication with AuthService (`installerClientId`/`installerClientSecret`) and ConfigPortal (`productClientId`/`productClientSecret`) is required.
-
+  - loads all certificates provided under `hull.config.general.data.installation.config.customCaCertificates`
 - typical endpoints and subresources are predefined so that only entities need to be specified. The predefined subresources for the endpoints are skipped in case the endpoint is not defined. 
   - endpoint with key `10_vidicore` is set up to do basic authentication on the vidispine endpoint defined in `hull.config.general.data.endpoints.vidicore.uri.api` using the `admin` credentials from secret `vidicore-secret`
     - subresources are configured so that creating specific entities works out of the box for them
@@ -823,13 +821,18 @@ the following _ENDPOINT_ and _URI_ combinations yield:
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
+
 _ENDPOINT_: The key denoting the endpoint which may contain the _URI_
+
 _URI_: The particular uri to get
+
+_IGNORE_INTERNAL_: Ignore any endpoint with name of _URI_ and suffix `Internal`
+
 _INFO_: The kind of information to get. Allowed values: uri|host|hostname|netloc|path|scheme|port|base
 
 Usage:
 
-This function works with `hull.config.general.data.endpoints` section to return a particular aspect of an _URI_ which is defined for a given endpoint named with _ENDPOINT_. The function furthermore checks for whether the _URI_ is defined with a suffix of `Internal` or without it. If an `Internal` suffixes _URI_ exists it has precedence over an _URI_ without the suffix for the evaluation of _INFO_.
+This function works with `hull.config.general.data.endpoints` section to return a particular aspect of an _URI_ which is defined for a given endpoint named with _ENDPOINT_. The function furthermore checks for whether the _URI_ is defined with a suffix of `Internal` or without it. If an `Internal` suffixes _URI_ exists it has precedence over an _URI_ without the suffix for the evaluation of _INFO_, however if the _IGNORE_EXTERNAL_ parameter is set to true any endpoint with an `Internal` suffix is explicitly ignored.
 
 Allowed values for _INFO_:
 - `uri`: return the complete URI as it is configured
