@@ -152,7 +152,7 @@ hull:
                     body:
                       client_id: $env:CLIENT_CONFIGPORTAL_INSTALLATION_ID
                       client_secret: $env:CLIENT_CONFIGPORTAL_INSTALLATION_SECRET
-                      grantType: client_credentials
+                      grant_type: client_credentials
                       scope: 'configportalscope'
                     headers:
                       Content-Type: "application/x-www-form-urlencoded"
@@ -1272,9 +1272,20 @@ hull:
                   # Set ContentType Header always
                   $headers.Add("Content-Type", $contentType)
                   $headers.Add("Accept", $contentType)
-                                    
                   $authHeader = [String]::Empty
-                  if ($null -ne $auth.session)
+
+                  $explicitAuthType = $false
+                  if ($null -ne $auth.type) 
+                  {
+                    $this.WriteLog("++++ Auth type is explicitly set to '$($auth.type)'")
+                    $explicitAuthType = $true
+                  }
+                  else
+                  {
+                    $this.WriteLog("++++ No explitit auth type is set, selecting first one defined.")
+                  }
+
+                  if ($null -ne $auth.session -and (-not $explicitAuthType -or ($explicitAuthType -and $auth.type -eq "session"))) 
                   {
                     if ($null -ne $this._sessionCookies)
                     {
@@ -1286,12 +1297,12 @@ hull:
                       $this.GetAccess($auth.session, "session")
                     }
                   }
-                  if ($null -ne $auth.token)
+                  if ($null -ne $auth.token -and (-not $explicitAuthType -or ($explicitAuthType -and $auth.type -eq "token")))
                   {
                     $accessToken = $this.GetAccess($auth.token, "token")
                     $authHeader = "Bearer $accessToken"
                   }
-                  if ($null -ne $auth.basic)
+                  if ($null -ne $auth.basic -and (-not $explicitAuthType -or ($explicitAuthType -and $auth.type -eq "basic")))
                   {
                     $authHeader = "Basic $([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes([environment]::GetEnvironmentVariable($auth.basic.env.username,"Process") + ":" + [environment]::GetEnvironmentVariable($auth.basic.env.password,"Process"))))"
                     $this.WriteLog("++++ Using Basic Auth for User '$([Text.Encoding]::ASCII.GetBytes([environment]::GetEnvironmentVariable($auth.basic.env.username,"Process")))'. Password is $(if ([environment]::GetEnvironmentVariable($auth.basic.env.password,"Process") -ne [String]::Empty) {"not "} else {" "} )empty.")
