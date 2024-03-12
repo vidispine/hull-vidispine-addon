@@ -152,7 +152,7 @@ hull:
                     body:
                       client_id: $env:CLIENT_CONFIGPORTAL_INSTALLATION_ID
                       client_secret: $env:CLIENT_CONFIGPORTAL_INSTALLATION_SECRET
-                      grantType: client_credentials
+                      grant_type: client_credentials
                       scope: 'configportalscope'
                     headers:
                       Content-Type: "application/x-www-form-urlencoded"
