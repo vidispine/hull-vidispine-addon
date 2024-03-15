@@ -657,10 +657,16 @@ etcssl:
 {{ range $pvc := $pvcs }}
 {{ if (ne $pvc "") }}
 {{ $pvc }}:
-  persistentVolumeClaim:     
+  persistentVolumeClaim:
     claimName: {{ $pvc }}
     staticName: true
 {{ end }}
+{{ end }}
+{{ end }}
+{{ if (ne nil (dig $component "extraVolumes" nil $parent.Values.hull.config.specific.components)) }}
+{{ range $evKey, $evValue := (index $parent.Values.hull.config.specific.components $component).extraVolumes }}
+{{ $evKey }}:
+{{ $evValue | toYaml | indent 2 }}
 {{ end }}
 {{ end }}
 {{ end }}
