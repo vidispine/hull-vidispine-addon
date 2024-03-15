@@ -19,6 +19,8 @@ hull:
               ignoreEntityRestCallErrors: false
               retriesForEntityRestCall: 3
               retriesForAuthServiceCall: 10
+            legacy:
+              defaultServiceAccountIsHook: false
             runtime:
               sourcesFolders: _HT/hull.vidispine.addon.sources.folder.secret.count
           endpoints:
@@ -473,6 +475,20 @@ hull:
           "helm.sh/hook-delete-policy": before-hook-creation
 
     serviceaccount:
+      default:
+        annotations:
+          _HULL_TRANSFORMATION_:
+            NAME: hull.util.transformation.tpl
+            CONTENT: |- 
+              {
+                {{ if (index . "$").Values.hull.config.general.data.installation.config.legacy.defaultServiceAccountIsHook }}
+                "helm.sh/hook": "pre-install,pre-upgrade",
+                "helm.sh/hook-weight": "-100",
+                "helm.sh/hook-delete-policy": "before-hook-creation"
+                {{ end }}
+              }
+
+          
       hull-install:
         annotations:
           helm.sh/hook: pre-install,pre-upgrade
