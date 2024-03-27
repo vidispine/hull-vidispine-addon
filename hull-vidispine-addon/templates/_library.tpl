@@ -413,10 +413,12 @@ rabbitmq-connectionString:
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $component := (index . "COMPONENT") }}
 {{ $type := (index . "TYPE") }}
+{{ $serviceAccountName := default (printf "%s-%s-db" $component $type) (index . "SERVICEACCOUNTNAME") }}
 {{ $createScriptConfigMap := default nil (index . "CREATE_SCRIPT_CONFIGMAP") }}
 {{ $databaseKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
 {{ $databaseHost := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "host") }}
 {{ $databasePort := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "port") }}
+serviceAccountName: {{ $serviceAccountName }}
 restartPolicy: {{ default "Never" (index . "RESTART_POLICY") }}
 initContainers:
 {{ if $createScriptConfigMap }}
