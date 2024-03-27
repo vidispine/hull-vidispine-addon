@@ -997,6 +997,7 @@ Parameters:
 _PARENT_CONTEXT_: The Helm charts global context
 _COMPONENT_: The `component` to create a database job for
 _TYPE_: The type of Job. Allowed values: create|reset
+_SERVICEACCOUNTNAME_: The name of the ServiceAccount for the job. Defaults to `COMPONENT-TYPE-db`.
 _CREATE_SCRIPT_CONFIGMAP: Name of an existing ConfigMap which contains a custom `create-database.sh` script. Only if set to a non-empty ConfigMap name a custom 'create-database.sh'script is executed from the ConfigMap, otherwise the built-in script is executed for _TYPE_ `create`
 Usage:
 
