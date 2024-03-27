@@ -413,7 +413,7 @@ rabbitmq-connectionString:
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $component := (index . "COMPONENT") }}
 {{ $type := (index . "TYPE") }}
-{{ $serviceAccountName := default (printf "%s-%s-db" $component $type) (index . "SERVICEACCOUNTNAME") }}
+{{ $serviceAccountName := default (printf "%s-%s-db" (include "hull.metadata.fullname" (dict "PARENT_CONTEXT" $parent "COMPONENT" $component)) $type) (index . "SERVICEACCOUNTNAME") }}
 {{ $createScriptConfigMap := default nil (index . "CREATE_SCRIPT_CONFIGMAP") }}
 {{ $databaseKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
 {{ $databaseHost := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "host") }}
