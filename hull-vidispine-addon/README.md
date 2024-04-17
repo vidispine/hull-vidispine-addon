@@ -18,7 +18,7 @@ Technically the `hull-install` and `hull-configure` jobs run as so-called Helm h
 
 From a functional perspective the **`hull-install` job is used to create the necessary prerequisites to run an application in the Kubernetes cluster** and the **`hull-configure` job being the counterpart is mostly used to configure the installed applications themselves**. It's main purpose is therefore to communicate with APIs that the product provides during its installation to apply initial configuration. Prominent uses are to add default metadata to a ConfigPortal installation that was created within the same Helm Chart or initialize VidiCore via its API after setup. Technically it is the same process as running the `hull-install` job, the only difference is that it will only apply configuration of `subresources` that are tagged with `stage: post-install`. If no `stage` tag or `stage: pre-install` is given for a subresource it will be handled by the `hull-install` job by default. 
 
-**Note that the `hull-install` job is enabled by default and `hull-configure` is not enabled by default.**
+**Note that the `hull-install` job is enabled by default and `hull-configure` is not enabled by default. To enable `hull-configure` you need to both enable the `hull-configure` `job` and identically named `serviceaccount`**
 
 ## The database migration jobs 
 
