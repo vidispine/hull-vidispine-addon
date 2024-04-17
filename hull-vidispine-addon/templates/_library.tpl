@@ -63,14 +63,17 @@ false
     {{- $path := (urlParse $selectedEndpoint).path -}}
     {{- $scheme := regexSplit ":" $selectedEndpoint -1 | first -}}
     {{- $port := "0" -}}
+    {{- $portDerived := false -}}
     {{- if (contains ":" (urlParse $selectedEndpoint).host) -}}
       {{- $port = (regexSplit ":" (urlParse $selectedEndpoint).host -1) | last | trim | int -}}
     {{- else -}}
         {{- if (hasPrefix "http" $selectedEndpoint) -}}
             {{- $port = 80 -}}
+            {{- $portDerived = true -}}
         {{- end -}}
         {{- if (hasPrefix "https" $selectedEndpoint) -}}
             {{- $port = 443 -}}
+            {{- $portDerived = true -}}
         {{- end -}}
     {{- end -}}
     {{- if (eq $info "uri") -}}
@@ -92,7 +95,7 @@ false
       {{- $path -}}
     {{- end -}}
     {{- if (eq $info "base") -}}
-      {{- if (gt $port 0) -}}
+      {{- if (and (gt $port 0) (not $portDerived)) -}}
         {{- printf "%s://%s:%s" $scheme $host (toString $port) -}}
       {{- else -}}
         {{- printf "%s://%s" $scheme $host -}}
@@ -113,24 +116,71 @@ false
   {{- if (eq $endpointType "database") -}}
     {{- if (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" "mssql.uri.address")) "") -}}
     mssql
+    {{- else -}}
+      {{- if (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" "postgres.uri.address")) "") -}}
+      postgres
+      {{- else -}}
+        {{- $foundEndpoint := false -}}
+        {{- range $endpointKey, $endpointValue := $endpoints -}}
+          {{- if (and (ne "" (dig "application" "" $endpointValue)) (not $foundEndpoint)) -}}
+            {{- if (eq (dig "application" "" $endpointValue) "postgres") -}}
+              {{- $endpointKey -}}
+              {{- $foundEndpoint = true -}}
+            {{- end -}}
+            {{- if (eq (dig "application" "" $endpointValue) "msssql") -}}
+              {{- $endpointKey -}}
+              {{- $foundEndpoint = true -}}
+            {{- end -}}
+          {{- end -}}
+        {{ end }}
+      {{- end -}}
     {{- end -}}
-    {{- if (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" "postgres.uri.address")) "") -}}
-    postgres
-    {{- end -}}
+    
   {{- else -}}
     {{- if (eq $endpointType "index") -}}
       {{- $internal := "opensearch.uri.apiInternal" -}}
       {{- $external := "opensearch.uri.api" -}}
-      {{- if (or (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $internal)) "") 
-                (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" $external)) "")) -}}
+      {{- if (or (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" "opensearch.uri.apiInternal")) "") 
+                (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" "opensearch.uri.api")) "")) -}}
       opensearch
       {{- end -}}
     {{- else -}}
-      {{ $endpointType }}
+      {{- if (eq $endpointType "messagebus") -}}
+        {{- if (or (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" "rabbitmq.uri.amqInternal")) "") 
+          (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" "rabbitmq.uri.amq")) "")) -}}
+        rabbitmq
+        {{- end -}}
+        {{- if (or (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" "activemq.uri.amqInternal")) "") 
+          (ne (include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoints "KEY" "activemq.uri.amq")) "")) -}}
+        activemq
+        {{- end -}}
+      {{- else -}}
+        {{ $endpointType }}
+      {{- end -}}
     {{- end -}}
   {{- end -}}
 {{- else -}}
 ""
+{{- end -}}
+{{- end -}}
+
+
+
+{{- define "hull.vidispine.addon.library.get.endpoint.application" -}}
+{{- $parent := (index . "PARENT_CONTEXT") -}}
+{{- $endpointType := (index . "TYPE") -}}
+{{- $endpointType := (index . "ENDPOINT") -}}
+{{- $endpointKey := default (include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" $endpointType)) (index . "ENDPOINT") -}}
+{{- $endpoints := list "postgres" "mssql" "rabbitmq" "activemq" "opensearch" -}}
+{{- if (has $endpointKey $endpoints) -}}
+{{- $endpointKey -}}
+{{- else -}}
+{{- $endpoint := (index $parent.Values.hull.config.general.data.endpoints $endpointKey) }}
+{{- if (ne "" (dig "application" "" $endpoint)) -}}
+{{- $endpoint.application -}}
+{{- else -}}
+""
+{{- end -}}
 {{- end -}}
 {{- end -}}
 
@@ -141,7 +191,8 @@ false
 {{- $info := (index . "INFO") }}
 {{- $endpointType := (index . "TYPE") }}
 {{- $component := default "" (index . "COMPONENT") }}
-{{- $endpointKey := default (include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" $endpointType)) (index . "KEY") }}
+{{- $endpointKey := default (default (include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" $endpointType)) (index . "KEY")) (index . "ENDPOINT") }}
+{{- $endpointApplication := include "hull.vidispine.addon.library.get.endpoint.application" (dict "PARENT_CONTEXT" $parent "ENDPOINT" $endpointKey) }}
 {{- $endpoint := (index $parent.Values.hull.config.general.data.endpoints $endpointKey) }}
 {{- if (eq $endpointType "database") -}}
   {{- $databasePort := -1 }}
@@ -149,7 +200,7 @@ false
   {{- if (contains "," $endpoint.uri.address) }}
     {{- $databasePort = (regexSplit "," $endpoint.uri.address -1) | last | trim -}}
   {{- else -}}
-    {{- if (eq $endpointKey "postgres") -}}
+    {{- if (eq $endpointApplication "postgres") -}}
       {{- $databasePort = 4532 }}
     {{- else -}}
       {{- $databasePort = 1433 }}
@@ -171,7 +222,7 @@ false
     {{- $endpoint.auth.basic.adminPassword -}}
   {{- end -}}
   {{- if (eq $info "connectionString") -}}
-    {{- if (eq $endpointKey "mssql") -}}
+    {{- if (eq $endpointApplication "mssql") -}}
       Data Source=
       {{- printf "%s,%s" $databaseHost (toString $databasePort) -}}
       ;Initial Catalog=
@@ -181,13 +232,13 @@ false
       ;Password={{- (index $parent.Values.hull.config.specific.components $component).database.password -}}
       ;Connect Timeout=
       {{- $timeout := include "hull.vidispine.addon.library.safeGetString" (dict "DICTIONARY" $endpoint "KEY" "options.timeout") -}}
-      {{- if (ne $timeout "") -}} 
-      {{- printf "%s" $timeout -}}      
+      {{- if (ne $timeout "") -}}
+      {{- printf "%s" $timeout -}}
       {{- else -}}
       {{- printf "%s" 60 -}}
       {{- end -}}
     {{- end -}}
-    {{- if (eq $endpointKey "postgres") -}}
+    {{- if (eq $endpointApplication "postgres") -}}
       Server=
       {{- $databaseHost -}}
       ;Port=
@@ -204,7 +255,7 @@ false
 {{- end -}}
 {{- if (eq $endpointType "messagebus") -}}
   {{- if (eq $info "connectionString") -}}
-    {{- if (eq $endpointKey "rabbitmq") -}}
+    {{- if (eq $endpointApplication "rabbitmq") -}}
       {{- $url := default $endpoint.uri.amq $endpoint.uri.amqInternal }}
       {{- $start := (regexSplit ":" $url -1) | first | trim -}}  
       {{- $remainder := trimPrefix (printf "%s://" $start) $url }}
@@ -220,7 +271,7 @@ false
     {{- end -}}    
   {{- end -}}
   {{- if (eq $info "vhost") -}}
-    {{- if (eq $endpointKey "rabbitmq") -}}
+    {{- if (eq $endpointApplication "rabbitmq") -}}
       {{- $url := default $endpoint.uri.amq $endpoint.uri.amqInternal }}
       {{- $start := (regexSplit ":" $url -1) | first | trim -}}
       {{- $end := (trimPrefix (printf "%s://" $start) $url) }}
@@ -335,20 +386,34 @@ CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
 {{ if (not (has ($path | base) $components )) }}
 {{ $path | base }}:
   path: {{ $path}}
+{{ $componemts := append $components ($path | base) }}
+{{ end }}
+{{ end }}
+{{ range $path, $_ := $parent.Files.Glob (printf "files/common/mounts/%s/*" $objectType) }}
+{{ if (not (has ($path | base) $components )) }}
+{{ $path | base }}:
+  path: {{ $path}}
 {{ end }}
 {{ end }}
 {{ if (eq $objectType "secret") }}
 {{ if (index $parent.Values.hull.config.specific.components $component).database }}
-{{ $databaseKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
-{{ $databaseUsernamesPostfix := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "usernamesPostfix") }}
-{{ if (eq $databaseKey "mssql") }}
+{{ $database := (index $parent.Values.hull.config.specific.components $component).database }}
+{{ $databaseKey := "" }}
+{{ if hasKey $database "endpoint" }}
+{{ $databaseKey = $database.endpoint }}
+{{ else }}
+{{ $databaseKey = include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
+{{ end }}
+{{ $databaseUsernamesPostfix := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "usernamesPostfix" "ENDPOINT" $databaseKey) }}
+{{- $endpointApplication := include "hull.vidispine.addon.library.get.endpoint.application" (dict "PARENT_CONTEXT" $parent "ENDPOINT" $databaseKey) }}
+{{ if (eq "mssql" $endpointApplication) }}
 AUTH_BASIC_DATABASE_NAME:
   inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name }}
 AUTH_BASIC_DATABASE_USERNAME:
   inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username }}
     {{ $databaseUsernamesPostfix }}
 {{ end }}
-{{ if (eq $databaseKey "postgres") }}
+{{ if (eq "postgres" $endpointApplication) }}
 AUTH_BASIC_DATABASE_NAME:
   inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name | lower }}
 AUTH_BASIC_DATABASE_USERNAME:
@@ -361,7 +426,7 @@ database-connectionString:
 {{ if (hasKey (index $parent.Values.hull.config.specific.components $component).database "connectionString") }}
   inline: {{ (index $parent.Values.hull.config.specific.components $component).database.connectionString }}
 {{ else }}
-  inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "connectionString" "COMPONENT" $component) }}
+  inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "connectionString" "COMPONENT" $component "KEY" $databaseKey) }}
 {{ end }}
 {{ end }}
 {{ if (eq (include "hull.vidispine.addon.library.get.endpoint.uri.exists" (dict "PARENT_CONTEXT" $parent "KEY" "rabbitmq" "URI" "amq")) "true") }}
@@ -415,9 +480,16 @@ rabbitmq-connectionString:
 {{ $type := (index . "TYPE") }}
 {{ $serviceAccountName := default (printf "%s-%s-db" (include "hull.metadata.fullname" (dict "PARENT_CONTEXT" $parent "COMPONENT" $component)) $type) (index . "SERVICEACCOUNTNAME") }}
 {{ $createScriptConfigMap := default nil (index . "CREATE_SCRIPT_CONFIGMAP") }}
-{{ $databaseKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
-{{ $databaseHost := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "host") }}
-{{ $databasePort := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "port") }}
+{{ $database := (index $parent.Values.hull.config.specific.components $component).database }}
+{{ $databaseKey := "" }}
+{{ if hasKey $database "endpoint" }}
+{{ $databaseKey = $database.endpoint }}
+{{ else }}
+{{ $databaseKey = include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
+{{ end }}
+{{ $databaseHost := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "host" "ENDPOINT" $databaseKey) }}
+{{ $databasePort := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "port" "ENDPOINT" $databaseKey) }}
+{{ $endpointApplication := include "hull.vidispine.addon.library.get.endpoint.application" (dict "PARENT_CONTEXT" $parent "ENDPOINT" $databaseKey) }}
 serviceAccountName: {{ $serviceAccountName }}
 restartPolicy: {{ default "Never" (index . "RESTART_POLICY") }}
 initContainers:
@@ -460,7 +532,7 @@ initContainers:
       DBPORT:
         value: {{ $databasePort | toString | quote }}
       DBTYPE:
-        value: {{ $databaseKey }}
+        value: {{ $endpointApplication }}
       DBADMINUSER:
         valueFrom:
           secretKeyRef:
@@ -530,7 +602,7 @@ containers:
       DBPORT:
         value: {{ $databasePort | toString | quote }}
       DBTYPE:
-        value: {{ $databaseKey }}
+        value: {{ $endpointApplication }}
       DBADMINUSER:
         valueFrom:
           secretKeyRef:
@@ -590,20 +662,32 @@ volumes:
 {{ if (ne nil (dig $component "mounts" "secret" nil $parent.Values.hull.config.specific.components)) }}
 {{ $secretMountsSpecified = true }}
 {{ end }}
-{{ if (ne nil (dig $component "mounts" "configmap" nil $parent.Values.hull.config.specific.components)) }}
-{{ $configmapMountsSpecified = true }}
+{{ if (ne nil (dig "common" "mounts" "secret" nil $parent.Values.hull.config.specific.components)) }}
+{{ $secretMountsSpecified = true }}
 {{ end }}
 {{ range $path, $_ := $parent.Files.Glob (printf "files/%s/mounts/%s/*" $component "secret") }}
 {{ $secretMountsSpecified = true }}
 {{ end }}
-{{ range $path, $_ := $parent.Files.Glob (printf "files/%s/mounts/%s/*" $component "configmap") }}
-{{ $configmapMountsSpecified = true }}
+{{ range $path, $_ := $parent.Files.Glob (printf "files/common/mounts/%s/*" "secret") }}
+{{ $secretMountsSpecified = true }}
 {{ end }}
 {{ if $secretMountsSpecified }}
 secret:
   secret:
     defaultMode: 0777
     secretName: {{ $component }}
+{{ end }}
+{{ if (ne nil (dig $component "mounts" "configmap" nil $parent.Values.hull.config.specific.components)) }}
+{{ $configmapMountsSpecified = true }}
+{{ end }}
+{{ if (ne nil (dig "common" "mounts" "configmap" nil $parent.Values.hull.config.specific.components)) }}
+{{ $configmapMountsSpecified = true }}
+{{ end }}
+{{ range $path, $_ := $parent.Files.Glob (printf "files/%s/mounts/%s/*" $component "configmap") }}
+{{ $configmapMountsSpecified = true }}
+{{ end }}
+{{ range $path, $_ := $parent.Files.Glob (printf "files/common/mounts/%s/*" "configmap") }}
+{{ $configmapMountsSpecified = true }}
 {{ end }}
 {{ if $configmapMountsSpecified }}
 configmap:
@@ -630,20 +714,28 @@ etcssl:
 {{ if $secrets }}
 {{ range $secret := $secrets }}
 {{ if (ne $secret "") }}
-{{ $secret }}:
+{{ $secret | trimPrefix "_HT^" }}:
   secret:
-    secretName: {{ $secret }}
+    secretName: {{ $secret | trimPrefix "_HT^" }}
+{{ if (hasPrefix "_HT^" $secret) }}
+    staticName: false
+{{ else }}
     staticName: true
+{{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
 {{ if $configmaps }}
 {{ range $configmap := $configmaps }}
 {{ if (ne $configmap "") }}
-{{ $configmap }}:
+{{ $configmap | trimPrefix "_HT^" }}:
   configMap:
-    name: {{ $configmap }}
+    name: {{ $configmap | trimPrefix "_HT^" }}
+{{ if (hasPrefix "_HT^" $configmap) }}
+    staticName: false
+{{ else }}
     staticName: true
+{{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -658,10 +750,14 @@ etcssl:
 {{ if $pvcs }}
 {{ range $pvc := $pvcs }}
 {{ if (ne $pvc "") }}
-{{ $pvc }}:
+{{ $pvc | trimPrefix "_HT^" }}:
   persistentVolumeClaim:
-    claimName: {{ $pvc }}
+    claimName: {{ $pvc | trimPrefix "_HT^" }}
+{{ if (hasPrefix "_HT^" $pvc) }}
+    staticName: false
+{{ else }}
     staticName: true
+{{ end }}
 {{ end }}
 {{ end }}
 {{ end }}
@@ -678,6 +774,46 @@ etcssl:
 {{ define "hull.vidispine.addon.library.component.pod.env" }}
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $component := (index . "COMPONENT") }}
+{{ $fromSecrets := default "" (index . "FROM_SECRETS") }}
+{{ $fromConfigmaps := default "" (index . "FROM_CONFIGMAPS") }}
+{{ $secrets := regexSplit "," ($fromSecrets | trim) -1 }}
+{{ if $secrets }}
+{{ range $secretMapping := $secrets }}
+{{ $secret := regexSplit "=" ($secretMapping | trim) -1}}
+{{ if (ge (len $secret) 3) }}
+'{{ index $secret 0 }}':
+  valueFrom:
+    secretKeyRef:
+      name: '{{ index $secret 1 }}'
+      key: '{{ index $secret 2 }}'
+{{ if (eq (len $secret) 4) }}
+      staticName: {{ index $secret 3 }}
+{{ end }}
+{{ if (eq (len $secret) 5) }}
+      optional: {{ index $secret 4 }}
+{{ end }}
+{{ end }}
+{{ end }}
+{{ end }}
+{{ $configmaps := regexSplit "," ($fromSecrets | trim) -1 }}
+{{ if $configmaps }}
+{{ range $configmapMapping := $configmaps }}
+{{ $configmap := regexSplit "=" ($configmapMapping | trim) -1}}
+{{ if (ge (len $configmap) 3) }}
+'{{ index $configmap 0 }}':
+  valueFrom:
+    configMapKeyRef:
+      name: '{{ index $configmap 1 }}'
+      key: '{{ index $configmap 2 }}'
+{{ if (eq (len $configmap) 4) }}
+      staticName: {{ index $configmap 3 }}
+{{ end }}
+{{ if (eq (len $configmap) 5) }}
+      optional: {{ index $configmap 4 }}
+{{ end }}
+{{ end }}
+{{ end }}
+{{ end }}
 {{ $connectionstringsuffix := default "" (index . "CONNECTIONSTRINGSUFFIX") }}
 'DBUSERPOSTFIX':
   valueFrom:
@@ -738,3 +874,34 @@ etcssl:
       key: rabbitmq-connectionString
 {{ end }}
 {{ end }}
+
+
+
+{{- define "hull.vidispine.addon.library.secret.name.vidispine.admin.user" -}}
+{{- $parent := (index . "PARENT_CONTEXT") -}}
+{{- $suffix := default "vidispine-admin-user" (index . "SUFFIX") -}}
+{{- $namespace := $parent.Release.Namespace -}}
+{{- $namespaceParts := regexSplit "-" $namespace -1 -}}
+{{- $prefix := "" -}}
+{{- if (gt (len $namespaceParts) 1) -}}
+{{- $prefix = trimSuffix (printf "-%s" ($namespaceParts | last)) $namespace -}}
+{{- else -}}
+{{- $prefix = $namespace -}}
+{{- end -}}
+{{- printf "%s-%s" $prefix $suffix -}}
+{{- end -}}
+
+
+
+{{- define "hull.vidispine.addon.library.secret.data.lookup.key" -}}
+{{- $parent := (index . "PARENT_CONTEXT") -}}
+{{- $secretName := (index . "SECRET_NAME") -}}
+{{- $keyName := (index . "KEY_NAME") -}}
+{{- $secret := lookup "v1" "Secret" $parent.Release.Namespace $secretName }}
+{{- $value := dig "data" $keyName "" $secret | b64dec -}}
+{{- if $value -}}
+{{- $value -}}
+{{- else -}}
+""
+{{- end -}}
+{{- end -}}
