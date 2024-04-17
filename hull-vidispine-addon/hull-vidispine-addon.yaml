@@ -491,18 +491,19 @@ hull:
         annotations:
           helm.sh/hook: pre-install,pre-upgrade
           helm.sh/hook-weight: "-100"
-          helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded,hook-failed
+          helm.sh/hook-delete-policy: before-hook-creation
       hull-configure:
+        enabled: false
         annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-100"
-          helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded,hook-failed
-      database:
+          helm.sh/hook: post-install,post-upgrade
+          helm.sh/hook-weight: "40"
+          helm.sh/hook-delete-policy: before-hook-creation
+      hull-database:
         enabled: false
         annotations:
           helm.sh/hook: pre-install,pre-upgrade
           helm.sh/hook-weight: "-10"
-          helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded,hook-failed
+          helm.sh/hook-delete-policy: before-hook-creation
 
     clusterrolebinding:
       hull-install-events:
@@ -646,7 +647,14 @@ hull:
                 echo Run hull-configure Script;
                 pwsh /script/Installer.ps1 -ConfigFilePath /script/installation.yaml -Stage post-install;
                 ]
-
+      
+      hull-database:
+        enabled: false
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-10"
+          helm.sh/hook-delete-policy: before-hook-creation
+   
     secret:
 
       auth:

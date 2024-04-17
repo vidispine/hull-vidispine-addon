@@ -20,6 +20,58 @@ From a functional perspective the **`hull-install` job is used to create the nec
 
 **Note that the `hull-install` job is enabled by default and `hull-configure` is not enabled by default.**
 
+## The database migration jobs 
+
+To simplify the creation of database migration jobs, there exists a template for a ServiceAccount and Jobs. These templates are called `hull-database`and are by default disabled:
+
+```
+hull:
+  objects:
+    serviceaccount:
+      hull-database:
+        enabled: false
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-10"
+          helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded,hook-failed
+    job:
+      hull-database:
+        enabled: false
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-10"
+          helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded,hook-failed
+```
+
+ Database migrations typically need to be executed prior to the main apps starting, this is why the weight of the helm hook has been set to -10. 
+
+ If you are using database migration jobs, you should create ServiceAccounts for the individual Jobs and have the Jobs source the `hull-database` job and the ServiceAccounts the `hull-database` ServiceAccount. This is the example of the AuthService database migration jobs:
+
+```
+hull:
+  objects:
+    serviceaccount:
+      authservice-create-db:
+        sources: 
+        - hull-database
+      
+      authservice-reset-db:
+        sources: 
+        - hull-database
+    job:
+      authservice-create-db:
+        sources:
+        - hull-database
+        pod: _HT/hull.vidispine.addon.library.component.job.database:COMPONENT:"authservice":TYPE:"create"
+      authservice-reset-db:
+        enabled: false
+        sources:
+        - hull-database
+        pod: _HT/hull.vidispine.addon.library.component.job.database:COMPONENT:"authservice":TYPE:"reset"
+```
+
+This way the timing of database migrations is automatically set correctly.
+
 ## Execution and Configuration
 
 The `hull-install` and `hull-configure` jobs run as PowershellCore containers and execute a pre-configured Powershell script. The configuration for the script is derived from the configuration specified in `hull-vidispine-addon.values.yaml` at 
@@ -751,6 +803,7 @@ The following functions are defined:
 Parameters:
 
 _DICTIONARY_: A dictionary to traverse
+
 _KEY_: The key in dot-notation within _DICTIONARY_whose value should be retrieved and converted to a string
 
 Usage:
@@ -773,6 +826,7 @@ a:
 ```
 
 the result will be for _KEY_:
+
 - `a.b.c.d` --> "helloD"
 - `a.b.c.c` --> ""
 - `a.e.f` --> ""
@@ -784,8 +838,13 @@ the result will be for _KEY_:
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
-_KEY_: The key denoting the endpoint which may contain the _URI_ (works but obsolete, use _ENDPOINT_ instead)
+
+_KEY_: The key denoting the endpoint which may contain the 
+
+_URI_ (works but obsolete, use _ENDPOINT_ instead)
+
 _ENDPOINT_: The key denoting the endpoint which may contain the _URI_
+
 _URI_: The particular uri to get
 
 Usage:
@@ -843,7 +902,7 @@ Allowed values for _INFO_:
 - `path`: returns the relative path of the URI
 - `scheme`: return the scheme of the URI
 - `port`: return the port of the URI. If not explicitly set returns 80 for scheme 'http' and 443 for scheme 'https'
-- `base`: return the scheme plus hostname and port (excluding any subpaths)
+- `base`: return the scheme plus hostname and port (excluding any subpaths). If the port was derived by schema (80 for 'http' and 443 for 'https') it is omitted from the returned `base` value
 
 
 Example:
@@ -882,32 +941,107 @@ the following _ENDPOINT_ and _URI_ combinations yield:
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
+
 _TYPE_: The type of the endpoint to get the concrete specificaton of. Allowed values: database|index
 
 Usage:
 
-This function queries for a given endpoint _TYPE_ and returns the best result. 
+This function queries for a given endpoint _TYPE_ and returns the best-matching result. 
 
-For _TYPE_ `database`, the value `postgres` is returned if an `endpoint` value that is not empty exists for the `postgres` endpoint.  If an `endpoint` value that is not empty exists for the `mssql` endpoint otherwise, the value `mssql` is returned. 
+For _TYPE_ `database`, the value `postgres` is returned if an `endpoint` value that is not empty exists for the `postgres` endpoint.  If an `endpoint` value that is not empty exists for the `mssql` endpoint otherwise, the value `mssql` is returned. If neither exists, endpoints are searched which have a `application` field in endpoints dictionary which matches `postgres` (prefered). If no `application: postgres` endpoint is found a `application: mssql` is selected. If also nothing is found for _TYPE_ `database`, an empty string is returned.
 
 For _TYPE_ `index`, `opensearch` is returned if either the URI `api` or `apiInternal` is defined for an endpoint `opensearch`.
+
+For any other _TYPE_ than `database` or `index`, the value of _TYPE_ is returned under the assumption that an _ENDPOINT_ which needs no resolving was passed as argument.
+
+### hull.vidispine.addon.library.get.endpoint.application
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_TYPE_: The type of the endpoint to get the concrete specificaton of. Can be missing if _ENDPOINT_ is set. Allowed values: database|messagebus|index
+
+_ENDPOINT_: The explicit key of the entry in `endpoints`. Can be omitted if _TYPE_ is set. 
+
+Usage:
+
+For a given _TYPE_, the best-fit for an _ENDPOINT_ is determined with `hull.vidispine.addon.library.get.endpoint.key` function (see above).However any provided _ENDPOINT_ is used directly if this parameter is set. This sets the _ENDPOINT_ for querying it's the 'application'. 
+
+An application is a concrete form of a _TYPE_. The following applications are defined for these _TYPE_'s:
+- for _TYPE_ `database`:
+  - `postgres`
+  - `mssql`
+- for _TYPE_ `messagebus`:
+  - `rabbitmq`
+  - `activemq`
+- for _TYPE_ `index`:
+  - `opensearch`
+
+For the fixed set of _ENDPOINT_ keys above the application is identical to the _ENDPOINT_ key. So if _ENDPOINT_ is `postgres`, `mssql`, `opensearch`, `rabbitmq` or `activemq` or one value from the list was derived from _TYPE_, the _ENDPOINT_ value itself is returned. 
+
+For any other _ENDPOINT_ it is checked wheter there exists an `application` key in the dictionary of _ENTRYPOINT_ and if so this value is returned. This allows to add additional application-specific _ENDPOINTS_ if there is need to have more than the application-named _ENDPOINT_ for an application such as a Postgres Database Host. 
+
+If none of the above holds, an empty string is returned.
+
+Example:
+
+For `hull.config.general.data.endpoints`:
+
+```
+endpoints:
+  postgres:
+    uri:
+      address: mypostgresdatabase, 3324
+  camundadatabase:
+    uri:
+      address: camundadatabaseserver, 3421
+    application: postgres
+  vidicore:
+    auth:
+      basic:
+        adminPassword: admin
+        adminUsername: admin
+    uri:
+      api: https://prept1-vidiflow.s4m.de/API
+      apiInternal: http://vidicore-vidicore.preptest1:31060/API
+      apinoauthInternal: http://vidicore-vidicore.preptest1:31060/APInoauth
+      logReport: http://vidicore-vidicore.preptest1:31060/LogReport
+```
+
+the following _TYPE_ and _ENDPOINT_ combinations yield:
+
+- _TYPE_="database" --> "postgres"
+- _ENDPOINT_="camundadatabase" --> "postgres"
+- _TYPE_="database" _ENDPOINT_="camundadatabase" --> "postgres"
+- _TYPE_="index" --> ""
+- _ENDPOINT_="vidicore" --> ""
 
 ### hull.vidispine.addon.library.get.endpoint.info
 
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
+
 _INFO_: The kind of information to get. Allowed values: host|hostname|port|usernamesPostfix|connectionString|vhost
-_TYPE_: The type of the endpoint to get the concrete specificaton of. Allowed values: database|messagebus|index
+
+_TYPE_: The type of the endpoint to get the concrete specificaton of. Allowed values: database|messagebus|index. Required field when _ENDPOINT_ is not set in which case a best-effort lookup is performed.
+
+_ENDPOINT_: The explicit key of the entry in `endpoints`. Can be omitted if _TYPE_ is set. 
+
 _COMPONENT_: The `component` from `hull.config.specific.components` which may be required in calulation of the returned value. Needed for some _INFO_ queries. 
 
 Usage:
 
-This function returns special values which are calculated on the fly from the given endpoints.
+This function returns special values which are calculated on the fly from the given endpoints. The _ENDPOINT_ may be explicitly supplied as an argument or the concrete endpoint is inferred by _TYPE_. 
+
+For _TYPE_ `database`, the endpoint selection is done by the above function `hull.vidispine.addon.library.get.endpoint.key`. Then the following rules apply:
 - _INFO="host" or _INFO="hostname" in combination with _TYPE_="database" returns the selected database `adresss`'s host without port
 - _INFO="port" in combination with _TYPE_="database" returns the selected database `address`'s port. Can be contained in the `address` and returned as defined or if not returns defaults (1433 for `mssql` and 4532 for `postgres`)
 - `usernamesPostfix` in combination with _TYPE_="database" returns the value of the database endpoints `auth.basic.usernamesPostfix` if defined or empty string if not
 - `connectionString` in combination with _TYPE_="database" returns the calculated value of the database connectionString as used by e.g. VidiFlow agents. Requires a _COMPONENT_ to be selected containing a `database.username` and `database.password` to embedd into the connectionString returned.
+
+For _TYPE_ `messagebus`, an existing endpoint named `rabbitmq` is preferred over an endpoint `activemq`. Then the following rules apply:
 - `connectionString` in combination with _TYPE_="messagebus" returns the calculated value of the RabbitMQ connectionString as used by e.g. VidiFlow agents. This connectionString includes "username:password@" infix opposed to the `amq`/`amqInternal` URIs that don't contain credentials. Requires that an endpoint for `rabbitmq` and an `amq`/`amqInternal` URI is defined as well as `rabbitmq.auth.basic.username` and `rabbitmq.auth.basic.password`.
 - `vhost` in combination with _TYPE_="messagebus" returns the vhost of the RabbitMQ connectionString. Requires that an endpoint for `rabbitmq` and an `amq`/`amqInternal` URI is defined.
 
@@ -916,6 +1050,7 @@ This function returns special values which are calculated on the fly from the gi
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
+
 _EDNPOINTS_: The endpoints for which `auth` data is to be included as a comma-separated list. Can be either resolvable types (`database` and `index`) or an exact key name found in the endpoints. If omitted, all endpoints that are configured for the chart will be considered and their `auth` data is added to the secret.
 
 Usage:
@@ -933,13 +1068,14 @@ The `auth` secret contains:
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
+
 _COMPONENT_: The component to create the secret data for
 
 Usage:
 
 With calling this function the data section for a component specific secret is created. The secret contains automatically the following data keys and contents:
-1. First it traverses the _COMPONENT_ in `hull.config.specific.components` and adds all `mounts.secret`'s contents defined to the volume. It also adds all Secrets defined as physical files which are stored under the `files/_COMPONENT_/mounts/secret` folders.
-2. Database connection information is added from the components `database` specification if it exists. The keys `AUTH_BASIC_DATABASE_NAME`, `AUTH_BASIC_DATABASE_USERNAME` and `AUTH_BASIC_DATABASE_PASSWORD` are added with their defined values. Furthermore a key `database-connectionString` is added which contains a ready to use database connectionString including above credential data, alternatively if the components `database` specification contains a full fledged connection string as `connectionString` key it will insert this value and not compose a connection string dynamically.
+1. First it traverses the _COMPONENT_ in `hull.config.specific.components` and adds all `mounts.secret`'s contents defined to the volume. It also adds all Secrets defined as physical files which are stored under the `files/_COMPONENT_/mounts/secret` folders. Lastly, any file defined in `files/common/mounts/secret` is added in case a file key of the same name is not yet defined in the secret.
+2. Database connection information is added from the components `database` specification if it exists. The keys `AUTH_BASIC_DATABASE_NAME`, `AUTH_BASIC_DATABASE_USERNAME` and `AUTH_BASIC_DATABASE_PASSWORD` are added with their defined values. Furthermore a key `database-connectionString` is added which contains a ready to use database connectionString including above credential data, alternatively if the components `database` specification contains a full fledged connection string as `connectionString` key it will insert this value and not compose a connection string dynamically. Another option is to add an field `endpoint` holding the name of an existing `hull.config.general.data.endpoints` key in which case the database endpoint information used in the composition of the `database-connectionString` is used from this endpoint. Note that in this case the referenced _ENDPOINT_ must also contain an `application` key which has a value of either `postgres` or `mssql` since the database type is important in creation of connection strings. 
 3. If an `amq` or `amqInternal` endpoint is specified, the key `rabbitmq-connectionString` is added and the RabbitMQ connectionstring is assembled as its value
 
 ### hull.vidispine.addon.library.component.configmap.data
@@ -947,23 +1083,29 @@ With calling this function the data section for a component specific secret is c
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
-_COMPONENT_: The component to create the ConfigMap data for
 
+_COMPONENT_: The component to create the ConfigMap data for
 
 Usage:
 
-To add all defined ConfigMaps for a _COMPONENT_, this function traverses the _COMPONENT_ in `hull.config.specific.components` and adds all `mounts.configmap`'s contents defined to the volume. It also adds all ConfigMaps defined as physical files which are stored under the `files/_COMPONENT_/mounts/configmap` folders.
+To add all defined ConfigMaps for a _COMPONENT_, this function traverses the _COMPONENT_ in `hull.config.specific.components` and adds all `mounts.configmap`'s contents defined to the volume. It also adds all ConfigMaps defined as physical files which are stored under the `files/_COMPONENT_/mounts/configmap` folders. Lastly, any file defined in `files/common/mounts/configmap` is added in case a file key of the same name is not yet defined in the configmap.
 
 ### hull.vidispine.addon.library.component.ingress.rules
 
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
+
 _COMPONENTS_: The `component`s from `hull.config.specific.components` as a comma-separated list. The input values need to be lowercase seperated with '-' (kebapcase) and are converted to the URI keys by making them camelCase.
+
 _ENDPOINT_: The endpoint for which the URIs created from _COMPONENTS_ are all defined
+
 _PORTNAME_: The name of the port that is targeted, defaults to "http" if not set
+
 _SERVICENAME_: The name of the service that is targeted
+
 _PATHTYPE_: The pathType value of field, defaults to `ImplementationSpecific` if not provided
+
 _STATIC_SERVICENAME_: Set `staticName` on service name accordingly, default is false
 
 Usage:
@@ -995,16 +1137,21 @@ and _COMPONENTS_="api,log-report", _ENDPOINT_="vidicore", _SERVICENAME_="vidicor
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
+
 _COMPONENT_: The `component` to create a database job for
+
 _TYPE_: The type of Job. Allowed values: create|reset
+
 _SERVICEACCOUNTNAME_: The name of the ServiceAccount for the job. Defaults to `<RELEASE-PREFIX>-COMPONENT-TYPE-db` where <RELEASE-PREFIX> is determined by the HULL charts settings of `Chart.Name`, `Release.Name` and `fullNameOverride`.
+
 _CREATE_SCRIPT_CONFIGMAP: Name of an existing ConfigMap which contains a custom `create-database.sh` script. Only if set to a non-empty ConfigMap name a custom 'create-database.sh'script is executed from the ConfigMap, otherwise the built-in script is executed for _TYPE_ `create`
+
 Usage:
 
 This function full renders job objects that either create or reset a database defined for _COMPONENT_. The container used for these database operations is found in the `hull.config.specific.images.dbTools.repository` field (default is 'vpms/dbtools') and the tag to use is given in the `hull.config.specific.images.dbTools.tag` field (default "1.8"). In order to work correctly, the following environment variables are provided to each 'vpms/dbtools' instance executed:
-- DBHOST: retrieved from the database endpoints (`postgres` or `mssql`) `uri.address` field
-- DBPORT: retrieved from the database endpoints (`postgres` or `mssql`) `uri.address` field
-- DBTYPE: `postgres` or `mssql`, determined by hull.vidispine.addon.library.get.endpoint.key function
+- DBHOST: retrieved from the database endpoints (`postgres` or `mssql`) `uri.address` field. Alternatively if the _COMPONENT_ specifies a `database.endpoint` entry the `host` is retrieved for this explicit _ENDPOINT_ instead
+- DBPORT: retrieved from the database endpoints (`postgres` or `mssql`) `uri.address` field. Alternatively if the _COMPONENT_ specifies a `database.endpoint` entry the `port` is retrieved for this explicit _ENDPOINT_ instead
+- DBTYPE: `postgres` or `mssql`, determined by `hull.vidispine.addon.library.get.endpoint.application` function
 - DBADMINUSER: retrieved from key AUTH_BASIC_DATABASE_ADMINUSERNAME from _COMPONENT_-auth secret (see 'hull.vidispine.addon.library.auth.secret.data')
 - DBUSERPOSTFIX: retrieved from key AUTH_BASIC_DATABASE_USERNAMESPOSTFIX from _COMPONENT_-auth secret (see 'hull.vidispine.addon.library.auth.secret.data')
 - DBADMINPASSWORD: retrieved from key AUTH_BASIC_DATABASE_ADMINPASSWORD from _COMPONENT_-auth secret (see 'hull.vidispine.addon.library.auth.secret.data')
@@ -1027,26 +1174,51 @@ For _TYPE_=delete the following is happening:
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
+
 _COMPONENT_: The `component` to create a volume section for
 need to be lowercase seperated with '-' (kebapcase) and are converted to the URI keys by making them camelCase.
+
 _HASH_CONFIGMAP_: Determines whether the `hashsumAnnotation` key is set on the ConfigMap volume if it is being created. This does not apply to the additional _CONFIGMAPS_, only to the one created if the component has at least one ConfigMap element. Defaults to true.
+
 _HASH_SECRET_: Determines whether the `hashsumAnnotation` key is set on the Secret volume if it is being created. This does not apply to the additional _SECRETS_, only to the one created if the component has at least one Secret element. Defaults to true.
+
 _SECRETS_: The additional Secrets to add to the volumes as comma-seperated list
+
 _CONFIGMAPS_: The additional configMap volumes to add to the volumes as comma-seperated list
+
 _EMPTYDIRS_: The additional emptyDir volumes to add to the volumes as comma-seperated list
+
 _PVCS_:  The additional persistentVolumeClaim volumes to add to the volumes as comma-seperated list
 
 Usage:
 
 This function renders a pods volumes section based on the arguments and rest of the charts configuration:
-First it traverses the _COMPONENT_ in `hull.config.specific.components` and adds all `mounts.secret`'s and `mounts.configmap`'s names as references to the volumes secret and configMap volumes. Furthermore it is possible to specify arbitrary `volumes` under a _COMPONENT_s `extraVolumes` property which are also added to the pods `volume` section. It also adds all Secrets and ConfigMaps names as references for all defined physical files which are stored under the `files/_COMPONENT_/mounts/secret` and `files/_COMPONENT_/mounts/configmap` folders. Furthermore it is possible to specify arbitrary `volume`'s under a _COMPONENT_'s `extraVolumes` property, these are also added to the pods `volume` section. This grants maximum freedom to add system-specific `volume`'s to the pod. Finally it adds all additional secret's, configMap's, emptyDir's and persistentVolumeClaim's static reference names provided as additional arguments where the name of the reference is the full object name which is to be included.
+First it traverses the _COMPONENT_ in `hull.config.specific.components` and adds a `secretRef` volume named `secret` if:
+- any secret exists at `hull.config.specific.components.common.mounts.secret`
+- any secret exists at `hull.config.specific.components._COMPONENT_.mounts.secret`
+- any file exists at path `files/common/mounts/secret`
+- any file exists at path `files/_COMPONENT_/mounts/secret`
+This works in conjunction with 'hull.vidispine.addon.library.component.secret.data' which adds the content from all above mentioned sources to a secret which can be used as a volume `secret` then due to this function.
+The same procedure is applied to the `configmap` case where a `configMapRef` volume named `configmap` is only added in case:
+- any configmap exists at `hull.config.specific.components.common.mounts.configmap`
+- any configmap exists at `hull.config.specific.components._COMPONENT_.mounts.configmap`
+- any file exists at path `files/common/mounts/configmap`
+- any file exists at path `files/_COMPONENT_/mounts/configmap`
+When accessing the collected data you can refer to the _COMPONENT_'s `configmap` volume.
+
+Furthermore it is possible to specify arbitrary `volume`'s under a _COMPONENT_'s `extraVolumes` property, these are also added to the pods `volume` section. This grants maximum freedom to add system-specific `volume`'s to the pod. 
+
+Finally it adds all additional secret's, configMap's, emptyDir's and persistentVolumeClaim's static reference names provided as additional arguments _SECRETS_, _CONFIGMAPS_, _EMPTYDIRS_ and _PVCS_ where the name of the reference is the full object name which is to be included unless you prefix `_HT^` to the name to make it `staticName: false`.
 
 ### hull.vidispine.addon.library.component.pod.env
 
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
+
 _COMPONENT_: The `component` to create an env section for
+
+_FROM_SECRETS_: Optionally define addtional env vars from secrets keys
 
 Usage:
 
@@ -1066,3 +1238,44 @@ Additional env vars are added if preconditions are met:
   - CONNECTIONSTRINGS__<database.connectionStringEnvVarSuffix>: retrieved from key database-connectionString from _COMPONENT_ secret (see 'hull.vidispine.addon.library.component.secret.data')
 - if an `amq` or `amqInternal` endpoint is defined for endpoint `rabbitmq`:
   - ENDPOINTS__RABBITMQCONNECTIONSTRING: retrieved from key rabbitmq-connectionString from _COMPONENT_ secret (see 'hull.vidispine.addon.library.component.secret.data')
+
+Additional env vars can be generated from Secret or ConfigMap keys by populating the `FROM_SECRETS` and `FROM_CONFIGMAPS` parameters respectively. Multiple entries are allowed per parameter and need to be separated with `,`. Each individual entry consists of multiple values which are delimited by `=` signs. 
+
+At least three ordered values must be provided:
+1. the env var name
+2. the secret name (by default resolved to a dynamic name)
+3. the key name in the secret from which to get the value that is mapped
+Additional values may be optionally provided but can be left out:
+4. the `staticName` setting which modifies the secret name value, either `true` or `false` (default is false)
+5. the `optional` setting value, either `true` or `false`
+
+
+
+### hull.vidispine.addon.library.secret.name.vidispine.admin.user
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_SUFFIX_: The suffix attached to the `<SYSTEM_NAME>`. Defaults to `vidispine-admin-user`
+
+Usage:
+
+Call this method to retrieve the standardized name of the secret holding the vidispine service account holding admin credentials. This is usually `<SYSTEM_NAME>-vidispine-admin-user` (where `<SYSTEM_NAME>` is the brief technical string denoting the system) and is supposed to exist in the current namespace due to beiong reflected by the `reflector` application.
+
+
+
+### hull.vidispine.addon.library.secret.data.lookup.key
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_SECRET_NAME_: The suffix attached to the `<SYSTEM_NAME>`. Defaults to `vidispine-admin-user`
+
+_KEY_NAME_: The key to lookup in the secrets `data`
+
+Usage:
+
+Performs `lookup` Helm templating command to lookup a secret in the current namespace by its _SECRET_NAME_. If lookup was succesful, the `data` in the secret is accessed and the base64 decoded value of _KEY_NAME_ is returned if found, otherwise an empty string. 
+
