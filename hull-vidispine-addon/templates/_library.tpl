@@ -446,28 +446,36 @@ rabbitmq-connectionString:
 {{ $pathType := default "ImplementationSpecific" (index . "PATHTYPE") }}
 {{ $serviceName := default "" (index . "SERVICENAME") }}
 {{ $staticServiceName := default false (index . "STATIC_SERVICENAME") }}
+{{ $componentServiceNamesPrefix := default "" (index . "SERVICENAMES_PREFIX") }}
 {{ $components := regexSplit "," ($componentInputs | trim) -1 }}
 {{ if $components }}
 {{ range $componentKebapCase := $components }}
-{{ $componentSnakeCase := (regexReplaceAll "-" $componentKebapCase "_") | trim }}
+{{ $componentParts := regexSplit ":" ($componentKebapCase | trim) -1 }}
+{{ $localPortName := $portName }}
+{{ $localComponentKebapCase := $componentKebapCase }}
+{{ if (gt (len $componentParts) 1) }}
+{{ $localComponentKebapCase = index $componentParts 0 }}
+{{ $localPortName = index $componentParts 1 }}
+{{ end }}
+{{ $componentSnakeCase := (regexReplaceAll "-" $localComponentKebapCase "_") | trim }}
 {{ $componentUri := camelcase $componentSnakeCase | untitle | toString }}
-{{ $componentKebapCase }}:
+{{ $localComponentKebapCase }}:
   host: "{{ (urlParse (index (index $parent.Values.hull.config.general.data.endpoints $endpoint).uri $componentUri)).hostname }}"
   http:
     paths:
-      {{ $componentKebapCase }}:
+      {{ $localComponentKebapCase }}:
         path: {{ (urlParse (index (index $parent.Values.hull.config.general.data.endpoints $endpoint).uri $componentUri)).path }}
         pathType: {{ $pathType }}
         backend:
           service:
 {{ if (eq $serviceName "") }}
-            name: {{ $componentKebapCase }}
+            name: {{ printf "%s%s" $componentServiceNamesPrefix $localComponentKebapCase }}
 {{ else }}
             name: {{ $serviceName }}
 {{ end }}
             staticName: {{ $staticServiceName }}
             port:
-              name: {{ $portName }}
+              name: {{ $localPortName }}
 {{ end }}
 {{ end }}
 {{ end }}

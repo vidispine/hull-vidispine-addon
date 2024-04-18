@@ -1096,7 +1096,7 @@ Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
 
-_COMPONENTS_: The `component`s from `hull.config.specific.components` as a comma-separated list. The input values need to be lowercase seperated with '-' (kebapcase) and are converted to the URI keys by making them camelCase.
+_COMPONENTS_: The `component`s from `hull.config.specific.components` as a comma-separated list. The input values need to be lowercase seperated with '-' (kebapcase) and are converted to the URI keys by making them camelCase. It is possible to specify the `backend.service.port.name` for individual components by appending a `=<PORTNAME>` on an entry. 
 
 _ENDPOINT_: The endpoint for which the URIs created from _COMPONENTS_ are all defined
 
@@ -1108,9 +1108,25 @@ _PATHTYPE_: The pathType value of field, defaults to `ImplementationSpecific` if
 
 _STATIC_SERVICENAME_: Set `staticName` on service name accordingly, default is false
 
+_SERVICENAMES_PREFIX_: Optional prefix for all `backend.service.names`. May be used when the services matching the endpoint names all share a common prefix which is not used in the _COMPONENTS_ name. Only applies when _SERVICENAME_ is not used.
+
 Usage:
 
-With this function it is possible to render ingress rules based on minimal input. Given that one or more URIs are given in kebap-case notation as _COMPONENTS_, and they are specified under the given _ENDPOINT_ in `hull.config.general.data.endpoints`, for each of them an ingress rule is created with the ingress host set to the hostname contained in the resolved _COMPONENT_ URI and one path for the _COMPONENT_ URI's subpath. The targeted service is defined by _SERVICENAME_ and _PORTNAME_. Note that for ingresses, only set URIs that exclude the `Internal` suffix are considered because ingresses deal with traffic incoming to the cluster.
+With this function it is possible to render ingress rules based on minimal input. Given that one or more URIs are given in kebap-case notation as _COMPONENTS_, and they are specified under the given _ENDPOINT_ in `hull.config.general.data.endpoints`, for each of them an ingress rule is created with the ingress host set to the hostname contained in the resolved _COMPONENT_ URI. 
+
+Per ingress rule the _COMPONENT_ value is converted to camel-case (eg. `log-report` becomes `logReport`) and the corresponding uri entry under the _ENDPOINT_ is looked up. This provides the ingress rules `path`. 
+
+The `backend` service is by default set to the _COMPONENT_ value so for example given _COMPONENT_ `log-report` and _ENDPOINT_ `vidicore`, the `vidicore.uri.logReport` rule has `backend.service.name: log-report`. In this case there exists the option to use a _SERVICENAMES_PREFIX_ which allows to map _COMPONENTS_ to services with a shared prefix. To provide an example for this, consider _SERVICENAMES_PREFIX_ is `configportal-` and _COMPONENTS_ is `api,ui,notification`, the respective `backend.service.names` become `configportal-api`, `configportal-ui` and `configportal-notification`.
+
+An alternative way to setup the ingress is to provide a _SERVICENAME_ in which case all _COMPONENTS_ will map to this single `backend.service.name` instead of mapping to per _COMPONENT_ converted names.
+
+For all rules it is possible to define whether the `backend.service.name` is static or not using _STATIC_SERVICENAME_. Also you may set the _PATHTYPE_ for all rules, the default is `ImplementationSpecific`.
+
+Each _COMPONENT_ entry may have an optional `=<PORT-NAME>` suffix stating the name of that components `backend.service.port.name`. This is independent of whether a single _SERVICENAME_ was provided or individual _COMPONENT_ based `backend.service.name`'s are used.
+
+
+
+Note that for ingresses, only set URIs that exclude the `Internal` suffix are considered because ingresses deal with traffic incoming to the cluster.
 
 Example:
 
@@ -1130,7 +1146,7 @@ endpoints:
       logReport: http://vidicore-vidicore.preptest1:31060/LogReport
 ```
 
-and _COMPONENTS_="api,log-report", _ENDPOINT_="vidicore", _SERVICENAME_="vidicore" this creates two ingress rules where host is 'prept1-vidiflow.s4m.de' and the targeted service/port is vidicore/http for all three. The paths are however different with '/API' and '/LogReport'.
+and _COMPONENTS_="api,log-report=http-special-port", _ENDPOINT_="vidicore", _SERVICENAME_="vidicore" this creates two ingress rules where host is 'prept1-vidiflow.s4m.de' and the targeted service/port is vidicore/http for the `api`. The `logReport`'s port name is overwritten as `http-special-port`. The paths are different with '/API' and '/LogReport'.
 
 ### hull.vidispine.addon.library.component.job.database
 
