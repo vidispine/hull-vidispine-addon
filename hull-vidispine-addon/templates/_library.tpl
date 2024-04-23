@@ -213,7 +213,7 @@ false
     {{- $databasePort -}}
   {{- end -}}
   {{- if (eq $info "usernamesPostfix") -}}
-    {{- $endpoint.auth.basic.usernamesPostfix -}}
+    {{- default "" $endpoint.auth.basic.usernamesPostfix -}}
   {{- end -}}
   {{- if (eq $info "adminUsername") -}}
     {{- $endpoint.auth.basic.adminUsername -}}
@@ -247,7 +247,7 @@ false
       {{- (index $parent.Values.hull.config.specific.components $component).database.name | lower -}}
       ;User ID=
       {{- (index $parent.Values.hull.config.specific.components $component).database.username | lower -}}
-      {{- $endpoint.auth.basic.usernamesPostfix | lower -}}
+      {{- (default "" $endpoint.auth.basic.usernamesPostfix) | lower -}}
       ;Password=
       {{- (index $parent.Values.hull.config.specific.components $component).database.password -}}
     {{- end -}}

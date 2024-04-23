@@ -1595,6 +1595,8 @@ hull:
                       }
                       catch
                       {
+                        CreateKubernetesEvents "Warning" "$($endpointName) -> $($subresourceName) -> $($entityKey): $($this.LogInvokeWebRequestError())"
+                        
                         if ($this._config.config.debug.ignoreEntityRestCallErrors)
                         {
                           if (-Not ($this._errors))
@@ -1611,7 +1613,6 @@ hull:
                           }
 
                           $this._errors[$endpointName][$subresourceName][$entityKey] = "[" + [System.Environment]::NewLine + $this.LogInvokeWebRequestError() + "]"
-                          CreateKubernetesEvents "Warning" "$($endpointName) -> $($subresourceName) -> $($entityKey): $($this.LogInvokeWebRequestError())"
                         }
                         else
                         {
@@ -1647,9 +1648,8 @@ hull:
                       return @{ "lastMethod" = $lastMethod; "lastUri" = $lastUri }
                     }
                   }
-                                    
+
                   $identifier = if ([string]::IsNullOrWhiteSpace($entity.identifier)) { $entityKey } else { $entity.identifier }
-                                    
 
                   $deleteQueryParams = @{}
                   if ($entity.deleteQueryParams)
