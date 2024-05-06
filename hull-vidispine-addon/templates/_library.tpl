@@ -823,22 +823,6 @@ etcssl:
 {{ end }}
 {{ end }}
 {{ $connectionstringsuffix := default "" (index . "CONNECTIONSTRINGSUFFIX") }}
-'DBUSERPOSTFIX':
-  valueFrom:
-    secretKeyRef:
-      name: auth
-      key: AUTH_BASIC_DATABASE_USERNAMESPOSTFIX
-      optional: true
-'DBADMINUSER':
-  valueFrom:
-    secretKeyRef:
-      name: auth
-      key: AUTH_BASIC_DATABASE_ADMINUSERNAME
-'DBADMINPASSWORD':
-  valueFrom:
-    secretKeyRef:
-      name: auth
-      key: AUTH_BASIC_DATABASE_ADMINPASSWORD
 {{ if (ne (include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "index")) "" ) }}
 'ELASTICSEARCH__USERNAME':
   valueFrom:
@@ -864,6 +848,22 @@ etcssl:
       key:  "CLIENT_{{ regexReplaceAll "-" ($component | upper) "_" }}_SECRET"
 {{ end }}
 {{ if (index $parent.Values.hull.config.specific.components $component).database }}
+'DBUSERPOSTFIX':
+  valueFrom:
+    secretKeyRef:
+      name: auth
+      key: AUTH_BASIC_DATABASE_USERNAMESPOSTFIX
+      optional: true
+'DBADMINUSER':
+  valueFrom:
+    secretKeyRef:
+      name: auth
+      key: AUTH_BASIC_DATABASE_ADMINUSERNAME
+'DBADMINPASSWORD':
+  valueFrom:
+    secretKeyRef:
+      name: auth
+      key: AUTH_BASIC_DATABASE_ADMINPASSWORD
 {{ if (hasKey (index $parent.Values.hull.config.specific.components $component).database "connectionStringEnvVarSuffix") }}
 "CONNECTIONSTRINGS__{{ (index $parent.Values.hull.config.specific.components $component).database.connectionStringEnvVarSuffix }}":
 {{ else }}
@@ -887,7 +887,7 @@ etcssl:
 
 {{- define "hull.vidispine.addon.library.secret.name.vidispine.admin.user" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $suffix := default "vidispine-admin-user" (index . "SUFFIX") -}}
+{{- $suffix := default "" (index . "SUFFIX") -}}
 {{- $namespace := $parent.Release.Namespace -}}
 {{- $namespaceParts := regexSplit "-" $namespace -1 -}}
 {{- $prefix := "" -}}
@@ -896,7 +896,7 @@ etcssl:
 {{- else -}}
 {{- $prefix = $namespace -}}
 {{- end -}}
-{{- printf "%s-%s" $prefix $suffix -}}
+{{- printf "%s-vidispine-admin-user%s" $prefix $suffix -}}
 {{- end -}}
 
 
