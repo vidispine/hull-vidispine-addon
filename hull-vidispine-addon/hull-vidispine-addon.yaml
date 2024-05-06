@@ -28,8 +28,8 @@ hull:
               auth:
                 basic:
                   env:
-                    username: AUTH_BASIC_VIDICORE_ADMINUSERNAME
-                    password: AUTH_BASIC_VIDICORE_ADMINPASSWORD
+                    username: _HT!{{ printf "%s_%s" (include "hull.vidispine.addon.library.secret.name.vidispine.admin.user" (dict "PARENT_CONTEXT" (index . "$")) | replace "-" "_" | upper) "username" }}
+                    password: _HT!{{ printf "%s_%s" (include "hull.vidispine.addon.library.secret.name.vidispine.admin.user" (dict "PARENT_CONTEXT" (index . "$")) | replace "-" "_" | upper) "password" }}
               endpoint: _HT/hull.vidispine.addon.library.get.endpoint.uri.info:ENDPOINT:"vidicore":URI:"api"
               subresources:
                 10_metadatafields:
@@ -581,6 +581,12 @@ hull:
                 auth:
                   secretRef:
                     name: auth
+                vidicore:
+                  prefix: _HT!{{ printf "%s_" (include "hull.vidispine.addon.library.secret.name.vidispine.admin.user" (dict "PARENT_CONTEXT" (index . "$"))) | replace "-" "_" | upper }}
+                  secretRef:
+                    name: _HT/hull.vidispine.addon.library.secret.name.vidispine.admin.user
+                    staticName: true
+                    optional: true
               env:
                 HTTP_PROXY:
                   enabled: _HT?ne (index . "$").Values.hull.config.general.data.installation.config.proxy.httpProxy ""
@@ -1055,7 +1061,7 @@ hull:
                 # $response = Invoke-RestMethod -Uri "$($APISERVER)/apis/batch/v1/namespaces/$($NAMESPACE)/jobs/$($jobName)/status" -Method "PUT" -Body ($status | ConvertTo-Json -Depth 10) -Headers $headers -SkipCertificateCheck
                 # $installer.WriteLog("POST Status response $($response)")
               }
-                            
+              
               function ParseErrorForResponseBody()
               {
                 try
@@ -1264,7 +1270,7 @@ hull:
                         $webSession.Cookies.Add($url, $cookie)
                         # $this._webSession.Cookies.SetCookies($url, $this._webSession.Cookies.GetCookies($this._webSessionLoginUri))
                       }
-                                            
+                      
                       $response = Invoke-WebRequest -Uri $url -Method $method -Body $jsonBody -headers $headers -UseBasicParsing -SkipCertificateCheck -WebSession $webSession
                       $this.AssertResponse($response)
                       $this.WriteLog("***** $($method.ToUpper()) to '$($url)' was successful!")
@@ -1317,7 +1323,7 @@ hull:
                   {
                     if ($null -ne $this._sessionCookies)
                     {
-                      $this.WriteLog("++++ Cooies for endpoint exists already")
+                      $this.WriteLog("++++ Cookies for endpoint exists already")
                     }
                     else
                     {
@@ -1332,14 +1338,25 @@ hull:
                   }
                   if ($null -ne $auth.basic -and (-not $explicitAuthType -or ($explicitAuthType -and $auth.type -eq "basic")))
                   {
-                    $authHeader = "Basic $([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes([environment]::GetEnvironmentVariable($auth.basic.env.username,"Process") + ":" + [environment]::GetEnvironmentVariable($auth.basic.env.password,"Process"))))"
-                    $this.WriteLog("++++ Using Basic Auth for User '$([Text.Encoding]::ASCII.GetBytes([environment]::GetEnvironmentVariable($auth.basic.env.username,"Process")))'. Password is $(if ([environment]::GetEnvironmentVariable($auth.basic.env.password,"Process") -ne [String]::Empty) {"not "} else {" "} )empty.")
+                    $username = [environment]::GetEnvironmentVariable($auth.basic.env.username,"Process")
+                    $password = [environment]::GetEnvironmentVariable($auth.basic.env.password,"Process")
+                    $this.WriteLog("++++ Getting basic auth credentials from environment variables: username=$(if ($username -ne [String]::Empty) {$username} else {"<empty>"}) password=$(if ($password -ne [String]::Empty) {"***"} else {"<empty>"}))")
+                    if ([String]::IsNullOrWhitespace($username))
+                    {
+                      throw [Exception]::new("ERROR --> Basic auth environment variable '$($auth.basic.env.username)' for 'username' is empty.")
+                    }
+                    if ([String]::IsNullOrWhitespace($password))
+                    {
+                      throw [Exception]::new("ERROR --> Basic auth environment variable '$($auth.basic.env.password)' for 'password' is empty.")
+                    }
+                    $authHeader = "Basic $([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($username + ":" + $password))))"
+                    $this.WriteLog("++++ Using Basic Auth for User '$($username)'. Password is $(if ($password -ne [String]::Empty) {"not "} else {" "} )empty.")
                   }
 
                   if ($authHeader -ne [String]::Empty)
                   {
                     $headers.Add("Authorization", $authHeader)
-                    $this.WriteLog("++++ Authorization header: $authHeader")
+                    # $this.WriteLog("++++ Authorization header: $authHeader")
                   }
 
                   if ($endpointExtraHeaders )
@@ -1386,33 +1403,35 @@ hull:
 
                   $endpointBaseUri = $request.endpoint.baseUri.Trim('/')
                   $requestSubpath = ""
-                                  
+                  
                   if (-Not [String]::IsNullOrWhitespace($request.endpoint.requestSubpath))
                   {
                     $requestSubPath = $request.endpoint.requestSubpath
                   }
-                                  
+                  
                   $endpointUri = "$($endpointBaseUri)$($requestSubPath)"
                   $this.PingEndpoint($request.endpoint, "$($accessType)")
 
                   $requestBodyJson = ($request.request.body | ConvertTo-Json -Depth 99)
+
+                  $this.WriteLog("++++ Getting $($accessType) with following body (not showing resolved env var values): ")
+                  $this.WriteLog("++++ $($requestBodyJson)")
+                  $this.WriteLog("++++ and headers: ")
+                  foreach ($key in $request.request.headers.Keys)
+                  {
+                    $this.WriteLog("++++   Key: $key Value: $($request.request.headers[$key])")
+                  }
+                  $this.WriteLog("++++ to Uri: $($endpointUri)")
+
                   Select-String '\"\$env:(.*)\"' -input $requestBodyJson -AllMatches | ForEach-Object {
                     $_.matches | ForEach-Object {
+                      $this.WriteLog("+++++   Setting key $($key) from environment variable '$($_.Groups[0])'")
                       $requestBodyJson = $requestBodyJson.replace($_.Groups[0], "`"$([environment]::GetEnvironmentVariable($_.Groups[1], "Process"))`"")
                     }
                   }
 
                   try
                   {
-                    $this.WriteLog("++++ Getting $($accessType) with following body: ")
-                    $this.WriteLog("++++ $($requestBodyJson)")
-                    $this.WriteLog("++++ and headers: ")
-                    foreach ($key in $request.request.headers.Keys)
-                    {
-                      $this.WriteLog("++++   Key: $key Value: $($request.request.headers[$key])")
-                    }
-                    $this.WriteLog("++++ to Uri: $($endpointUri)")
-
                     $session = $null
                     $body = $requestBodyJson | ConvertFrom-Json -AsHashTable
                     if ($request.request.headers.Contains("Content-Type") -And ($request.request.headers["Content-Type"].Equals("application/json")))
@@ -1632,7 +1651,7 @@ hull:
                 {
 
                   $entity = $subresource.entities[$entityKey]
-                                    
+                  
                   # Either register or remove needs to be enabled (normally)
                   if ($entity.register -ne $true -and $entity.remove -ne $true)
                   {
@@ -1675,8 +1694,8 @@ hull:
                         $deleteQueryParams = @{ $subresource.identifierQueryParam = $identifier }
                       }
                     }
-                  }  
-                                    
+                  }
+                  
                   $contentType = "$(if ([String]::IsNullOrEmpty($entity.contentType)) { "application/json" } else { $entity.contentType })"
                   $this.WriteLog("*** ContentType is '$($contentType)'")
 
@@ -1684,8 +1703,7 @@ hull:
                   $headers = $this.GetHttpHeaders($auth, $contentType, $extraHeaders, $entity)
 
 
-                                    
-                  $this.WriteLog("*** Headers are '$($headers | ConvertTo-Json)'")
+                  # $this.WriteLog("*** Headers are '$($headers | ConvertTo-Json)'")
                   $apiEndpoint = "$($endpoint)/$($subresource.apiPath)".Trim('/')
                   $uri = "$apiEndpoint/$identifier"
                   $uriPut = if ($entity.putUriExcludeIdentifier -eq $true) { $apiEndpoint } else { $uri }
@@ -1701,7 +1719,7 @@ hull:
 
                   $lastMethod = ""
                   $lastUri = ""
-                                    
+                  
                   if ($entity.noGet)
                   {
                     $statusCode = 404
@@ -1804,9 +1822,9 @@ hull:
                   $entity.config = $this.ReadConfigFromFile($entity, $statusCode)
                   $entity.config = $this.UpdateConfigValues($entity, $statusCode, "readConfigValuesFromFiles")
                   $entity.config = $this.UpdateConfigValues($entity, $statusCode, "updateConfigValues")
-                                    
+                  
                   $content = $entity.config
-                                    
+                  
                   if ($contentType -eq "application/json")
                   {
                     $this.WriteLog("*** ContentType is 'application/json', converting config to JSON object")
@@ -1848,12 +1866,12 @@ hull:
                     $this.WriteLog("Processed Config is '$($content)'")
 
                   }
-                                    
+                  
                   if ($statusCode -ne 200 -and $statusCode -ne 404)
                   {
                     throw [Exception]::new("ERROR --> Unexpected StatusCode: $($statusCode) - Message: $($message)")
                   }
-                                    
+                  
                   if ($entity.remove -eq $true)
                   {
                     if ($statusCode -eq 200)
@@ -1957,7 +1975,7 @@ hull:
                   }
                   return $true
                 }
-                                
+                
                 # Map JSON config value from JSON file content key
                 [PSCustomObject] UpdateConfigValues([PSCustomObject] $entity, [int] $statusCode, [string] $entityConfigValuesKey)
                 {
@@ -1972,7 +1990,7 @@ hull:
                     {
                       $this.WriteLog("**** Current config: $($entity.config).")
                     }
-                                        
+                    
                     foreach ($configKey in $entity.$entityConfigValuesKey.Keys)
                     {
 
@@ -2007,7 +2025,7 @@ hull:
                           $value = $entry.postValue
                         }
                       }
-                                            
+                      
                       if ([String]::IsNullOrEmpty($value))
                       {
                         if ([String]::IsNullOrEmpty($entry.putPath) -and [String]::IsNullOrEmpty($entry.postPath))
@@ -2059,7 +2077,7 @@ hull:
                           throw [Exception]::new("ERROR --> File '$($filePath)' does not exist")
                         }
                         $this.WriteLog("**** External Config file found: " + $filePath)
-                                            
+                        
                         $updateContent = Get-Content -Path $filePath | Out-String
 
                         if (-not [string]::IsNullOrWhitespace($entry.key))
@@ -2070,7 +2088,7 @@ hull:
                       }
                       else
                       {
-                                                
+                      
                         if ($value.GetType() -eq "String")
                         {
                           $updateContent = $value
@@ -2088,7 +2106,7 @@ hull:
                           }
                         }
                       }
-                                            
+                      
                       if ($null -eq $updateContentJson)
                       {
                         $this.WriteLog("**** No JSON structure found, mapping full contents to Config Key '$($configKey)'")
@@ -2096,16 +2114,16 @@ hull:
                       }
                       else
                       {
-                                                
+                      
                         $this.WriteLog("**** Entity content: " + $($entity.config | ConvertTo-Json -Depth 100))
                         $this.WriteLog("**** JSON content for update: " + $($updateContentJson | ConvertTo-Json -Depth 100))
-                                                
+                        
                         $this.WriteLog("**** Replacing key '$($configKey)' in entity fully with content: " + $($updateContentJson | ConvertTo-Json -Depth 100))
                         $entity.config[$configKey] = $updateContentJson
                       }
                     }
                   }
-                                    
+                  
                   return $entity.config
                 }
 
@@ -2118,7 +2136,7 @@ hull:
 
                     $filePath = [String]::Empty
                     $contextPath = ""
-                                        
+                    
                     $contextPath = $entity.readConfigFromFile.path
 
                     if ([string]::IsNullOrWhitespace($entity.readConfigFromFile.putPath) -and 
@@ -2140,7 +2158,7 @@ hull:
                       }
                     }
 
-                                        
+
                     $filePath = ""
                     if ($contextPath -like "*/*" )
                     {
@@ -2151,7 +2169,7 @@ hull:
                     {
                       $filePath = Join-Path $currentPath "custom-installation-files" $($contextPath)
                     }
-                                        
+                    
                     if (!(Test-Path $filePath))
                     {
                       $this.WriteLog("File '$($filePath)' does not exist")
@@ -2160,10 +2178,10 @@ hull:
                     {
                       $fileContent = Get-Content -Path $filePath | Out-String
                       $this.WriteLog("**** FileContent of " + $filePath + " is:" + $fileContent)
-                                            
+                     
                       if ([string]::IsNullOrWhitespace($entity.readConfigFromFile.key))
                       {
-                        $this.WriteLog("**** No 'key' property provided, mapping full contents of '$($filePath)' to Config")                                  
+                        $this.WriteLog("**** No 'key' property provided, mapping full contents of '$($filePath)' to Config")
                         $entity.config = $fileContent  
                       }
                       else
@@ -2171,17 +2189,17 @@ hull:
                         $this.WriteLog("**** Value '$($entity.readConfigFromFile.key)' provided for 'key' property, mapping content of key from JSON file '$($filePath)' to Config")
                         $fileContentJson = $fileContent | ConvertFrom-Json
                         $this.WriteLog("**** JSON file content: " + $fileContentJson)
-                        $entity.config = $fileContentJson.$($entity.readConfigFromFile.key)                                 
+                        $entity.config = $fileContentJson.$($entity.readConfigFromFile.key)
                       }
                     }
                   }
-                                    
+                
                   return $entity.config
                 }
 
                 [PSCustomObject] AppendQueryParamsToUri([String] $uri, [PSCustomObject] $queryParams, [String] $identifier, [bool] $disableReplacements)
                 {
-                                    
+                
                   if ($null -ne $queryParams)
                   {
                     $count = 0
