@@ -1062,15 +1062,15 @@ hull:
                 # $installer.WriteLog("POST Status response $($response)")
               }
               
-              function ParseErrorForResponseBody()
+              function ParseErrorForResponseBody($err)
               {
                 try
                 {
                   if ($PSVersionTable.PSVersion.Major -lt 6)
                   {
-                    if ($Error.Exception.Response)
+                    if ($err.Exception.Response)
                     {
-                      $Reader = New-Object System.IO.StreamReader($Error.Exception.Response.GetResponseStream())
+                      $Reader = New-Object System.IO.StreamReader($err.Exception.Response.GetResponseStream())
                       $Reader.BaseStream.Position = 0
                       $Reader.DiscardBufferedData()
                       $ResponseBody = $Reader.ReadToEnd()
@@ -1084,7 +1084,7 @@ hull:
                   }
                   else
                   {
-                    return $Error.ErrorDetails.Message
+                    return $err.ErrorDetails.Message
                   }
                 }
                 catch
@@ -1425,7 +1425,7 @@ hull:
 
                   Select-String '\"\$env:(.*)\"' -input $requestBodyJson -AllMatches | ForEach-Object {
                     $_.matches | ForEach-Object {
-                      $this.WriteLog("+++++   Setting key $($key) from environment variable '$($_.Groups[0])'")
+                      $this.WriteLog("+++++   Inserting value for environment variable $($_.Groups[0])")
                       $requestBodyJson = $requestBodyJson.replace($_.Groups[0], "`"$([environment]::GetEnvironmentVariable($_.Groups[1], "Process"))`"")
                     }
                   }
@@ -1988,7 +1988,7 @@ hull:
                     }
                     else
                     {
-                      $this.WriteLog("**** Current config: $($entity.config).")
+                      $this.WriteLog("**** Current config: $($entity.config | ConvertTo-Json -Depth 100).")
                     }
                     
                     foreach ($configKey in $entity.$entityConfigValuesKey.Keys)
