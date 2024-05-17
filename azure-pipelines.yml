@@ -36,7 +36,7 @@ jobs:
   steps:
   - script: |
         export HULL_VSADDON_VERSION=`sed -n 's/^version:\s//p' ./hull-vidispine-addon/Chart.yaml | sed 's/\"//g'` 
-        echo "-> hull version is ${HULL_VSADDON_VERSION}"
+        echo "-> hull-vidispine-addon version is ${HULL_VSADDON_VERSION}"
         echo "##vso[task.setvariable variable=HULL_VSADDON_VERSION;]${HULL_VSADDON_VERSION}"
   
   - task: Docker@0
@@ -44,7 +44,7 @@ jobs:
     inputs:
       containerregistrytype: 'Container Registry'
       dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
-      dockerFile: '$(Agent.TempDirectory)/images/hull-integrate'
+      dockerFile: '$(Agent.TempDirectory)/images/hull-integrate.Dockerfile'
       defaultContext: false
       context: '$(build.artifactstagingdirectory)'
       imageName: 'hull/hull-integrate:$(HULL_VSADDON_VERSION)'
