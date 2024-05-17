@@ -55,7 +55,7 @@ jobs:
       containerregistrytype: 'Container Registry'
       containerRegistry: '${{ parameters.DockerRegistryEndpoint }}'
       action: 'Push an image'
-      imageName: 'hull/hull-integrate:$(HULL_VSADDON_VERSION)'
+      imageName: 'cr.vidinet.net/hull/hull-integrate:$(HULL_VSADDON_VERSION)'
   
   - script: |
         CHART_RELEASER_VERSION=1.5.0
