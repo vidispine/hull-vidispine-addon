@@ -5,11 +5,11 @@
 
 parameters:
 - name: RunTests
-  default: true
+  default: false
 - name: DockerRegistryEndpoint
   displayName: 'The name of the service connection representing the Docker registry to push to.'
   type: string
-  default: "cr.vidinet.net"
+  default: "vidinet Docker Registry"
 
 trigger: none
 pr: none
