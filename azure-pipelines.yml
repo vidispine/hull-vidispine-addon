@@ -46,7 +46,7 @@ jobs:
       dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
       dockerFile: './images/hull-integrate/Dockerfile'
       defaultContext: false
-      context: '$(build.artifactstagingdirectory)'
+      context: './images/hull-integrate'
       imageName: 'hull/hull-integrate:$(HULL_VSADDON_VERSION)'
  
   - task: Docker@0
