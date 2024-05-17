@@ -44,7 +44,7 @@ jobs:
     inputs:
       containerregistrytype: 'Container Registry'
       dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
-      dockerFile: '$(Agent.TempDirectory)/images/hull-integrate.Dockerfile'
+      dockerFile: '$(Agent.TempDirectory)/images/hull-integrate/Dockerfile'
       defaultContext: false
       context: '$(build.artifactstagingdirectory)'
       imageName: 'hull/hull-integrate:$(HULL_VSADDON_VERSION)'
