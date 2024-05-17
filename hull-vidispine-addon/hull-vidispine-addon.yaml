@@ -103,8 +103,8 @@ hull:
                     requestSubpath: "/connect/token"
                   request:
                     body:
-                      client_id: $env:CLIENT_AUTHSERVICE_INSTALLATION_ID
-                      client_secret: $env:CLIENT_AUTHSERVICE_INSTALLATION_SECRET
+                      client_id: ${env:CLIENT_AUTHSERVICE_INSTALLATION_ID}
+                      client_secret: ${env:CLIENT_AUTHSERVICE_INSTALLATION_SECRET}
                       grant_type: client_credentials
                       scope: identityscope
                     headers:
@@ -152,8 +152,8 @@ hull:
                     requestSubpath: "/connect/token"
                   request:
                     body:
-                      client_id: $env:CLIENT_CONFIGPORTAL_INSTALLATION_ID
-                      client_secret: $env:CLIENT_CONFIGPORTAL_INSTALLATION_SECRET
+                      client_id: ${env:CLIENT_CONFIGPORTAL_INSTALLATION_ID}
+                      client_secret: ${env:CLIENT_CONFIGPORTAL_INSTALLATION_SECRET}
                       grant_type: client_credentials
                       scope: 'configportalscope'
                     headers:
@@ -820,6 +820,12 @@ hull:
         - custom-installation-files-setup
         - _HULL_OBJECT_TYPE_DEFAULT_
         data: _HT/hull.vidispine.addon.sources.folder.secret:FOLDER_INDEX:20
+      hull-database:
+        enabled: false
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-10"
+          helm.sh/hook-delete-policy: before-hook-creation
       'hull-install':
         sources:
         - custom-installation-files-setup
@@ -904,6 +910,7 @@ hull:
               {
                 $now = Get-Date
                 $eventName = "$($objectName).$($now.ToString("yyMMddhhmmssffffff"))"
+                $trimmedMessage = $message[0..1023] -join ""
                 $k8sEvent = @{ "apiVersion" = "v1";
                   "action"                  = "$($eventType)";
                   "count"                   = 1;
@@ -919,7 +926,7 @@ hull:
                   };
                   "kind"                    = "Event";
                   "lastTimestamp"           = "$($now.ToString("yyyy-MM-ddThh:mm:ss.ffffffZ"))";
-                  "message"                 = "$($message)";
+                  "message"                 = "$($trimmedMessage)";
                   "metadata"                = @{
                     "namespace" = "$($k8s.NAMESPACE)";
                     "name"      = "$($eventName)"
@@ -935,11 +942,11 @@ hull:
                 }
                 if ($log)
                 {
-                  $installer.WriteLog("Event: $($k8sEvent | ConvertTo-Json)")
+                  $installer.WriteLog("Event: $($k8sEvent | ConvertTo-Json -Depth 100)")
                 }
                 $uri = "$($k8s.APISERVER)/api/v1/namespaces/$($k8s.NAMESPACE)/events"
                 $installer.WriteLog("Uri: $($uri)")
-                $responseEvent = Invoke-RestMethod -Uri $uri -Method "POST" -Body ($k8sEvent | ConvertTo-Json) -Headers $k8s.HEADERS -SkipCertificateCheck
+                $responseEvent = Invoke-RestMethod -Uri $uri -Method "POST" -Body ($k8sEvent | ConvertTo-Json -Depth 100) -Headers $k8s.HEADERS -SkipCertificateCheck
                 if ($log)
                 {
                   $installer.WriteLog("Event response $($responseEvent)")
@@ -1396,6 +1403,33 @@ hull:
                   return $headers
                 }
 
+                # Replace env vars in string
+                hidden [string] InsertEnvironmentVariables($source)
+                {
+                  if ([string]::IsNullOrWhitespace($source))
+                  {
+                    $this.WriteLog("+++++ Inserting environment variables not possible. Content is empty.")
+                    return $source
+                  }
+
+                  $this.WriteLog("+++++ Inserting environment variables in content of type '$($source.GetType())'")
+                  $converted = $false
+                  if ($source.GetType() -Eq [System.Collections.Specialized.OrderedDictionary])
+                  {
+                    $this.WriteLog("+++++ Converting Content from OrderedDictionary to JSON for environment variable insertion")
+                    $source = $source | ConvertTo-Json
+                  }
+
+                  Select-String '\$\{env:(.*)\}' -Input $source -AllMatches | ForEach-Object {
+                    $_.matches | ForEach-Object {
+                      $this.WriteLog("+++++   Inserting value for environment variable $($_.Groups[0])")
+                      $source = $source.replace($_.Groups[0], "$([environment]::GetEnvironmentVariable($_.Groups[1], "Process"))")
+                    }
+                  }
+
+                  return $source
+                }
+
                 # Gets an access token for the OAuth2 authentication.
                 hidden [string] GetAccess([PSCustomObject] $request, [string] $accessType)
                 {
@@ -1423,12 +1457,7 @@ hull:
                   }
                   $this.WriteLog("++++ to Uri: $($endpointUri)")
 
-                  Select-String '\"\$env:(.*)\"' -input $requestBodyJson -AllMatches | ForEach-Object {
-                    $_.matches | ForEach-Object {
-                      $this.WriteLog("+++++   Inserting value for environment variable $($_.Groups[0])")
-                      $requestBodyJson = $requestBodyJson.replace($_.Groups[0], "`"$([environment]::GetEnvironmentVariable($_.Groups[1], "Process"))`"")
-                    }
-                  }
+                  $requestBodyJson = $this.InsertEnvironmentVariables($requestBodyJson)
 
                   try
                   {
@@ -1818,16 +1847,37 @@ hull:
                   }
 
                   $this.WriteLog("**** StatusCode is $($statusCode)")
+                  
+                  if ([String]::IsNullOrEmpty($entity.config))
+                  {
+                    $this.WriteLog("**** Created new empty config dictionary.")
+                    $entity.config = @{}
+                  }
+                  else
+                  {
+                    $this.WriteLog("**** Current config: $($entity.config | ConvertTo-Json -Depth 100).")
+                  }
 
                   $entity.config = $this.ReadConfigFromFile($entity, $statusCode)
                   $entity.config = $this.UpdateConfigValues($entity, $statusCode, "readConfigValuesFromFiles")
                   $entity.config = $this.UpdateConfigValues($entity, $statusCode, "updateConfigValues")
                   
-                  $content = $entity.config
+                  $content = $this.InsertEnvironmentVariables($entity.config)
                   
-                  if ($contentType -eq "application/json")
+                  $testJson = $false
+                  if ($content.GetType() -Eq [String])
                   {
-                    $this.WriteLog("*** ContentType is 'application/json', converting config to JSON object")
+                    $testJson = Test-Json -Json $content
+                    $this.WriteLog("**** Config type is String (JSON=$($testJson))")
+                  }
+                  else
+                  {
+                    $this.WriteLog("**** Config type is $($content.GetType())")
+                  }
+
+                  if ((-Not $testJson) -and ($contentType -eq "application/json"))
+                  {
+                    $this.WriteLog("**** ContentType is 'application/json', converting config of string type to JSON object")
                     $content = $content | ConvertTo-Json -Depth 100
                   }
 
@@ -1849,8 +1899,6 @@ hull:
                       }
                     }
                   }
-
-                  $this.WriteLog("Config is '$($content)'")
 
                   if ($entity.processConfigScript)
                   {
@@ -1981,16 +2029,6 @@ hull:
                 {
                   if ($null -ne $entity.$entityConfigValuesKey)
                   {
-                    if ([String]::IsNullOrEmpty($entity.config))
-                    {
-                      $this.WriteLog("**** Created new empty config dictionary.")
-                      $entity.config = @{}
-                    }
-                    else
-                    {
-                      $this.WriteLog("**** Current config: $($entity.config | ConvertTo-Json -Depth 100).")
-                    }
-                    
                     foreach ($configKey in $entity.$entityConfigValuesKey.Keys)
                     {
 
