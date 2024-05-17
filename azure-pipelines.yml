@@ -9,7 +9,7 @@ parameters:
 - name: DockerRegistryEndpoint
   displayName: 'The name of the service connection representing the Docker registry to push to.'
   type: string
-  default: "Docker Registry"
+  default: "cr.vidinet.net"
 
 trigger: none
 pr: none
