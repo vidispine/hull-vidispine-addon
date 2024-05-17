@@ -53,7 +53,7 @@ jobs:
     displayName: 'Docker Push'
     inputs:
       containerregistrytype: 'Container Registry'
-      containerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
+      dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
       action: 'Push an image'
       imageName: 'hull/hull-integrate:$(HULL_VSADDON_VERSION)'
   
