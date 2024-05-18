@@ -20,6 +20,54 @@ hull:
 
     <OBJECT_TYPE>:
       
+      enabled_transform:
+        pod:
+          containers:
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
+      
+      enabled_transform_tpl_if:
+        pod:
+          containers:
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
+      
+      enabled_transform_dict:
+        pod:
+          containers:
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
+      
+      metadata_merge:
+        pod:
+          containers:
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
+      
+      metadata_overwrite:
+        pod:
+          containers:
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
+      
+      static_name:
+        pod:
+          containers:
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
+
       service_account:
         pod:
           containers:
@@ -145,6 +193,9 @@ hull:
         pod:
           containers:
             main:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               command:
                 - run
           volumes:
@@ -198,6 +249,9 @@ hull:
         pod:
           containers:
             main:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               command:
                 - run
               env:
@@ -243,6 +297,9 @@ hull:
         pod:
           containers:
             main:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               command:
                 - run
               envFrom:
@@ -281,6 +338,9 @@ hull:
               command:
                 - test_disabled
             test_enabled:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               enabled: true
               command:
                 - test_enabled
@@ -381,6 +441,9 @@ hull:
                   name: test_enabled_missing
                   mountPath: '/etc/init/configmap/all'
             test_enabled_transform:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
                 {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_on }}
                 >>>"
@@ -393,6 +456,9 @@ hull:
               command:
                 - test_disabled_transform
             test_enabled_missing:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               command:
                 - test_enabled_missing
           initContainers:
@@ -402,6 +468,9 @@ hull:
                 - test_disabled
             test_enabled:
               enabled: true
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               command:
                 - test_enabled
               envFrom:
@@ -504,6 +573,9 @@ hull:
               enabled: "_HULL_TRANSFORMATION_<<<NAME=hull.util.transformation.tpl>>><<<CONTENT=
                 {{ (index . \"PARENT\").Values.hull.config.specific.switch_enabled_on }}
                 >>>"
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               command:
                 - test_enabled_transform
             test_disabled_transform:
@@ -513,6 +585,9 @@ hull:
               command:
                 - test_disabled_transform
             test_enabled_missing:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               command:
                 - test_enabled_missing
           volumes:
@@ -549,6 +624,9 @@ hull:
                 - test_disabled
             test_enabled:
               enabled: true
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               command:
                 - _HT![ 'test_enabled' ]
               env:
@@ -602,6 +680,9 @@ hull:
                   containerPort: 10256
                   protocol: SCTP
             test_enabled_transform:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               enabled: _HT?(index . "$").Values.hull.config.specific.switch_enabled_on
               command:
               - _HT![ {{ (printf "%s_%s" "test_enabled" "transform") }} ]
@@ -610,6 +691,9 @@ hull:
               command:
               - test_disabled_transform
             test_enabled_missing:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               command:
               - _HT! [ {{ (printf "%s_%s" "test_enabled" "missing") }} ]
               
@@ -618,6 +702,9 @@ hull:
           containers:
             
             array_form:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               command: _HT![ 
                   {{ (index . "$").Values.hull.config.specific.some_referenced_value }}, 
                   "another_value",
@@ -625,6 +712,9 @@ hull:
                 ]
             
             bool_variants:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               env:
                 bool_field:
                   enabled: _HT?and (index . "$").Values.hull.config.specific.switch_one_enabled (index . "$").Values.hull.config.specific.switch_two_enabled
@@ -635,6 +725,9 @@ hull:
                 tag: "latest"
 
             full_example:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               args: _HT![
                   {{ if (index . "$").Values.hull.config.specific.if_this_arg_is_defined }}
                   "{{ (index . "$").Values.hull.config.specific.if_this_arg_is_defined }}",
@@ -646,6 +739,9 @@ hull:
                 ]
 
             get_variants:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               env:
                 string_defined:
                   enabled: true
@@ -691,11 +787,17 @@ hull:
                 tag: "latest"
 
             makefullname_variants:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               env:
                 fullname:
                   value: _HT^component-name
 
             tpl_variants:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               env:
                 tpl_string:
                   value: _HT!{{ printf "%s-%s" (index . "$").Values.hull.config.specific.port_one (index . "$").Values.hull.config.specific.port_two }}
@@ -718,6 +820,9 @@ hull:
         pod:
           containers:
             main:
+              image:
+                registry: ""
+                repository: my/image/repo
               livenessProbe: _HT*hull.config.specific.liveness_probe
               args: _HT*hull.config.specific.args_array
             deferred: _HT*hull.config.specific.deferred_container

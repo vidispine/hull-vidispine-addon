@@ -9,19 +9,35 @@ hull:
     job:
       disabled:
         pod:
-          containers: {}
+          containers: 
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
         
       static_name:
         pod:
-          containers: {}
+          containers: 
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
         
       metadata_merge:
         pod:
-          containers: {}
+          containers: 
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
         
       metadata_overwrite:
         pod:
-          containers: {}
+          containers: 
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
         
       image_name_empty_registry:
         pod:
@@ -52,11 +68,19 @@ hull:
           containers:
             remove: null
             keep:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
               ports:
                 remove: null
                 
       volume_test:
         pod:
+          containers:
+            main:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
           volumes:
             to_be_removed: null
 

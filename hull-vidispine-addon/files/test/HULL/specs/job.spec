@@ -43,7 +43,8 @@ Test creation of objects and features.
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§3§name" with value "etcssl"
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§3§mountPath" with value "/etc/ssl/certs"
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§4§name" with value "installation"
-* Test Object has key "spec§template§spec§containers§0§volumeMounts§4§mountPath" with value "/script"
+* Test Object has key "spec§template§spec§containers§0§volumeMounts§4§mountPath" with value "/script/installation.yaml"
+* Test Object has key "spec§template§spec§containers§0§volumeMounts§4§subPath" with value "installation.yaml"
 
 * Test Object has key "spec§template§spec§volumes" with array value that has "5" items
 * Test Object has key "spec§template§spec§volumes§0§name" with value "certs"
@@ -73,7 +74,8 @@ Test creation of objects and features.
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§4§name" with value "etcssl"
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§4§mountPath" with value "/etc/ssl/certs"
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§5§name" with value "installation"
-* Test Object has key "spec§template§spec§containers§0§volumeMounts§5§mountPath" with value "/script"
+* Test Object has key "spec§template§spec§containers§0§volumeMounts§5§mountPath" with value "/script/installation.yaml"
+* Test Object has key "spec§template§spec§containers§0§volumeMounts§5§subPath" with value "installation.yaml"
 
 * Test Object has key "spec§template§spec§volumes" with array value that has "6" items
 * Test Object has key "spec§template§spec§volumes§0§name" with value "certs-opensearch"
@@ -107,7 +109,8 @@ Test creation of objects and features.
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§6§name" with value "etcssl"
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§6§mountPath" with value "/etc/ssl/certs"
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§7§name" with value "installation"
-* Test Object has key "spec§template§spec§containers§0§volumeMounts§7§mountPath" with value "/script"
+* Test Object has key "spec§template§spec§containers§0§volumeMounts§7§mountPath" with value "/script/installation.yaml"
+* Test Object has key "spec§template§spec§containers§0§volumeMounts§7§subPath" with value "installation.yaml"
 
 * Test Object has key "spec§template§spec§volumes" with array value that has "7" items
 * Test Object has key "spec§template§spec§volumes§0§name" with value "certs"

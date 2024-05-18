@@ -45,7 +45,6 @@
       "additionalProperties": false
     },
     "dataSourceRef": {
-      "description": "TypedLocalObjectReference contains enough information to let you locate the typed referenced object inside the same namespace.",
       "properties": {
         "apiGroup": {
           "description": "APIGroup is the group for the resource being referenced. If APIGroup is not specified, the specified Kind must be in the core API group. For any other third-party types, APIGroup is required.",
@@ -61,6 +60,13 @@
         "name": {
           "description": "Name is the name of resource being referenced",
           "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace is the namespace of resource being referenced Note that when a namespace is specified, a gateway.networking.k8s.io/ReferenceGrant object is required in the referent namespace to allow that namespace's owner to accept the reference. See the ReferenceGrant documentation for details. (Alpha) This field requires the CrossNamespaceVolumeDataSource feature gate to be enabled.",
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "required": [
@@ -71,11 +77,10 @@
         "object",
         "null"
       ],
-      "x-kubernetes-map-type": "atomic",
       "additionalProperties": false
     },
     "resources": {
-      "description": "ResourceRequirements describes the compute resource requirements.",
+      "description": "VolumeResourceRequirements describes the storage resource requirements for a volume.",
       "properties": {
         "limits": {
           "additionalProperties": {
@@ -117,7 +122,7 @@
               }
             ]
           },
-          "description": "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+          "description": "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. Requests cannot exceed Limits. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
           "type": [
             "object",
             "null"
@@ -140,9 +145,7 @@
             "properties": {
               "key": {
                 "description": "key is the label key that the selector applies to.",
-                "type": "string",
-                "x-kubernetes-patch-merge-key": "key",
-                "x-kubernetes-patch-strategy": "merge"
+                "type": "string"
               },
               "operator": {
                 "description": "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.",
@@ -200,6 +203,13 @@
     },
     "storageClassName": {
       "description": "storageClassName is the name of the StorageClass required by the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "volumeAttributesClassName": {
+      "description": "volumeAttributesClassName may be used to set the VolumeAttributesClass used by this claim. If specified, the CSI driver will create or update the volume with the attributes defined in the corresponding VolumeAttributesClass. This has a different purpose than storageClassName, it can be changed after the claim is created. An empty string value means that no VolumeAttributesClass will be applied to the claim but it's not allowed to reset this field to empty string once it is set. If unspecified and the PersistentVolumeClaim is unbound, the default VolumeAttributesClass will be set by the persistentvolume controller if it exists. If the resource referred to by volumeAttributesClass does not exist, this PersistentVolumeClaim will be set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource exists. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#volumeattributesclass (Alpha) Using this field requires the VolumeAttributesClass feature gate to be enabled.",
       "type": [
         "string",
         "null"
