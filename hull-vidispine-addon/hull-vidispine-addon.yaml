@@ -616,7 +616,7 @@ hull:
             installation:
               image:
                 repository: hull/hull-integration
-                tag: _HT**Chart.Version
+                tag: <HULL-VIDISPINE-ADDON-VERSION>
               args: _HT![
                 {{ if (or (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates (index . "$").Values.hull.config.general.data.installation.config.certificateSecrets) }}
                 echo Updating Certificates;
@@ -644,7 +644,7 @@ hull:
             installation:
               image:
                 repository: hull/hull-integration
-                tag: _HT**Chart.Version
+                tag: <HULL-VIDISPINE-ADDON-VERSION>
               args: _HT![
                 {{ if (or (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates (index . "$").Values.hull.config.general.data.installation.config.certificateSecrets) }}
                 echo Updating Certificates;
