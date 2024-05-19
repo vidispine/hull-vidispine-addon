@@ -615,7 +615,7 @@ hull:
           containers:
             installation:
               image:
-                repository: hull/hull-integrate
+                repository: hull/hull-integration
                 tag: _HT**Chart.Version
               args: _HT![
                 {{ if (or (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates (index . "$").Values.hull.config.general.data.installation.config.certificateSecrets) }}
@@ -643,8 +643,8 @@ hull:
           containers:
             installation:
               image:
-                repository: vpms/powershellcore-yaml-oras
-                tag: 7.3-ubuntu-22.04-20230620
+                repository: hull/hull-integration
+                tag: _HT**Chart.Version
               args: _HT![
                 {{ if (or (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates (index . "$").Values.hull.config.general.data.installation.config.certificateSecrets) }}
                 echo Updating Certificates;
