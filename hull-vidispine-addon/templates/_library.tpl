@@ -677,22 +677,6 @@ etcssl:
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $component := (index . "COMPONENT") }}
 {{ $connectionstringsuffix := default "" (index . "CONNECTIONSTRINGSUFFIX") }}
-'DBUSERPOSTFIX':
-  valueFrom:
-    secretKeyRef:
-      name: auth
-      key: AUTH_BASIC_DATABASE_USERNAMESPOSTFIX
-      optional: true
-'DBADMINUSER':
-  valueFrom:
-    secretKeyRef:
-      name: auth
-      key: AUTH_BASIC_DATABASE_ADMINUSERNAME
-'DBADMINPASSWORD':
-  valueFrom:
-    secretKeyRef:
-      name: auth
-      key: AUTH_BASIC_DATABASE_ADMINPASSWORD
 {{ if (ne (include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "index")) "" ) }}
 'ELASTICSEARCH__USERNAME':
   valueFrom:
@@ -718,6 +702,22 @@ etcssl:
       key:  "CLIENT_{{ regexReplaceAll "-" ($component | upper) "_" }}_SECRET"
 {{ end }}
 {{ if (index $parent.Values.hull.config.specific.components $component).database }}
+'DBUSERPOSTFIX':
+  valueFrom:
+    secretKeyRef:
+      name: auth
+      key: AUTH_BASIC_DATABASE_USERNAMESPOSTFIX
+      optional: true
+'DBADMINUSER':
+  valueFrom:
+    secretKeyRef:
+      name: auth
+      key: AUTH_BASIC_DATABASE_ADMINUSERNAME
+'DBADMINPASSWORD':
+  valueFrom:
+    secretKeyRef:
+      name: auth
+      key: AUTH_BASIC_DATABASE_ADMINPASSWORD
 {{ if (hasKey (index $parent.Values.hull.config.specific.components $component).database "connectionStringEnvVarSuffix") }}
 "CONNECTIONSTRINGS__{{ (index $parent.Values.hull.config.specific.components $component).database.connectionStringEnvVarSuffix }}":
 {{ else }}
