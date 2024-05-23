@@ -505,7 +505,7 @@ initContainers:
   copy-custom-scripts:
     image:
       repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
-      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.8" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
+      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.9-1" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
     args:
     - "/bin/sh"
     - "-c"
@@ -520,7 +520,7 @@ initContainers:
   set-custom-script-permissions:
     image:
       repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
-      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.8" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
+      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.9-1" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
     args:
     - "/bin/sh"
     - "-c"
@@ -533,7 +533,7 @@ initContainers:
   check-database-ready:
     image:
       repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
-      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.8" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
+      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.9-1" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
     env:
       DBHOST:
         value: {{ $databaseHost }}
@@ -603,7 +603,7 @@ containers:
 {{ end }}
     image:
       repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
-      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.8" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
+      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.9-1" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
     env:
       DBHOST:
         value: {{ $databaseHost }}
