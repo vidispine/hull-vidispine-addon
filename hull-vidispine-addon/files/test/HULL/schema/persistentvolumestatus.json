@@ -1,6 +1,14 @@
 {
   "description": "PersistentVolumeStatus is the current status of a persistent volume.",
   "properties": {
+    "lastPhaseTransitionTime": {
+      "description": "Time is a wrapper around time.Time which supports correct marshaling to YAML and JSON.  Wrappers are provided for many of the factory methods that the time package offers.",
+      "format": "date-time",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "message": {
       "description": "message is a human-readable message indicating details about why the volume is in this state.",
       "type": [
@@ -9,7 +17,7 @@
       ]
     },
     "phase": {
-      "description": "phase indicates if a volume is available, bound to a claim, or released by a claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#phase\n\n",
+      "description": "phase indicates if a volume is available, bound to a claim, or released by a claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#phase",
       "type": [
         "string",
         "null"

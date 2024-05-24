@@ -166,7 +166,8 @@ Icon: |-
   "installation": 
   {
     "name": "installation",
-    "mountPath": "/script"
+    "mountPath": "/script/installation.yaml",
+    "subPath": "installation.yaml"
   },
   "custom-installation-files":
   {
