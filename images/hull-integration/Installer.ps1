@@ -524,7 +524,6 @@ Class Installer
     }
 
     $this.WriteLog("+++++ Inserting environment variables in content of type '$($source.GetType())'")
-    $converted = $false
     if ($source.GetType() -Eq [System.Collections.Specialized.OrderedDictionary])
     {
       $this.WriteLog("+++++ Converting Content from OrderedDictionary to JSON for environment variable insertion")
@@ -809,6 +808,7 @@ Class Installer
     }
 
     $identifier = if ([string]::IsNullOrWhiteSpace($entity.identifier)) { $entityKey } else { $entity.identifier }
+    $identifier = $this.InsertEnvironmentVariables($identifier)
 
     $deleteQueryParams = @{}
     if ($entity.deleteQueryParams)
@@ -850,8 +850,6 @@ Class Installer
     $uriGet = if ($entity.getUriExcludeIdentifier -eq $true) { $apiEndpoint } else { $uri }
     $uriDelete = if ($entity.deleteUriExcludeIdentifier -eq $true) { $apiEndpoint } else { $uri }
 
-
-
     $message = ""
     $statusCode = 500
     $result = $null
@@ -875,7 +873,7 @@ Class Installer
         $responseGet = Invoke-WebRequest -Uri $uriGet -Method "GET" -headers $headers -UseBasicParsing -SkipCertificateCheck
         $lastMethod = "GET"
         $lastUri = $uriGet
-        if ([String]::IsNullOrWhitespace($entity.getCustomScript))
+        if ([String]::IsNullOrWhitespace($entity.getCustomScript) -and [String]::IsNullOrWhitespace($entity.getCustomScriptFromFile))
         {
           $statusCode = $responseGet.StatusCode
           $this.WriteLog("**** SUCCESS --> StatusCode: $($statusCode)")
@@ -886,7 +884,20 @@ Class Installer
           {
             $value = $entity
             $this.WriteLog("**** Invoking getCustomScript")
-            $scriptblock = [Scriptblock]::Create($entity.getCustomScript)
+            $scriptblock = $null
+            if (-Not [String]::IsNullOrWhitespace($entity.getCustomScript))
+            {
+              $this.WriteLog("***** Using inline getCustomScript")
+              $scriptblock = [Scriptblock]::Create($entity.getCustomScript)
+            }
+            else
+            {
+              $currentPath = (Get-Item -Path ".\" -Verbose).FullName
+              $scriptPath = Join-Path $currentPath $entity.getCustomScriptFromFile
+              $this.WriteLog("***** Using getCustomScriptFromFile $($scriptPath)")
+              $scriptblock = Get-Command $scriptPath | Select-Object -ExpandProperty ScriptBlock 
+            }
+            
             $this.WriteLog("[- Start Script -]")
             $result = $scriptblock.InvokeReturnAsIs()
             $this.WriteLog("Type of result: $($result.GetType())")
