@@ -1165,7 +1165,7 @@ _CREATE_SCRIPT_CONFIGMAP: Name of an existing ConfigMap which contains a custom 
 
 Usage:
 
-This function full renders job objects that either create or reset a database defined for _COMPONENT_. The container used for these database operations is found in the `hull.config.specific.images.dbTools.repository` field (default is 'vpms/dbtools') and the tag to use is given in the `hull.config.specific.images.dbTools.tag` field (default "1.8"). In order to work correctly, the following environment variables are provided to each 'vpms/dbtools' instance executed:
+This function full renders job objects that either create or reset a database defined for _COMPONENT_. The container used for these database operations is found in the `hull.config.specific.images.dbTools.repository` field (default is 'vpms/dbtools') and the tag to use is given in the `hull.config.specific.images.dbTools.tag` field (default "1.9-1"). In order to work correctly, the following environment variables are provided to each 'vpms/dbtools' instance executed:
 - DBHOST: retrieved from the database endpoints (`postgres` or `mssql`) `uri.address` field. Alternatively if the _COMPONENT_ specifies a `database.endpoint` entry the `host` is retrieved for this explicit _ENDPOINT_ instead
 - DBPORT: retrieved from the database endpoints (`postgres` or `mssql`) `uri.address` field. Alternatively if the _COMPONENT_ specifies a `database.endpoint` entry the `port` is retrieved for this explicit _ENDPOINT_ instead
 - DBTYPE: `postgres` or `mssql`, determined by `hull.vidispine.addon.library.get.endpoint.application` function
