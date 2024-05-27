@@ -19,6 +19,7 @@ hull:
               ignoreEntityRestCallErrors: false
               retriesForEntityRestCall: 3
               retriesForAuthServiceCall: 10
+              debugInstallerScript: false
             legacy:
               defaultServiceAccountIsHook: false
             runtime:
@@ -684,3 +685,10 @@ hull:
                   {{- $_ := include "hull.util.transformation" (dict "PARENT_CONTEXT" $ "SOURCE" $configScope "CALLER" nil "CALLER_KEY" nil "SOURCE_PATH" list) -}}
                   {{- toYaml $configScope -}}
                 {{ end }}
+          Installer.ps1:
+            enabled: _HT*hull.config.general.data.installation.config.debug.debugInstallerScript
+            inline: |-
+              *** ENABLE hull.config.general.data.installation.config.debug.debugInstallerScript
+              *** AND COPY SCRIPT CODE FROM 
+              *** /images/hull-integration/Installer.ps1 
+              *** HERE TO START DEBUGGING 
