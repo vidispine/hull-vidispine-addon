@@ -529,6 +529,11 @@ Class Installer
       $this.WriteLog("+++++ Converting Content from OrderedDictionary to JSON for environment variable insertion")
       $source = $source | ConvertTo-Json
     }
+    if ($source.GetType() -Eq [System.Collections.Generic.List[System.Object]])
+    {
+      $this.WriteLog("+++++ Converting Content from Generic.List[System.Object] to JSON for environment variable insertion")
+      $source = $source | ConvertTo-Json
+    }
 
     Select-String '\$\{env:(.*)\}' -Input $source -AllMatches | ForEach-Object {
       $_.matches | ForEach-Object {
