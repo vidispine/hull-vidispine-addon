@@ -115,7 +115,7 @@ function CreateKubernetesEvents([string] $eventType, [string] $message)
   $installer.WriteLog("Uri: $($podUri)")
   $installer.WriteLog("GET Pod info for $($podName)")
   $podResponse = Invoke-RestMethod -Uri $podUri -Method "GET" -Headers $k8s.HEADERS -SkipCertificateCheck
-  # $installer.WriteLog("Pod: $($podResponse | ConvertTo-Json)")
+  # $installer.WriteLog("Pod: $($podResponse | ConvertTo-Json -Depth 100)")
 
   $jobName = $podResponse.metadata.labels.'batch.kubernetes.io/job-name'
   $jobControllerUid = $podResponse.metadata.labels.'controller-uid'
@@ -152,8 +152,8 @@ function CreateKubernetesEvents([string] $eventType, [string] $message)
   #     "lastObservedTime" = "$($now.ToString("yyyy-MM-ddThh:mm:ss.ffffffZ"))"
   #   };
   # }
-  # $installer.WriteLog("Event New: $($event | ConvertTo-Json)")
-  # $responseEventNew = Invoke-RestMethod -Uri "$($APISERVER)/apis/events.k8s.io/v1/namespaces/$($NAMESPACE)/events" -Method "POST" -Body ($event | ConvertTo-Json) -Headers $headers -SkipCertificateCheck
+  # $installer.WriteLog("Event New: $($event | ConvertTo-Json -Depth 100)")
+  # $responseEventNew = Invoke-RestMethod -Uri "$($APISERVER)/apis/events.k8s.io/v1/namespaces/$($NAMESPACE)/events" -Method "POST" -Body ($event | ConvertTo-Json -Depth 100) -Headers $headers -SkipCertificateCheck
   # $installer.WriteLog("POST Event response $($responseEventNew)")
 
 
@@ -176,7 +176,7 @@ function CreateKubernetesEvents([string] $eventType, [string] $message)
   #             }
   #           }
   # $installer.WriteLog("Status: $(ConvertTo-Json -Depth 10 -InputObject $status)")
-  # $response = Invoke-RestMethod -Uri "$($APISERVER)/apis/batch/v1/namespaces/$($NAMESPACE)/jobs/$($jobName)/status" -Method "PUT" -Body ($status | ConvertTo-Json -Depth 10) -Headers $headers -SkipCertificateCheck
+  # $response = Invoke-RestMethod -Uri "$($APISERVER)/apis/batch/v1/namespaces/$($NAMESPACE)/jobs/$($jobName)/status" -Method "PUT" -Body ($status | ConvertTo-Json -Depth 100) -Headers $headers -SkipCertificateCheck
   # $installer.WriteLog("POST Status response $($response)")
 }
 
@@ -527,12 +527,12 @@ Class Installer
     if ($source.GetType() -Eq [System.Collections.Specialized.OrderedDictionary])
     {
       $this.WriteLog("+++++ Converting Content from OrderedDictionary to JSON for environment variable insertion")
-      $source = $source | ConvertTo-Json
+      $source = $source | ConvertTo-Json -Depth 100
     }
     if ($source.GetType() -Eq [System.Collections.Generic.List[System.Object]])
     {
       $this.WriteLog("+++++ Converting Content from Generic.List[System.Object] to JSON for environment variable insertion")
-      $source = $source | ConvertTo-Json
+      $source = $source | ConvertTo-Json -Depth 100
     }
 
     Select-String '\$\{env:(.*)\}' -Input $source -AllMatches | ForEach-Object {
@@ -561,7 +561,7 @@ Class Installer
     $endpointUri = "$($endpointBaseUri)$($requestSubPath)"
     $this.PingEndpoint($request.endpoint, "$($accessType)")
 
-    $requestBodyJson = ($request.request.body | ConvertTo-Json -Depth 99)
+    $requestBodyJson = ($request.request.body | ConvertTo-Json -Depth 100)
 
     $this.WriteLog("++++ Getting $($accessType) with following body (not showing resolved env var values): ")
     $this.WriteLog("++++ $($requestBodyJson)")
@@ -848,7 +848,7 @@ Class Installer
     $headers = $this.GetHttpHeaders($auth, $contentType, $extraHeaders, $entity)
 
 
-    # $this.WriteLog("*** Headers are '$($headers | ConvertTo-Json)'")
+    # $this.WriteLog("*** Headers are '$($headers | ConvertTo-Json -Depth 100)'")
     $apiEndpoint = "$($endpoint)/$($subresource.apiPath)".Trim('/')
     $uri = "$apiEndpoint/$identifier"
     $uriPut = if ($entity.putUriExcludeIdentifier -eq $true) { $apiEndpoint } else { $uri }
