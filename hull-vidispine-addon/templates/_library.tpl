@@ -288,47 +288,73 @@ CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
 
 
 
+{{/* 
+Define a template to configure data for a configmap component. 
+Retrieve the file key from input, defaulting to an empty string if not provided. 
+Include another template to handle detailed processing, passing the configmap type and file key as parameters.
+*/}}
 {{ define "hull.vidispine.addon.library.component.configmap.data" }}
+{{ $fileKey := default "" (index . "KEYS") }}
 {{ include "hull.vidispine.addon.library.component.data" (merge . (dict "OBJECT_TYPE" "configmap")) }}
 {{ end }}
 
 
 
+{{/* 
+Define a template to process and output configuration data for a component. 
+Retrieve and transform parent context values. 
+Handle multiple file keys (split by ";") and merge specific and common component mounts. 
+Output the processed configuration content based on file type (JSON, YAML, or plain text).
+*/}}
 {{ define "hull.vidispine.addon.library.component.data" }}
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $component := (index . "COMPONENT") }}
 {{ $objectType := default "secret" (index . "OBJECT_TYPE") }}
+{{ $fileKey := default "" (index . "KEYS") }}
 {{ $rendered := include "hull.util.transformation" (dict "PARENT_CONTEXT" $parent "SOURCE" ($parent.Values.hull.config)) | fromYaml }}
 {{ $componentMounts := dig $component "mounts" $objectType dict $parent.Values.hull.config.specific.components }}
 {{ $commonMounts := dig "common" "mounts" $objectType dict $parent.Values.hull.config.specific.components }}
 {{ $components := keys $componentMounts $commonMounts | uniq | sortAlpha }}
-{{ range $fileKey := $components }}
 {{ $fileContent := "" }}
-{{ if (or (hasSuffix ".json" $fileKey) (hasSuffix ".yaml" $fileKey)) }}
-{{ $componentValue := dig $component "mounts" $objectType $fileKey dict $parent.Values.hull.config.specific.components }}
-{{ $commonValue := dig "common" "mounts" $objectType $fileKey dict $parent.Values.hull.config.specific.components }}
+{{ $fileKeys := split ";" $fileKey }}
+{{ if ne $fileKey "" }}
+{{ range $fileKeys }}
+{{ $key := . }}
+{{ if (or (hasSuffix ".json" $key) (hasSuffix ".yaml" $key)) }}
+{{ $componentValue := dig $component "mounts" $objectType $key dict $parent.Values.hull.config.specific.components }}
+{{ $commonValue := dig "common" "mounts" $objectType $key dict $parent.Values.hull.config.specific.components }}
 {{ $fileContent = merge $componentValue $commonValue }}
-{{ if (hasSuffix ".json" $fileKey) }}
+{{ if (hasSuffix ".json" $key) }}
 {{ $fileContent = $fileContent | toPrettyJson }}
 {{ end }}
 {{ else }}
-{{ if (ne "" (dig $component "mounts" $objectType $fileKey "" $parent.Values.hull.config.specific.components)) }}
-{{ $fileContent = dig $component "mounts" $objectType $fileKey "" $parent.Values.hull.config.specific.components }}
+{{ if (ne "" (dig $component "mounts" $objectType $key "" $parent.Values.hull.config.specific.components)) }}
+{{ $fileContent = dig $component "mounts" $objectType $key "" $parent.Values.hull.config.specific.components }}
 {{ else }}
-{{ if (ne "" (dig "common" "mounts" $objectType $fileKey "" $parent.Values.hull.config.specific.components)) }}
-{{ $fileContent = dig "common" "mounts" $objectType $fileKey "" $parent.Values.hull.config.specific.components }}
+{{ if (ne "" (dig "common" "mounts" $objectType $key "" $parent.Values.hull.config.specific.components)) }}
+{{ $fileContent = dig "common" "mounts" $objectType $key "" $parent.Values.hull.config.specific.components }}
 {{ end }}
 {{ end }}
 {{ end }}
-{{ $fileKey }}:
-{{ if (hasSuffix ".json" $fileKey) }}
-  inline: {{ $fileContent | toPrettyJson  }}
+{{ $key }}:
+{{ if (hasSuffix ".json" $key) }}
+  inline: {{ $fileContent | toPrettyJson }}
 {{ else }}
-{{ if (hasSuffix ".yaml" $fileKey) }}
+{{ if (hasSuffix ".yaml" $key) }}
   inline: {{ $fileContent | toYaml | quote }}
 {{ else }}
   inline: {{ $fileContent }}
 {{ end }}
+{{ end }}
+{{ end }}
+{{ else }}
+{{ range $componentKey, $componentValue := $componentMounts }}
+{{ $componentKey }}:
+  inline: {{ $componentValue | toYaml | quote }}
+{{ end }}
+{{ range $commonKey, $commonValue := $commonMounts }}
+{{ $commonKey }}:
+  inline: {{ $commonValue | toYaml | quote }}
 {{ end }}
 {{ end }}
 {{ range $path, $_ := $parent.Files.Glob (printf "files/%s/mounts/%s/*" $component $objectType) }}
