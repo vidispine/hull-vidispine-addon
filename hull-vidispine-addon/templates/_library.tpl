@@ -288,13 +288,11 @@ CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
 
 
 
-{{
-/* 
+{{/* 
 Define a template to configure data for a configmap component. 
 Retrieve the file key from input, defaulting to an empty string if not provided. 
 Include another template to handle detailed processing, passing the configmap type and file key as parameters.
-*/
-}}
+*/}}
 {{ define "hull.vidispine.addon.library.component.configmap.data" }}
 {{- $fileKey := default "" (index . "KEYS") -}}
 {{ include "hull.vidispine.addon.library.component.data" (merge . (dict "OBJECT_TYPE" "configmap" "FILE_KEY" $fileKey)) }}
@@ -302,14 +300,12 @@ Include another template to handle detailed processing, passing the configmap ty
 
 
 
-{{
-/* 
+{{/* 
 Define a template to process and output configuration data for a component. 
 Retrieve and transform parent context values. 
 Handle multiple file keys (split by ";") and merge specific and common component mounts. 
 Output the processed configuration content based on file type (JSON, YAML, or plain text).
-*/
-}}
+*/}}
 {{ define "hull.vidispine.addon.library.component.data" }}
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $component := (index . "COMPONENT") }}
