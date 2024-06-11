@@ -294,8 +294,8 @@ Retrieve the file key from input, defaulting to an empty string if not provided.
 Include another template to handle detailed processing, passing the configmap type and file key as parameters.
 */}}
 {{ define "hull.vidispine.addon.library.component.configmap.data" }}
-{{- $fileKey := default "" (index . "KEYS") -}}
-{{ include "hull.vidispine.addon.library.component.data" (merge . (dict "OBJECT_TYPE" "configmap" "FILE_KEY" $fileKey)) }}
+{{ $fileKey := default "" (index . "KEYS") }}
+{{ include "hull.vidispine.addon.library.component.data" (merge . (dict "OBJECT_TYPE" "configmap")) }}
 {{ end }}
 
 
