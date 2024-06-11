@@ -316,89 +316,84 @@ Output the processed configuration content based on file type (JSON, YAML, or pl
 {{ $commonMounts := dig "common" "mounts" $objectType dict $parent.Values.hull.config.specific.components }}
 {{ $components := keys $componentMounts $commonMounts | uniq | sortAlpha }}
 {{ $fileContent := "" }}
-
 {{ $fileKeys := split ";" $fileKey }}
-
 {{ if ne $fileKey "" }}
-  {{ range $fileKeys }}
-    {{ $key := . }}
-    {{ if (or (hasSuffix ".json" $key) (hasSuffix ".yaml" $key)) }}
-      {{ $componentValue := dig $component "mounts" $objectType $key dict $parent.Values.hull.config.specific.components }}
-      {{ $commonValue := dig "common" "mounts" $objectType $key dict $parent.Values.hull.config.specific.components }}
-      {{ $fileContent = merge $componentValue $commonValue }}
-      {{ if (hasSuffix ".json" $key) }}
-        {{ $fileContent = $fileContent | toPrettyJson }}
-      {{ end }}
-    {{ else }}
-      {{ if (ne "" (dig $component "mounts" $objectType $key "" $parent.Values.hull.config.specific.components)) }}
-        {{ $fileContent = dig $component "mounts" $objectType $key "" $parent.Values.hull.config.specific.components }}
-      {{ else }}
-        {{ if (ne "" (dig "common" "mounts" $objectType $key "" $parent.Values.hull.config.specific.components)) }}
-          {{ $fileContent = dig "common" "mounts" $objectType $key "" $parent.Values.hull.config.specific.components }}
-        {{ end }}
-      {{ end }}
-    {{ end }}
-
-    {{ $key }}:
-    {{ if (hasSuffix ".json" $key) }}
-      inline: {{ $fileContent | toPrettyJson }}
-    {{ else }}
-      {{ if (hasSuffix ".yaml" $key) }}
-        inline: {{ $fileContent | toYaml | quote }}
-      {{ else }}
-        inline: {{ $fileContent }}
-      {{ end }}
-    {{ end }}
-  {{ end }}
+{{ range $fileKeys }}
+{{ $key := . }}
+{{ if (or (hasSuffix ".json" $key) (hasSuffix ".yaml" $key)) }}
+{{ $componentValue := dig $component "mounts" $objectType $key dict $parent.Values.hull.config.specific.components }}
+{{ $commonValue := dig "common" "mounts" $objectType $key dict $parent.Values.hull.config.specific.components }}
+{{ $fileContent = merge $componentValue $commonValue }}
+{{ if (hasSuffix ".json" $key) }}
+{{ $fileContent = $fileContent | toPrettyJson }}
+{{ end }}
 {{ else }}
-  {{ range $componentKey, $componentValue := $componentMounts }}
-    {{ $componentKey }}:
-    inline: {{ $componentValue | toYaml | quote }}
-  {{ end }}
-  {{ range $commonKey, $commonValue := $commonMounts }}
-    {{ $commonKey }}:
-    inline: {{ $commonValue | toYaml | quote }}
-  {{ end }}
+{{ if (ne "" (dig $component "mounts" $objectType $key "" $parent.Values.hull.config.specific.components)) }}
+{{ $fileContent = dig $component "mounts" $objectType $key "" $parent.Values.hull.config.specific.components }}
+{{ else }}
+{{ if (ne "" (dig "common" "mounts" $objectType $key "" $parent.Values.hull.config.specific.components)) }}
+{{ $fileContent = dig "common" "mounts" $objectType $key "" $parent.Values.hull.config.specific.components }}
 {{ end }}
-
+{{ end }}
+{{ end }}
+{{ $key }}:
+{{ if (hasSuffix ".json" $key) }}
+  inline: {{ $fileContent | toPrettyJson }}
+{{ else }}
+{{ if (hasSuffix ".yaml" $key) }}
+  inline: {{ $fileContent | toYaml | quote }}
+{{ else }}
+  inline: {{ $fileContent }}
+{{ end }}
+{{ end }}
+{{ end }}
+{{ else }}
+{{ range $componentKey, $componentValue := $componentMounts }}
+{{ $componentKey }}:
+  inline: {{ $componentValue | toYaml | quote }}
+{{ end }}
+{{ range $commonKey, $commonValue := $commonMounts }}
+{{ $commonKey }}:
+  inline: {{ $commonValue | toYaml | quote }}
+{{ end }}
+{{ end }}
 {{ range $path, $_ := $parent.Files.Glob (printf "files/%s/mounts/%s/*" $component $objectType) }}
-  {{ if (not (has ($path | base) $components)) }}
-    {{ $path | base }}:
-    path: {{ $path }}
-  {{ end }}
+{{ if (not (has ($path | base) $components )) }}
+{{ $path | base }}:
+  path: {{ $path}}
 {{ end }}
-
+{{ end }}
 {{ if (eq $objectType "secret") }}
-  {{ if (index $parent.Values.hull.config.specific.components $component).database }}
-    {{ $databaseKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
-    {{ $databaseUsernamesPostfix := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "usernamesPostfix") }}
-    {{ if (eq $databaseKey "mssql") }}
-      AUTH_BASIC_DATABASE_NAME:
-      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name }}
-      AUTH_BASIC_DATABASE_USERNAME:
-      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username }}
-        {{ $databaseUsernamesPostfix }}
-    {{ end }}
-    {{ if (eq $databaseKey "postgres") }}
-      AUTH_BASIC_DATABASE_NAME:
-      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name | lower }}
-      AUTH_BASIC_DATABASE_USERNAME:
-      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username | lower }}
-        {{ $databaseUsernamesPostfix | lower }}
-    {{ end }}
-    AUTH_BASIC_DATABASE_PASSWORD:
-    inline: {{ (index $parent.Values.hull.config.specific.components $component).database.password }}
-    database-connectionString:
-    {{ if (hasKey (index $parent.Values.hull.config.specific.components $component).database "connectionString") }}
-      inline: {{ (index $parent.Values.hull.config.specific.components $component).database.connectionString }}
-    {{ else }}
-      inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "connectionString" "COMPONENT" $component) }}
-    {{ end }}
-  {{ end }}
-  {{ if (eq (include "hull.vidispine.addon.library.get.endpoint.uri.exists" (dict "PARENT_CONTEXT" $parent "KEY" "rabbitmq" "URI" "amq")) "true") }}
-    rabbitmq-connectionString:
-    inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "messagebus" "INFO" "connectionString" "COMPONENT" $component "KEY" "rabbitmq") }}
-  {{ end }}
+{{ if (index $parent.Values.hull.config.specific.components $component).database }}
+{{ $databaseKey := include "hull.vidispine.addon.library.get.endpoint.key" (dict "PARENT_CONTEXT" $parent "TYPE" "database") }}
+{{ $databaseUsernamesPostfix := include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "usernamesPostfix") }}
+{{ if (eq $databaseKey "mssql") }}
+AUTH_BASIC_DATABASE_NAME:
+  inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name }}
+AUTH_BASIC_DATABASE_USERNAME:
+  inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username }}
+    {{ $databaseUsernamesPostfix }}
+{{ end }}
+{{ if (eq $databaseKey "postgres") }}
+AUTH_BASIC_DATABASE_NAME:
+  inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name | lower }}
+AUTH_BASIC_DATABASE_USERNAME:
+  inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username | lower }}
+    {{ $databaseUsernamesPostfix | lower }}
+{{ end }}
+AUTH_BASIC_DATABASE_PASSWORD:
+  inline: {{ (index $parent.Values.hull.config.specific.components $component).database.password }}
+database-connectionString:
+{{ if (hasKey (index $parent.Values.hull.config.specific.components $component).database "connectionString") }}
+  inline: {{ (index $parent.Values.hull.config.specific.components $component).database.connectionString }}
+{{ else }}
+  inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "database" "INFO" "connectionString" "COMPONENT" $component) }}
+{{ end }}
+{{ end }}
+{{ if (eq (include "hull.vidispine.addon.library.get.endpoint.uri.exists" (dict "PARENT_CONTEXT" $parent "KEY" "rabbitmq" "URI" "amq")) "true") }}
+rabbitmq-connectionString:
+  inline: {{ include "hull.vidispine.addon.library.get.endpoint.info" (dict "PARENT_CONTEXT" $parent "TYPE" "messagebus" "INFO" "connectionString" "COMPONENT" $component "KEY" "rabbitmq") }}
+{{ end }}
 {{ end }}
 {{ end }}
 
