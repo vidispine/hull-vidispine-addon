@@ -1297,3 +1297,66 @@ Usage:
 
 Performs `lookup` Helm templating command to lookup a secret in the current namespace by its _SECRET_NAME_. If lookup was succesful, the `data` in the secret is accessed and the base64 decoded value of _KEY_NAME_ is returned if found, otherwise an empty string. 
 
+
+
+### hull.vidispine.addon.library.systemtype
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_TO_LOWER_: If true, the `systemType` value is converted to lower case
+
+Usage:
+
+Looks up the `systemType` which is expected to be set at `.Values.hull.config.specific.systemType` and optionally lower cases it before returning it.
+
+
+
+### hull.vidispine.addon.library.systemtype.path
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_FILE_: The file to retrieve from the `systemType` specific folder
+
+Usage:
+
+Returns a path constructed from `systemType`/`FILE` so a particular file for the given system.
+
+
+
+### hull.vidispine.addon.library.systemtype.in
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_CHECK_: One or more `systemType` values. If multiple values are used they need to be seperated with `,`
+
+_CASE_SENSITIVE_: If true, the check of `systemType` against `CHECK` values is considering the casing, otherwise it is case-invariant which is the default
+
+Usage:
+
+Upon providing one or a list of values in the `CHECK` parameters, the return value indicates whether the current `systemType` is in the given values or not. Optionally consider case in the check by setting `_CASE_SENSITIVE_` to `true`.
+
+
+
+### hull.vidispine.addon.library.systemtype.in.conditional.value
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_CHECK_: One or more `systemType` values. If multiple values are used they need to be seperated with `,`
+
+_CASE_SENSITIVE_: If true, the check of `systemType` against `CHECK` values is considering the casing, otherwise it is case-invariant which is the default
+
+_VALUE_TRUE_: The value to return in case `systemType` is contained in the `CHECK` values
+
+_VALUE_FALSE_: The value to return in case `systemType` is not contained in the `CHECK` values
+
+Usage:
+
+Checks whether `systemType` is in a list of values provided by `CHECK` which is the same as `hull.vidispine.addon.library.systemtype.in`, but returns provided `VALUE_TRUE` or `VALUE_FALSE` in the respective case.
