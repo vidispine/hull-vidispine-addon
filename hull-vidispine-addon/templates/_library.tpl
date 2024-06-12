@@ -658,10 +658,9 @@ etcssl:
 {{ $pair := regexSplit "->" ($configMapPair | trim) -1 }}
 {{ $source := index $pair 0 }}
 {{ $target := index $pair 1 }}
-{{ $commonPrefix := (regexFind "^(.+?-)" $component) }}
 {{ $target }}:
   configMap:
-    name: {{ printf "%s%s" $commonPrefix $source }}
+    name: {{ printf "%s" $source }}
   name: {{ $target }}
 {{ end }}
 {{ end }}
