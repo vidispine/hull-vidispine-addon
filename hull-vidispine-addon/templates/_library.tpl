@@ -769,8 +769,18 @@ etcssl:
 {{ end }}
 {{ end }}
 {{ end }}
+{{ $extraVolumesSpecified := false }}
 {{ if (ne nil (dig $component "extraVolumes" nil $parent.Values.hull.config.specific.components)) }}
-{{ range $evKey, $evValue := (index $parent.Values.hull.config.specific.components $component).extraVolumes }}
+{{ $extraVolumesSpecified = true }}
+{{ end }}
+{{ if (ne nil (dig "common" "extraVolumes" nil $parent.Values.hull.config.specific.components)) }}
+{{ $extraVolumesSpecified = true }}
+{{ end }}
+{{ if $extraVolumesSpecified }}
+{{ $componentValue := dig $component "extraVolumes" dict $parent.Values.hull.config.specific.components }}
+{{ $commonValue := dig "common" "extraVolumes" dict $parent.Values.hull.config.specific.components }}
+{{ $extraVolumes := merge $componentValue $commonValue }}
+{{ range $evKey, $evValue := $extraVolumes }}
 {{ $evKey }}:
 {{ $evValue | toYaml | indent 2 }}
 {{ end }}
@@ -911,5 +921,62 @@ etcssl:
 {{- $value -}}
 {{- else -}}
 ""
+{{- end -}}
+{{- end -}}
+
+
+
+{{- define "hull.vidispine.addon.library.systemtype" -}}
+{{- $parent := (index . "PARENT_CONTEXT") -}}
+{{- $toLower := default true (index . "TO_LOWER") -}}
+{{- $systemType := $parent.Values.hull.config.specific.systemType -}}
+{{- if $toLower -}}
+{{- $systemType | lower -}}
+{{- else -}}
+{{- $systemType -}}
+{{- end -}}
+{{- end -}}
+
+
+
+{{- define "hull.vidispine.addon.library.systemtype.path" -}}
+{{- $parent := (index . "PARENT_CONTEXT") -}}
+{{- $file := (index . "FILE") -}}
+{{- include "hull.vidispine.addon.library.systemtype" (dict "PARENT_CONTEXT" $parent) -}}/{{- $file -}}
+{{- end -}}
+
+
+
+{{- define "hull.vidispine.addon.library.systemtype.in" -}}
+{{- $parent := (index . "PARENT_CONTEXT") -}}
+{{- $check := (index . "CHECK") -}}
+{{- $caseSensitive := default false (index . "CASE_SENSITIVE") -}}
+{{- $systemType := include "hull.vidispine.addon.library.systemtype" (dict "PARENT_CONTEXT" $parent "TO_LOWER" (not $caseSensitive)) -}}
+{{- if (not $caseSensitive) -}}
+{{- $check = $check | lower -}}
+{{- end -}}
+{{- $checks := regexSplit "," $check -1 -}}
+{{- $result := false -}}
+{{- range $checkValue := $checks -}}
+{{- if (eq $systemType ($checkValue | trim)) -}}
+{{- $result = true -}}
+{{- end -}}
+{{- end -}}
+{{- $result -}}
+{{- end -}}
+
+
+
+{{- define "hull.vidispine.addon.library.systemtype.in.conditional.value" -}}
+{{- $parent := (index . "PARENT_CONTEXT") -}}
+{{- $check := (index . "CHECK") -}}
+{{- $caseSensitive := default false (index . "CASE_SENSITIVE") -}}
+{{- $valueTrue := (index . "VALUE_TRUE") -}}
+{{- $valueFalse := default "" (index . "VALUE_FALSE") -}}
+{{- $systemTypeIn := include "hull.vidispine.addon.library.systemtype.in" (dict "PARENT_CONTEXT" $parent "CHECK" $check $parent "TO_LOWER" (not $caseSensitive)) -}}
+{{- if $systemTypeIn -}}
+{{- $valueTrue -}}
+{{- else -}}
+{{- $valueFalse }}
 {{- end -}}
 {{- end -}}
