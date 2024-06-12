@@ -572,6 +572,11 @@ volumes:
 
 
 
+{{/* 
+  This template defines the volumes configuration for a Vidispine addon component pod. 
+  It dynamically generates volume definitions based on the provided context, including secrets, configmaps, emptyDirs, and persistentVolumeClaims.
+  Additionally, it processes a CONFIGMAPSDICT to map configMap names to specific components without duplicating the common prefix.
+*/}}
 {{ define "hull.vidispine.addon.library.component.pod.volumes" }}
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $component := (index . "COMPONENT") }}
@@ -579,8 +584,10 @@ volumes:
 {{ $additionalConfigMaps := default "" (index . "CONFIGMAPS") }}
 {{ $additionalEmptyDirs := default "" (index . "EMPTYDIRS") }}
 {{ $additionalPvcs := default "" (index . "PVCS") }}
+{{ $additionalConfigMapsDict := default "" (index . "CONFIGMAPSDICT") }}
 {{ $secrets := regexSplit "," ($additionalSecrets | trim) -1 }}
 {{ $configmaps := regexSplit "," ($additionalConfigMaps | trim) -1 }}
+{{ $configMapsDict := regexSplit "," ($additionalConfigMapsDict | trim) -1 }}
 {{ $emptydirs := regexSplit "," ($additionalEmptyDirs | trim) -1 }}
 {{ $pvcs := regexSplit "," ($additionalPvcs | trim) -1 }}
 {{ $secretMountsSpecified := false }}
@@ -642,6 +649,19 @@ etcssl:
   configMap:
     name: {{ $configmap }}
     staticName: true
+{{ end }}
+{{ end }}
+{{ end }}
+{{ if $configMapsDict }}
+{{ range $configMapPair := $configMapsDict }}
+{{ if (ne $configMapPair "") }}
+{{ $pair := regexSplit "->" ($configMapPair | trim) -1 }}
+{{ $source := index $pair 0 }}
+{{ $target := index $pair 1 }}
+{{ $target }}:
+  configMap:
+    name: {{ printf "%s" $source }}
+  name: {{ $target }}
 {{ end }}
 {{ end }}
 {{ end }}
