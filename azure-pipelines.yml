@@ -5,7 +5,11 @@
 
 parameters:
 - name: RunTests
-  default: true
+  default: false
+- name: DockerRegistryEndpoint
+  displayName: 'The name of the service connection representing the Docker registry to push to.'
+  type: string
+  default: "vidinet Docker Registry"
 
 trigger: none
 pr: none
@@ -30,6 +34,29 @@ jobs:
 - job: CreateRelease
   dependsOn: RunTests
   steps:
+  - script: |
+        export HULL_VSADDON_VERSION=`sed -n 's/^version:\s//p' ./hull-vidispine-addon/Chart.yaml | sed 's/\"//g'` 
+        echo "-> hull-vidispine-addon version is ${HULL_VSADDON_VERSION}"
+        echo "##vso[task.setvariable variable=HULL_VSADDON_VERSION;]${HULL_VSADDON_VERSION}"
+        echo "-Y set hull-integration version to ${HULL_VSADDON_VERSION}"
+        sed -i -e "s/<HULL-VIDISPINE-ADDON-VERSION>/$HULL_VSADDON_VERSION/g" ./hull-vidispine-addon/hull-vidispine-addon.yaml
+  - task: Docker@0
+    displayName: 'Docker Build'
+    inputs:
+      containerregistrytype: 'Container Registry'
+      dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
+      dockerFile: './images/hull-integration/Dockerfile'
+      defaultContext: false
+      context: './images/hull-integration'
+      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)'
+ 
+  - task: Docker@0
+    displayName: 'Docker Push'
+    inputs:
+      containerregistrytype: 'Container Registry'
+      dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
+      action: 'Push an image'
+      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)'
   
   - script: |
         CHART_RELEASER_VERSION=1.5.0

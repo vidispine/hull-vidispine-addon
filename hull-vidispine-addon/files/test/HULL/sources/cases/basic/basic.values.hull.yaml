@@ -93,6 +93,11 @@ hull:
             scheme: HTTP
             port: 765
       pod_spec:
+        containers:
+          main:
+            image:
+              registry: "j"
+              repository: my/image/repo
         initContainers:
           init:
             args:

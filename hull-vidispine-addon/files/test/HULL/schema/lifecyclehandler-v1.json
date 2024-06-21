@@ -40,7 +40,7 @@
             "description": "HTTPHeader describes a custom header to be used in HTTP probes",
             "properties": {
               "name": {
-                "description": "The header field name",
+                "description": "The header field name. This will be canonicalized upon output, so case-variant names will be understood as the same header.",
                 "type": "string"
               },
               "value": {
@@ -87,7 +87,7 @@
           ]
         },
         "scheme": {
-          "description": "Scheme to use for connecting to the host. Defaults to HTTP.\n\n",
+          "description": "Scheme to use for connecting to the host. Defaults to HTTP.",
           "type": [
             "string",
             "null"
@@ -96,6 +96,24 @@
       },
       "required": [
         "port"
+      ],
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false
+    },
+    "sleep": {
+      "description": "SleepAction describes a \"sleep\" action.",
+      "properties": {
+        "seconds": {
+          "description": "Seconds is the number of seconds to sleep.",
+          "format": "int64",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "seconds"
       ],
       "type": [
         "object",

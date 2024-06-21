@@ -18,7 +18,59 @@ Technically the `hull-install` and `hull-configure` jobs run as so-called Helm h
 
 From a functional perspective the **`hull-install` job is used to create the necessary prerequisites to run an application in the Kubernetes cluster** and the **`hull-configure` job being the counterpart is mostly used to configure the installed applications themselves**. It's main purpose is therefore to communicate with APIs that the product provides during its installation to apply initial configuration. Prominent uses are to add default metadata to a ConfigPortal installation that was created within the same Helm Chart or initialize VidiCore via its API after setup. Technically it is the same process as running the `hull-install` job, the only difference is that it will only apply configuration of `subresources` that are tagged with `stage: post-install`. If no `stage` tag or `stage: pre-install` is given for a subresource it will be handled by the `hull-install` job by default. 
 
-**Note that the `hull-install` job is enabled by default and `hull-configure` is not enabled by default.**
+**Note that the `hull-install` job is enabled by default and `hull-configure` is not enabled by default. To enable `hull-configure` you need to both enable the `hull-configure` `job` and identically named `serviceaccount`**
+
+## The database migration jobs 
+
+To simplify the creation of database migration jobs, there exists a template for a ServiceAccount and Jobs. These templates are called `hull-database`and are by default disabled:
+
+```
+hull:
+  objects:
+    serviceaccount:
+      hull-database:
+        enabled: false
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-10"
+          helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded,hook-failed
+    job:
+      hull-database:
+        enabled: false
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-10"
+          helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded,hook-failed
+```
+
+ Database migrations typically need to be executed prior to the main apps starting, this is why the weight of the helm hook has been set to -10. 
+
+ If you are using database migration jobs, you should create ServiceAccounts for the individual Jobs and have the Jobs source the `hull-database` job and the ServiceAccounts the `hull-database` ServiceAccount. This is the example of the AuthService database migration jobs:
+
+```
+hull:
+  objects:
+    serviceaccount:
+      authservice-create-db:
+        sources: 
+        - hull-database
+      
+      authservice-reset-db:
+        sources: 
+        - hull-database
+    job:
+      authservice-create-db:
+        sources:
+        - hull-database
+        pod: _HT/hull.vidispine.addon.library.component.job.database:COMPONENT:"authservice":TYPE:"create"
+      authservice-reset-db:
+        enabled: false
+        sources:
+        - hull-database
+        pod: _HT/hull.vidispine.addon.library.component.job.database:COMPONENT:"authservice":TYPE:"reset"
+```
+
+This way the timing of database migrations is automatically set correctly.
 
 ## Execution and Configuration
 
@@ -63,6 +115,7 @@ Describes configuration options. <br>Has exclusively the following sub-fields: <
 | `debug.ignoreEntityRestCallErrors` | If `false`, the `hull-install` and `hull-configure` scripts will stop after an error was encountered and the allowed number of retries was exceeded. To instead ignore errors and provide a list of failed `entities` after execution set this value to `true`, This can be useful for debugging potential issues with Helm Charts. | `false` | `true`
 | `debug.retriesForEntityRestCall` | Sets number of retries for each individual GET, PUT, POST and DELETE call before considering the operation failed. | `3` | `1`
 | `debug.retriesForEntityRestCall` | Sets number of retries for each individual GET, PUT, POST and DELETE call before considering the operation failed. | `5` | `2`
+| `debug.debugInstallerScript` | If enabled, the Installer.ps1 script is not being run embedded in the container but is mounted and run from the hull-install ConfigMap. Normally to not clutter the configuration the script is embedded into the container and cannot be debugged easily without creating new container images. To easily debug `Installer.ps1` script, copy the current script from the `/images/hull-integration/Installer.ps1` file to the ConfigMap `Installer.ps1` inline placeholder. Now when making changes to the ConfigMap entry this will affect the Job that is executed. | `false` | `true`
 | `legacy` | Setttings for legacy compatibility.
 | `legacy.defaultServiceAccountIsHook` |  In older versions of the `hull-vidispine-addon`, the `default` ServiceAccount that is being created by HULL was annotated as a Helm hook by the `hull-vidispine-addon`and used for all pods in the Helm chart. This behavior was problematic because the Hook lifecycle was only appropriate for the `hull-vidispine-addon` jobs but not the remaining pods. Furthermore it opposed granular RBAC settings for the `hull-install` Jobs vs. continuously running regular pods. So by now there are different Helm hook ServiceAccounts created for the `hull-install` and `hull-configure` job and the `default` ServiceAccount is not annotated as a Helm hook anymore.<br><br> This setting should **NEVER** be set to `true` for new Helm charts, only for a transition phase it may be useful to set it to `true` to avoid immediate migration issues. | `false` | `true`
 ### EndpointSpec
@@ -76,23 +129,23 @@ Describes an endpoint which is communicated with. <br>Has exclusively the follow
 | `auth.basic` | Defines basic authentication for connecting to API | | `env:`<br>&#160;&#160;`username:`&#160;`VIDICORE_ADMIN_USERNAME`<br>&#160;&#160;`password:`&#160;`VIDICORE_ADMIN_PASSWORD`
 | `auth.basic.env.username` | Defines the environment variable that holds the username for basic auth.<br><br>Note:<br>If the `username` to be used is not contained in the automatically created `auth` or pod specific secret, the secret holding the `username` must be mounted to the container to populate the `username` environment variable
 | `auth.basic.env.password` | Defines the environment variable that holds the password for basic auth.<br><br>Note:<br>If the `password` to be used is not contained in the automatically created `auth` or pod specific secret, the secret holding the `password` must be mounted to the container to populate the `password` environment variable
-| `auth.token` | Defines token authentication parameters for connecting to an API. Up to this point this is always the authentication service but may be a changed to a different service providing tokens. | |`endpoint:`<br>&#160;&#160;`baseUri:`&#160;`_HT/hull.vidispine.addon.library.get.endpoint.uri.info:ENDPOINT:"authservice":URI:"api"`<br>&#160;&#160;`healthCheckSubpath:`&#160;`"/v1/HealthCheck?showDetail=false"`<br>&#160;&#160;`requestSubpath:`&#160;`"/connect/token"`<br>`request:`<br>&#160;&#160;`body:`<br>&#160;&#160;&#160;&#160;`client_id:`&#160;`$env:CLIENT_AUTHSERVICE_INSTALLATION_ID`<br>&#160;&#160;&#160;&#160;`client_secret:`&#160;`$env:CLIENT_AUTHSERVICE_INSTALLATION_SECRET`<br>&#160;&#160;&#160;&#160;`grant_type:`&#160;`client_credentials`<br>&#160;&#160;&#160;&#160;`scope:`&#160;`identityscope`<br>&#160;&#160;`headers:`<br>&#160;&#160;&#160;&#160;`Content-Type:`&#160;`"application/x-www-form-urlencoded"`<br>&#160;&#160;&#160;&#160;`Accept:`&#160;`"application/json"`<br>`response:`<br>&#160;&#160;`tokenField:`&#160;`"access_token"`
+| `auth.token` | Defines token authentication parameters for connecting to an API. Up to this point this is always the authentication service but may be a changed to a different service providing tokens. | |`endpoint:`<br>&#160;&#160;`baseUri:`&#160;`_HT/hull.vidispine.addon.library.get.endpoint.uri.info:ENDPOINT:"authservice":URI:"api"`<br>&#160;&#160;`healthCheckSubpath:`&#160;`"/v1/HealthCheck?showDetail=false"`<br>&#160;&#160;`requestSubpath:`&#160;`"/connect/token"`<br>`request:`<br>&#160;&#160;`body:`<br>&#160;&#160;&#160;&#160;`client_id:`&#160;`${env:CLIENT_AUTHSERVICE_INSTALLATION_ID}`<br>&#160;&#160;&#160;&#160;`client_secret:`&#160;`${env:CLIENT_AUTHSERVICE_INSTALLATION_SECRET}`<br>&#160;&#160;&#160;&#160;`grant_type:`&#160;`client_credentials`<br>&#160;&#160;&#160;&#160;`scope:`&#160;`identityscope`<br>&#160;&#160;`headers:`<br>&#160;&#160;&#160;&#160;`Content-Type:`&#160;`"application/x-www-form-urlencoded"`<br>&#160;&#160;&#160;&#160;`Accept:`&#160;`"application/json"`<br>`response:`<br>&#160;&#160;`tokenField:`&#160;`"access_token"`
 | `auth.token.endpoint` | Endpoint specification of service to get token from | | `baseUri:`&#160;`_HT/hull.vidispine.addon.library.get.endpoint.uri.info:ENDPOINT:"authservice":URI:"api"`<br>`healthCheckSubpath:`&#160;`"/v1/HealthCheck?showDetail=false"`<br>`requestSubpath:`&#160;`"/connect/token"`
 | `auth.token.endpoint.baseUri` | Base Uri of authentication service endpoint to which path suffixes are appended to. | | `baseUri:`&#160;`_HT/hull.vidispine.addon.library.get.endpoint.uri.info:ENDPOINT:"authservice":URI:"api"`
 | `auth.token.endpoint.healthCheckSubpath` | If set to a non empty value, a healthcheck is performed before obtaining a token from the endpoint | | `healthCheckSubpath:`&#160;`"/v1/HealthCheck?showDetail=false"`
 | `auth.token.endpoint.requestSubpath` | An optional suffix which is appended to `auth. | | `requestSubpath:`&#160;`"/connect/token"`
-| `auth.token.request` | Specifics of the request that is being sent to the token authentication service to obtain a token | | `body:`<br>&#160;&#160;`client_id:`&#160;`$env:CLIENT_AUTHSERVICE_INSTALLATION_ID`<br>&#160;&#160;`client_secret:`&#160;`$env:CLIENT_AUTHSERVICE_INSTALLATION_SECRET`<br>&#160;&#160;`grant_type:`&#160;`client_credentials`<br>&#160;&#160;`scope:`&#160;`identityscope`<br>`headers:`<br>&#160;&#160;`Content-Type:`&#160;`"application/x-www-form-urlencoded"`<br>&#160;&#160;`Accept:`&#160;`"application/json"`
-| `auth.token.request.body` | The body of the request as a dictionary. It will be formatted appropriately matching the `Content-Type` header before sending, eg. to JSON for `Content-Type: application/json`<br><br> To fill in values that are supplied as environment variables, use the syntax `$env:<ENVIRONMENT_VARIABLE_NAME>` where `<ENVIRONMENT_VARIABLE_NAME>` is the name of the environment variable you want to be substituted in place.| | `client_id:`&#160;`$env:CLIENT_AUTHSERVICE_INSTALLATION_ID`<br>`client_secret:`&#160;`$env:CLIENT_AUTHSERVICE_INSTALLATION_SECRET`<br>`grant_type:`&#160;`client_credentials`<br>`scope:`&#160;`identityscope`
+| `auth.token.request` | Specifics of the request that is being sent to the token authentication service to obtain a token | | `body:`<br>&#160;&#160;`client_id:`&#160;`${env:CLIENT_AUTHSERVICE_INSTALLATION_ID}`<br>&#160;&#160;`client_secret:`&#160;`${env:CLIENT_AUTHSERVICE_INSTALLATION_SECRET}`<br>&#160;&#160;`grant_type:`&#160;`client_credentials`<br>&#160;&#160;`scope:`&#160;`identityscope`<br>`headers:`<br>&#160;&#160;`Content-Type:`&#160;`"application/x-www-form-urlencoded"`<br>&#160;&#160;`Accept:`&#160;`"application/json"`
+| `auth.token.request.body` | The body of the request as a dictionary. It will be formatted appropriately matching the `Content-Type` header before sending, eg. to JSON for `Content-Type: application/json`<br><br> To fill in values that are supplied as environment variables, use the syntax `${env:<ENVIRONMENT_VARIABLE_NAME>}` where `<ENVIRONMENT_VARIABLE_NAME>` is the name of the environment variable you want to be substituted in place.| | `client_id:`&#160;`${env:CLIENT_AUTHSERVICE_INSTALLATION_ID}`<br>`client_secret:`&#160;`${env:CLIENT_AUTHSERVICE_INSTALLATION_SECRET}`<br>`grant_type:`&#160;`client_credentials`<br>`scope:`&#160;`identityscope`
 | `auth.token.request.headers` | The headers of the authentication token request as a dictionary. | | `Content-Type:`&#160;`"application/x-www-form-urlencoded"`<br>`Accept:`&#160;`"application/json"`
 | `auth.token.response` | Information on how to treat the response of a token request to the token authentication service | | `tokenField:`&#160;`"access_token"`
 | `auth.token.response.tokenField` | The optional key in the response JSON which holds the authentication token. The token is stored internally and sent with further requests to the endpoint | | `tokenField:`&#160;`"access_token"`
-| `auth.session` | Defines session authentication parameters for connecting to an API | |`endpoint:`<br>&#160;&#160;`baseUri:`&#160;`_HT*hull.config.general.data.endpoints.opensearch.uri.dashboards`<br>&#160;&#160;`healthCheckSubpath:`&#160;`""`<br>&#160;&#160;`requestSubpath:`&#160;`"/auth/login"`<br>`request:`<br>&#160;&#160;`body:`<br>&#160;&#160;&#160;&#160;`username:`&#160;`$env:AUTH_BASIC_OPENSEARCH_USERNAME`<br>&#160;&#160;&#160;&#160;`password:`&#160;`$env:AUTH_BASIC_OPENSEARCH_PASSWORD`<br>&#160;&#160;&#160;&#160;`grant_type:`&#160;`client_credentials`<br>&#160;&#160;&#160;&#160;`scope:`&#160;`identityscope`<br>&#160;&#160;`headers:`<br>&#160;&#160;&#160;&#160;`Content-Type:`&#160;`"application/json"`<br>&#160;&#160;&#160;&#160;`osd-xsrf:`&#160;`"true"`
+| `auth.session` | Defines session authentication parameters for connecting to an API | |`endpoint:`<br>&#160;&#160;`baseUri:`&#160;`_HT*hull.config.general.data.endpoints.opensearch.uri.dashboards`<br>&#160;&#160;`healthCheckSubpath:`&#160;`""`<br>&#160;&#160;`requestSubpath:`&#160;`"/auth/login"`<br>`request:`<br>&#160;&#160;`body:`<br>&#160;&#160;&#160;&#160;`username:`&#160;`${env:AUTH_BASIC_OPENSEARCH_USERNAME}`<br>&#160;&#160;&#160;&#160;`password:`&#160;`${env:AUTH_BASIC_OPENSEARCH_PASSWORD}`<br>&#160;&#160;&#160;&#160;`grant_type:`&#160;`client_credentials`<br>&#160;&#160;&#160;&#160;`scope:`&#160;`identityscope`<br>&#160;&#160;`headers:`<br>&#160;&#160;&#160;&#160;`Content-Type:`&#160;`"application/json"`<br>&#160;&#160;&#160;&#160;`osd-xsrf:`&#160;`"true"`
 | `auth.session.endpoint` | Endpoint specification of service to get session from | | `baseUri:`&#160;`_HT*hull.config.general.data.endpoints.opensearch.uri.dashboards"`<br>`healthCheckSubpath:`&#160;`""`<br>`requestSubpath:`&#160;`"/auth/login"`
 | `auth.session.endpoint.baseUri` | Base Uri of authentication service endpoint to which path suffixes are appended to. | | `baseUri:`&#160;`_HT*hull.config.general.data.endpoints.opensearch.uri.dashboards"`
 | `auth.session.endpoint.healthCheckSubpath` | If set to a non empty value, a healthcheck is performed before obtaining a token from the endpoint | | `healthCheckSubpath:`&#160;`""`
 | `auth.session.endpoint.requestSubpath` | An optional suffix which is appended to `auth. | | `requestSubpath:`&#160;`"/auth/login"`
-| `auth.session.request` | Specifics of the request that is being sent to the session authentication service to obtain session cookies | | `body:`<br>&#160;&#160;`username:`&#160;`$env:AUTH_BASIC_OPENSEARCH_USERNAME`<br>&#160;&#160;`password:`&#160;`$env:AUTH_BASIC_OPENSEARCH_PASSWORD`<br>`headers:`<br>&#160;&#160;`Content-Type:`&#160;`"application/json"`<br>&#160;&#160;`osd-xsrf:`&#160;`"true"`
-| `auth.session.request.body` | The body of the request as a dictionary. It will be formatted appropriately matching the `Content-Type` header before sending, eg. to JSON for `Content-Type: application/json`<br><br> To fill in values that are supplied as environment variables, use the syntax `$env:<ENVIRONMENT_VARIABLE_NAME>` where `<ENVIRONMENT_VARIABLE_NAME>` is the name of the environment variable you want to be substituted in place.| | `username:`&#160;`$env:AUTH_BASIC_OPENSEARCH_USERNAME`<br>`password:`&#160;`$env:AUTH_BASIC_OPENSEARCH_PASSWORD`
+| `auth.session.request` | Specifics of the request that is being sent to the session authentication service to obtain session cookies | | `body:`<br>&#160;&#160;`username:`&#160;`${env:AUTH_BASIC_OPENSEARCH_USERNAME}`<br>&#160;&#160;`password:`&#160;`${env:AUTH_BASIC_OPENSEARCH_PASSWORD}`<br>`headers:`<br>&#160;&#160;`Content-Type:`&#160;`"application/json"`<br>&#160;&#160;`osd-xsrf:`&#160;`"true"`
+| `auth.session.request.body` | The body of the request as a dictionary. It will be formatted appropriately matching the `Content-Type` header before sending, eg. to JSON for `Content-Type: application/json`<br><br> To fill in values that are supplied as environment variables, use the syntax `${env:<ENVIRONMENT_VARIABLE_NAME>}` where `<ENVIRONMENT_VARIABLE_NAME>` is the name of the environment variable you want to be substituted in place.| | `username:`&#160;`${env:AUTH_BASIC_OPENSEARCH_USERNAME}`<br>`password:`&#160;`${env:AUTH_BASIC_OPENSEARCH_PASSWORD}`
 | `auth.session.request.headers` | The headers of the authentication token request as a dictionary. | | `Content-Type:`&#160;`"application/json"`<br>`osd-xsrf:`&#160;`"true"`
 | `stage` | Global stage where the defined `subresources` are processed. Can be overwritten at `subresource` level individually. <br>All subresources are by default processed during execution of the `hull-install` job by setting stage `pre-install` before installation of the main product of the parent Helm Chart. If you for example need to communicate to the API of a product you just installed within the parents Helm chart, set the `stage` to `post-install` and the processing takes places within the `hull-configure` job after the main product installation is done. | `pre-install` | `post-install`
 | `extraHeaders` | Globally added extra headers to HTTP calls. Header keys defined on the `endpoint` level will be set for all entities with the headers value when sending HTTP requests. However header values can be overwritten or added individually on the `entity` level via the local `extraHeaders` dictionary. | `` | `extraHeaders:`<br>&#160;&#160;`added_header_1:`&#160;`header_value`<br>&#160;&#160;`added_header_2:`&#160;`another_header_value`
@@ -121,12 +174,13 @@ Describes a particular entity on a subresource on an endpoint which is communica
 | `getQueryParams` | Query Parameters to add to the Url of a GET command, for example for filtering from a list of objects. This is a key-value style dictionary<br><br>It is a very common scenario that you want to refer to the __identifier__ in your query parameters in case the API identifies objects via query parameter filtering. For this scenario you can use the `$identifier` placeholder in your values and this placeholder will be replaced with the actual identifier (either the value of `identifier` or the objects key if `identifier` is not provided). | | `GET` 
 | `getUriExcludeIdentifier` | Normally in a REST style API GET calls include the identifier of the object as the last segment of the URI. By setting this to `true` GET calls will not include the identifier segment. The use of this is for some specific APIs the usual REST style is not used and it may be required to make a GET call to the object resource and process the result via `getCustomScript` functionality or get the object via query parameters with `getQueryParams`.  | `false` | `GET`
 | `getCustomScript` | Offers the possibility to provide a custom Powershell script that further processes the result of the GET call. May be used in conjunction with setting `getUriExcludeIdentifier` to true so you can take custom actions given all found existing objects.<br><br>Using a custom script, variables from the outer script can be read and used within the script, so you may find it useful to access the following local variables in the script: <br><br>`$responseGet`: the string result of the GET call<br>`$apiEndpoint`: the apiEndpoint field of the subresource<br>`$entity`: the entity configuration options<br><br>As a further usage improvement, you can add additional properties (names need to be different from well-known properties, best add a `_` prefix to the variable name) to `$entity` configuration which contain Helm templating expressions that are resolved when rendering the chart. Then access these variables via the `$entity` object in the script. Here is an example:<br><br>`entity:`<br>&#160;&#160;`_helm_chart_name_:`&#160;`_HT!{{ (index . "$").Chart.Name }}`<br>&#160;&#160;`_helm_chart_version_:`&#160;`_HT!{{ (index . "$").Chart.Version }}`<br><br> where in the `getCustomScript` you can simply access the current Helm chart name with `$entity._helm_chart_name_` and version with `$entity._helm_chart_version_`<br><br>        The script can return either a boolean value for general success of the GET call (translating to a 200 or 404 status code) or it may return a JSON with additional information useful for adjusting a subsequent PUT or DELETE call. The JSON is allowed to return the following fields that will update the local PowerShell variables accordingly if present:<br><br>`statusCode`: sets the virtual statusCode for further processing<br>`uriPut`: sets the full URI used for putting the `config` content.<br>`uriDelete`: sets the full URI used for deleting the entity.<br>`identifier`: sets the `identifier` for all further PUT or DELETE operations.<br><br>A JSON returned from `getCustomScript` may look like this: `{"statusCode":200, "uriPut":"https://host.com/API/notifications/groups/NOTIFICATION-VX-99"}`<br><br>An example of this coming together is the usage of notifications in VidiCore, to find out whether a particular notification needs to be updated it is required to get a list of all existing notifications and update the POST/DELETE uri to correctly address the targeted resource. See the VidiCore or MediaPortal Helm Chart for the implementation of this. | | `GET`
+| `getCustomScriptFromFile` | Provides the possibility to load a custom GET script from a file instead of specifying it inline as with `getCustomScript`. The main reason to to this is to pack the script with the `hull-integration` container to not clutter the `hull-vidispine-addon.yaml` with large scripts. Functionality-wise it behaves the same as `getCustomScript`. Note that when both `getCustomScript` and `getCustomScriptFromFile` are specified, the `getCustomScript` script content takes precedence. | | `GET`
 | `noGet` | If `true` the check for existence is skipped and a PUT or POST is done directly. This is treated same as receiving a 404 on the GET request. | `false` | `GET`
 | `customGetScriptJsonResponseConfigReplacements` | An optional dictionary with key value pairs where the keys specify placeholders that are supposed to be contained in the `config` contents and values specify keys in a JSON response from `getCustomScript` which are supposed to be set by the script. <br><br> The idea behind this setting is to allow reading custom data from an API, store the results in a JSON key value dictionary and use the values to dynamically modify the `config` contents. It only works if a) a `getCustomScript` is used, b) the response JSON from the script populates keys with values, c) the `config` contains placeholder keys that are substituted with the JSON response values.<br><br>As an example let us assume a case where it is not possible to address a particular object instance via a GET call with an `identifier` because the `identifier` was dynamically created by a prior call and it is unknown if the object already exists or not. However it is known that for example a `name` property exists on the instances which is also unique for all object instances. To find out if an instance already exists, it may be possible to get a list of all objects of a particular kind and filter them via their `name` property in order to find the instance in question if it already exists, this would be the content of a `customGetScript`. Thus the JSON response from `getCustomScript` could look like this: `{"statusCode":200, "identifier":"123923213123"` in case an instance was already found via its name. Now it becomes possible to setup the <br><br>`customGetScriptJsonResponseConfigReplacements:`<br>&#160;&#160;`'$$identifier$$':`&#160;`identifier`<br><br>and a<br><br>`config:`<br>&#160;&#160;`id:`&#160;`'$$identifier$$'`<br>&#160;&#160;`value:`&#160;`something`<br><br>The value of `$$identifier$$` is then replaced in the `config` and now when doing a PUT call the correct object is being updated:<br><br>`config:`<br>&#160;&#160;`id:`&#160;`'123923213123'`<br>&#160;&#160;`value:`&#160;`something`<br><br> | | `GET`
 | `readConfigFromFile` | Allows to either map complete file contents to the `config` value or the contents from a particular JSON key from a file to `config`. The content of this field if provided must be a dictionary which can have the following fields: <br><br>`path`:  mandatory and points to the mounted file's path, the source file can be of any text format. Optionally you can additionally specify `putPath` and/or `postPath` to use different source files depending on PUT or POST case. Note that when specifying `putPath` and/or `postPath` you also need to specify `path` which is resorted to in case the PUT or POST case is not matched with a `putPath` or `postPath`<br> `key`: optional and if specified declares the source files JSON key to import from, for this to work the source file must be a JSON file.<br><br>To use this feature, the file being refered to needs to be mounted into the `hull-install` or `hull-configure` job's pod via providing an additional `volume` and `volumeMount`. | | `POST`<br>`PUT` | `readConfigFromFile:`<br>&#160;&#160;`path:`&#160;`workflow-deploy.json`
 | `readConfigValuesFromFiles` | OBSOLETE: Use `updateConfigValues` and set a 'path' instead! <br><br>Allows to either map complete file contents to a target JSON key in `config` or the contents from a particular JSON key from a file to a target JSON key in `config`. The content of this field if provided must be a dictionary where the key is the target JSON key in `config` and the value has two fields: <br><br>`path`:  mandatory and points to the mounted file's path, the source file can be of any text format <br> `key`: optional and if specified declares the source files JSON key to import, for this to work the source file must be a JSON file.<br><br>The difference to `readConfigFromFile` is that `readConfigValuesFromFiles` targets specific keys at JSON root level and does not replace the complete `config`, also you can first insert all of an external file into `config` using `readConfigFromFile` and then overwrite dedicated values using `readConfigValuesFromFiles`.<br><br>To use this feature, the files being refereed to needs to be mounted into the `hull-install` or `hull-configure` job's pod via providing an additional `volume` and `volumeMount`. | | `POST`<br>`PUT` | `readConfigValuesFromFiles:`<br>&#160;&#160;`description:`<br>&#160;&#160;&#160;&#160;`path:`&#160;`workflow-description.txt`<br>&#160;&#160;`definition:`<br>&#160;&#160;&#160;&#160;`path:`&#160;`workflow-definition.json`<br>&#160;&#160;&#160;&#160;`key:`&#160;`Definition`
 | `updateConfigValues` | Allows to overwrite a target JSON key in `config` after the `config` has been loaded either from `config` field value or via `readConfigFromFile`. Depending on configuration of an entry here, the source for the overwrite can be either a value given inline or the contents from a particular JSON key from an external file or a complete external file. <br><br>The content of this field if provided must be a dictionary where the key is the target JSON key in `config` and the value has one or more of the following fields: <br><br>`value`: the value to overwrite target `key`s value in `config` with. If provided, `path` and `key` fields are ignored. Optionally you can additionally specify `putValue` and/or `postValue` to use different updates depending on PUT or POST case. Note that when specifying `putValue` and/or `postValue` you also need to specify `value` which is resorted to in case the PUT or POST case is not matched with a `putValue` or `postValue`<br>`path`:  points to the mounted file's path, the source file can be of any text format. The `path` is relative to the `files/hull-vidispine-addon/installation/sources` folder and may contain a single subfolder seperated by `/` in the `path` fields value. Same as with `value`, optionally you can additionally specify `putPath` and/or `postPath` to use different source files depending on PUT or POST case. Note that when specifying `putPath` and/or `postPath` you also need to specify `path` which is resorted to in case the PUT or POST case is not matched with a `putPath` or `postPath`<br> `key`: optional when `path` is provided and if specified declares the source files JSON key to import from, for this to work the source file must be a JSON file.<br><br>The difference to `readConfigFromFile` is that `updateConfigValues` targets specific keys at JSON root level and does not replace the complete `config`. Also you can first insert all of an external file into `config` using `readConfigFromFile` and then overwrite dedicated values using `updateConfigValues` by referencing a source via `path` or directly via `value`.<br><br>To use this feature with the `path` option, the files being refered to need to be mounted into the `hull-install` or `hull-configure` job's pod via providing an additional `volume` and `volumeMount` which is handled under the hood automatically. Physical files only need to be stored under `files/hull-vidispine-addon/installation/sources` or a direct subfolder of this path. | | `POST`<br>`PUT` | `readConfigValuesFromFiles:`<br>&#160;&#160;`description:`<br>&#160;&#160;&#160;&#160;`path:`&#160;`workflow-description.txt`<br>&#160;&#160;`definition:`<br>&#160;&#160;&#160;&#160;`path:`&#160;`workflows/workflow-definition.json`<br>&#160;&#160;&#160;&#160;`key:`&#160;`Definition`
-| `config` | The free-form body of the request. For `contentType` of `application/json` the content of `config` is YAML so when PUTting or POSTing to APIs the content is converted from YAML to JSON and sent with header `Content-Type: application/json`. For `contentType` `application/xml` and `text/plain` the `config` is a string which must resemble proper XML for usage with `contentType` `application/xml`. | | `POST`<br>`PUT` | `Name:`&#160;`Publish`<br>`Guid:`&#160;`c9689fe0-a0e9-40d7-af82-500bba342b62`<br>`UseCaseGroupName:`&#160;`Publish`<br>`UseCaseGroupOrderNo:`&#160;`2`<br>`OrderNo:`&#160;`1`<br>`ProductGuid:`<br>`- 62e052b1-6864-4502-87dc-944be4f5d783`<br>`UseCaseType:` `dynamic`<br>`Json:`&#160;`|`<br>&#160;&#160;`{"Overview":{"AllowToggleView":false,`<br>&#160;&#160;`"View":"detailed","Columns":[]},`<br>&#160;&#160;`"Fields:"`<br>&#160;&#160;`[{"Name":"targetStorage","DisplayName":"Target`<br>&#160;&#160;`Storage","Type":"VS_Storage","IsRequired":true,`<br>&#160;&#160;`"InputProperties":{"Storage":"Storage"}},`<br>&#160;&#160;`{"Name":"userSelectableWF",`<br>&#160;&#160;`"DisplayName":"User-Selectable`&#160;`Workflows",`<br>&#160;&#160;`"Type":"Multiple_Workflow",`<br>&#160;&#160;`"IsRequired":true},`<br>&#160;&#160;`{"Name":"userSelectableMetadata",`<br>&#160;&#160;`"DisplayName":"User-Selectable Metadata",`<br>&#160;&#160;`"Type":"CustomInput_MaskedControl"}],"Actions":`<br>&#160;&#160;`[{"IsEnabled":true,"Name":"Edit","OrderNo":1,`<br>&#160;&#160;`"TooltipMessage":"Edit this Publish `<br>&#160;&#160;`Configuration","Type":"edit"},`<br>&#160;&#160;`{"IsEnabled":true,`<br>&#160;&#160;`"Name":"Workflow Designer","OrderNo":3,`<br>&#160;&#160;`"TooltipMessage":"Open Workflow Designer",`<br>&#160;&#160;`"Type":"openWorkflow",`<br>&#160;&#160;`"SystemEndpointName":"workflow designer"}]`<br>&#160;&#160;`,"AllowMultipleConfig":false}`
+| `config` | The free-form body of the request. For `contentType` of `application/json` the content of `config` is YAML so when PUTting or POSTing to APIs the content is converted from YAML to JSON and sent with header `Content-Type: application/json`. For `contentType` `application/xml` and `text/plain` the `config` is a string which must resemble proper XML for usage with `contentType` `application/xml`. If there is sensitive data in the `config` you can use the `${env:<ENVIRONMENT_VARIABLE>}` syntax to replace the placeholers with the actual environment variable content during processing. Normally all sensitive data is contained in a charts `auth` secret and since this secret is premounted into the `hull-install` and `hull-configure` containers, the data is accessible and can be referenced without further work. | | `POST`<br>`PUT` | `Name:`&#160;`Publish`<br>`Guid:`&#160;`c9689fe0-a0e9-40d7-af82-500bba342b62`<br>`UseCaseGroupName:`&#160;`Publish`<br>`UseCaseGroupOrderNo:`&#160;`2`<br>`OrderNo:`&#160;`1`<br>`ProductGuid:`<br>`- 62e052b1-6864-4502-87dc-944be4f5d783`<br>`UseCaseType:` `dynamic`<br>`Json:`&#160;`|`<br>&#160;&#160;`{"Overview":{"AllowToggleView":false,`<br>&#160;&#160;`"View":"detailed","Columns":[]},`<br>&#160;&#160;`"Fields:"`<br>&#160;&#160;`[{"Name":"targetStorage","DisplayName":"Target`<br>&#160;&#160;`Storage","Type":"VS_Storage","IsRequired":true,`<br>&#160;&#160;`"InputProperties":{"Storage":"Storage"}},`<br>&#160;&#160;`{"Name":"userSelectableWF",`<br>&#160;&#160;`"DisplayName":"User-Selectable`&#160;`Workflows",`<br>&#160;&#160;`"Type":"Multiple_Workflow",`<br>&#160;&#160;`"IsRequired":true},`<br>&#160;&#160;`{"Name":"userSelectableMetadata",`<br>&#160;&#160;`"DisplayName":"User-Selectable Metadata",`<br>&#160;&#160;`"Type":"CustomInput_MaskedControl"}],"Actions":`<br>&#160;&#160;`[{"IsEnabled":true,"Name":"Edit","OrderNo":1,`<br>&#160;&#160;`"TooltipMessage":"Edit this Publish `<br>&#160;&#160;`Configuration","Type":"edit"},`<br>&#160;&#160;`{"IsEnabled":true,`<br>&#160;&#160;`"Name":"Workflow Designer","OrderNo":3,`<br>&#160;&#160;`"TooltipMessage":"Open Workflow Designer",`<br>&#160;&#160;`"Type":"openWorkflow",`<br>&#160;&#160;`"SystemEndpointName":"workflow designer"}]`<br>&#160;&#160;`,"AllowMultipleConfig":false}`
 | `register` | If set to true, the entity will be created or modified | `false` | `POST` <br> `PUT`
 | `overwriteExisting` | The default behavior is to not overwrite existing entities in case they already exist. Set this field to `true` to overwrite any existing entity. | `false` | `POST` <br> `PUT`
 | `contentType` | The content type header for POST or PUT of the entity `config` and the accept header for all calls. Supported choices are `application/json`, `application/xml` and `text/plain`. Defaults to `application/json`. | `application/json` | `POST` <br> `PUT`
@@ -148,7 +202,7 @@ By default the `hull-install` job is enabled but already pre-configured so that 
   - automatically loads the configuration section from `hull.config.general.data.installation`
   - loads all certificates provided under `hull.config.general.data.installation.config.customCaCertificates`
 - typical endpoints and subresources are predefined so that only entities need to be specified. The predefined subresources for the endpoints are skipped in case the endpoint is not defined. 
-  - endpoint with key `10_vidicore` is set up to do basic authentication on the vidispine endpoint defined in `hull.config.general.data.endpoints.vidicore.uri.api` using the `admin` credentials from secret `vidicore-secret`
+  - endpoint with key `10_vidicore` is set up to do basic authentication on the vidispine endpoint defined in `hull.config.general.data.endpoints.vidicore.uri.api` using the `usernanme` and `password` credentials from VidiCore service admin user secret `<SYSTEMNAME>-vidispine-admin-user`
     - subresources are configured so that creating specific entities works out of the box for them
       - key `10_metadatafields` for inserting metadatafields into Vidispine
       - key `20_metadatafieldgroups` for inserting metadatafieldgroups into Vidispine  
@@ -751,6 +805,7 @@ The following functions are defined:
 Parameters:
 
 _DICTIONARY_: A dictionary to traverse
+
 _KEY_: The key in dot-notation within _DICTIONARY_whose value should be retrieved and converted to a string
 
 Usage:
@@ -773,6 +828,7 @@ a:
 ```
 
 the result will be for _KEY_:
+
 - `a.b.c.d` --> "helloD"
 - `a.b.c.c` --> ""
 - `a.e.f` --> ""
@@ -784,8 +840,13 @@ the result will be for _KEY_:
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
-_KEY_: The key denoting the endpoint which may contain the _URI_ (works but obsolete, use _ENDPOINT_ instead)
+
+_KEY_: The key denoting the endpoint which may contain the 
+
+_URI_ (works but obsolete, use _ENDPOINT_ instead)
+
 _ENDPOINT_: The key denoting the endpoint which may contain the _URI_
+
 _URI_: The particular uri to get
 
 Usage:
@@ -843,7 +904,7 @@ Allowed values for _INFO_:
 - `path`: returns the relative path of the URI
 - `scheme`: return the scheme of the URI
 - `port`: return the port of the URI. If not explicitly set returns 80 for scheme 'http' and 443 for scheme 'https'
-- `base`: return the scheme plus hostname and port (excluding any subpaths)
+- `base`: return the scheme plus hostname and port (excluding any subpaths). If the port was derived by schema (80 for 'http' and 443 for 'https') it is omitted from the returned `base` value
 
 
 Example:
@@ -882,32 +943,107 @@ the following _ENDPOINT_ and _URI_ combinations yield:
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
+
 _TYPE_: The type of the endpoint to get the concrete specificaton of. Allowed values: database|index
 
 Usage:
 
-This function queries for a given endpoint _TYPE_ and returns the best result. 
+This function queries for a given endpoint _TYPE_ and returns the best-matching result. 
 
-For _TYPE_ `database`, the value `postgres` is returned if an `endpoint` value that is not empty exists for the `postgres` endpoint.  If an `endpoint` value that is not empty exists for the `mssql` endpoint otherwise, the value `mssql` is returned. 
+For _TYPE_ `database`, the value `postgres` is returned if an `endpoint` value that is not empty exists for the `postgres` endpoint.  If an `endpoint` value that is not empty exists for the `mssql` endpoint otherwise, the value `mssql` is returned. If neither exists, endpoints are searched which have a `application` field in endpoints dictionary which matches `postgres` (prefered). If no `application: postgres` endpoint is found a `application: mssql` is selected. If also nothing is found for _TYPE_ `database`, an empty string is returned.
 
 For _TYPE_ `index`, `opensearch` is returned if either the URI `api` or `apiInternal` is defined for an endpoint `opensearch`.
+
+For any other _TYPE_ than `database` or `index`, the value of _TYPE_ is returned under the assumption that an _ENDPOINT_ which needs no resolving was passed as argument.
+
+### hull.vidispine.addon.library.get.endpoint.application
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_TYPE_: The type of the endpoint to get the concrete specificaton of. Can be missing if _ENDPOINT_ is set. Allowed values: database|messagebus|index
+
+_ENDPOINT_: The explicit key of the entry in `endpoints`. Can be omitted if _TYPE_ is set. 
+
+Usage:
+
+For a given _TYPE_, the best-fit for an _ENDPOINT_ is determined with `hull.vidispine.addon.library.get.endpoint.key` function (see above).However any provided _ENDPOINT_ is used directly if this parameter is set. This sets the _ENDPOINT_ for querying it's the 'application'. 
+
+An application is a concrete form of a _TYPE_. The following applications are defined for these _TYPE_'s:
+- for _TYPE_ `database`:
+  - `postgres`
+  - `mssql`
+- for _TYPE_ `messagebus`:
+  - `rabbitmq`
+  - `activemq`
+- for _TYPE_ `index`:
+  - `opensearch`
+
+For the fixed set of _ENDPOINT_ keys above the application is identical to the _ENDPOINT_ key. So if _ENDPOINT_ is `postgres`, `mssql`, `opensearch`, `rabbitmq` or `activemq` or one value from the list was derived from _TYPE_, the _ENDPOINT_ value itself is returned. 
+
+For any other _ENDPOINT_ it is checked wheter there exists an `application` key in the dictionary of _ENTRYPOINT_ and if so this value is returned. This allows to add additional application-specific _ENDPOINTS_ if there is need to have more than the application-named _ENDPOINT_ for an application such as a Postgres Database Host. 
+
+If none of the above holds, an empty string is returned.
+
+Example:
+
+For `hull.config.general.data.endpoints`:
+
+```
+endpoints:
+  postgres:
+    uri:
+      address: mypostgresdatabase, 3324
+  camundadatabase:
+    uri:
+      address: camundadatabaseserver, 3421
+    application: postgres
+  vidicore:
+    auth:
+      basic:
+        adminPassword: admin
+        adminUsername: admin
+    uri:
+      api: https://prept1-vidiflow.s4m.de/API
+      apiInternal: http://vidicore-vidicore.preptest1:31060/API
+      apinoauthInternal: http://vidicore-vidicore.preptest1:31060/APInoauth
+      logReport: http://vidicore-vidicore.preptest1:31060/LogReport
+```
+
+the following _TYPE_ and _ENDPOINT_ combinations yield:
+
+- _TYPE_="database" --> "postgres"
+- _ENDPOINT_="camundadatabase" --> "postgres"
+- _TYPE_="database" _ENDPOINT_="camundadatabase" --> "postgres"
+- _TYPE_="index" --> ""
+- _ENDPOINT_="vidicore" --> ""
 
 ### hull.vidispine.addon.library.get.endpoint.info
 
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
+
 _INFO_: The kind of information to get. Allowed values: host|hostname|port|usernamesPostfix|connectionString|vhost
-_TYPE_: The type of the endpoint to get the concrete specificaton of. Allowed values: database|messagebus|index
+
+_TYPE_: The type of the endpoint to get the concrete specificaton of. Allowed values: database|messagebus|index. Required field when _ENDPOINT_ is not set in which case a best-effort lookup is performed.
+
+_ENDPOINT_: The explicit key of the entry in `endpoints`. Can be omitted if _TYPE_ is set. 
+
 _COMPONENT_: The `component` from `hull.config.specific.components` which may be required in calulation of the returned value. Needed for some _INFO_ queries. 
 
 Usage:
 
-This function returns special values which are calculated on the fly from the given endpoints.
+This function returns special values which are calculated on the fly from the given endpoints. The _ENDPOINT_ may be explicitly supplied as an argument or the concrete endpoint is inferred by _TYPE_. 
+
+For _TYPE_ `database`, the endpoint selection is done by the above function `hull.vidispine.addon.library.get.endpoint.key`. Then the following rules apply:
 - _INFO="host" or _INFO="hostname" in combination with _TYPE_="database" returns the selected database `adresss`'s host without port
 - _INFO="port" in combination with _TYPE_="database" returns the selected database `address`'s port. Can be contained in the `address` and returned as defined or if not returns defaults (1433 for `mssql` and 4532 for `postgres`)
 - `usernamesPostfix` in combination with _TYPE_="database" returns the value of the database endpoints `auth.basic.usernamesPostfix` if defined or empty string if not
 - `connectionString` in combination with _TYPE_="database" returns the calculated value of the database connectionString as used by e.g. VidiFlow agents. Requires a _COMPONENT_ to be selected containing a `database.username` and `database.password` to embedd into the connectionString returned.
+
+For _TYPE_ `messagebus`, an existing endpoint named `rabbitmq` is preferred over an endpoint `activemq`. Then the following rules apply:
 - `connectionString` in combination with _TYPE_="messagebus" returns the calculated value of the RabbitMQ connectionString as used by e.g. VidiFlow agents. This connectionString includes "username:password@" infix opposed to the `amq`/`amqInternal` URIs that don't contain credentials. Requires that an endpoint for `rabbitmq` and an `amq`/`amqInternal` URI is defined as well as `rabbitmq.auth.basic.username` and `rabbitmq.auth.basic.password`.
 - `vhost` in combination with _TYPE_="messagebus" returns the vhost of the RabbitMQ connectionString. Requires that an endpoint for `rabbitmq` and an `amq`/`amqInternal` URI is defined.
 
@@ -916,6 +1052,7 @@ This function returns special values which are calculated on the fly from the gi
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
+
 _EDNPOINTS_: The endpoints for which `auth` data is to be included as a comma-separated list. Can be either resolvable types (`database` and `index`) or an exact key name found in the endpoints. If omitted, all endpoints that are configured for the chart will be considered and their `auth` data is added to the secret.
 
 Usage:
@@ -933,13 +1070,14 @@ The `auth` secret contains:
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
+
 _COMPONENT_: The component to create the secret data for
 
 Usage:
 
 With calling this function the data section for a component specific secret is created. The secret contains automatically the following data keys and contents:
-1. First it traverses the _COMPONENT_ in `hull.config.specific.components` and adds all `mounts.secret`'s contents defined to the volume. It also adds all Secrets defined as physical files which are stored under the `files/_COMPONENT_/mounts/secret` folders.
-2. Database connection information is added from the components `database` specification if it exists. The keys `AUTH_BASIC_DATABASE_NAME`, `AUTH_BASIC_DATABASE_USERNAME` and `AUTH_BASIC_DATABASE_PASSWORD` are added with their defined values. Furthermore a key `database-connectionString` is added which contains a ready to use database connectionString including above credential data, alternatively if the components `database` specification contains a full fledged connection string as `connectionString` key it will insert this value and not compose a connection string dynamically.
+1. First it traverses the _COMPONENT_ in `hull.config.specific.components` and adds all `mounts.secret`'s contents defined to the volume. It also adds all Secrets defined as physical files which are stored under the `files/_COMPONENT_/mounts/secret` folders. Lastly, any file defined in `files/common/mounts/secret` is added in case a file key of the same name is not yet defined in the secret.
+2. Database connection information is added from the components `database` specification if it exists. The keys `AUTH_BASIC_DATABASE_NAME`, `AUTH_BASIC_DATABASE_USERNAME` and `AUTH_BASIC_DATABASE_PASSWORD` are added with their defined values. Furthermore a key `database-connectionString` is added which contains a ready to use database connectionString including above credential data, alternatively if the components `database` specification contains a full fledged connection string as `connectionString` key it will insert this value and not compose a connection string dynamically. Another option is to add an field `endpoint` holding the name of an existing `hull.config.general.data.endpoints` key in which case the database endpoint information used in the composition of the `database-connectionString` is used from this endpoint. Note that in this case the referenced _ENDPOINT_ must also contain an `application` key which has a value of either `postgres` or `mssql` since the database type is important in creation of connection strings. 
 3. If an `amq` or `amqInternal` endpoint is specified, the key `rabbitmq-connectionString` is added and the RabbitMQ connectionstring is assembled as its value
 
 ### hull.vidispine.addon.library.component.configmap.data
@@ -947,28 +1085,50 @@ With calling this function the data section for a component specific secret is c
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
-_COMPONENT_: The component to create the ConfigMap data for
 
+_COMPONENT_: The component to create the ConfigMap data for
 
 Usage:
 
-To add all defined ConfigMaps for a _COMPONENT_, this function traverses the _COMPONENT_ in `hull.config.specific.components` and adds all `mounts.configmap`'s contents defined to the volume. It also adds all ConfigMaps defined as physical files which are stored under the `files/_COMPONENT_/mounts/configmap` folders.
+To add all defined ConfigMaps for a _COMPONENT_, this function traverses the _COMPONENT_ in `hull.config.specific.components` and adds all `mounts.configmap`'s contents defined to the volume. It also adds all ConfigMaps defined as physical files which are stored under the `files/_COMPONENT_/mounts/configmap` folders. Lastly, any file defined in `files/common/mounts/configmap` is added in case a file key of the same name is not yet defined in the configmap.
 
 ### hull.vidispine.addon.library.component.ingress.rules
 
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
-_COMPONENTS_: The `component`s from `hull.config.specific.components` as a comma-separated list. The input values need to be lowercase seperated with '-' (kebapcase) and are converted to the URI keys by making them camelCase.
+
+_COMPONENTS_: The `component`s from `hull.config.specific.components` as a comma-separated list. The input values need to be lowercase seperated with '-' (kebapcase) and are converted to the URI keys by making them camelCase. It is possible to specify the `backend.service.port.name` for individual components by appending a `=<PORTNAME>` on an entry. 
+
 _ENDPOINT_: The endpoint for which the URIs created from _COMPONENTS_ are all defined
+
 _PORTNAME_: The name of the port that is targeted, defaults to "http" if not set
+
 _SERVICENAME_: The name of the service that is targeted
+
 _PATHTYPE_: The pathType value of field, defaults to `ImplementationSpecific` if not provided
+
 _STATIC_SERVICENAME_: Set `staticName` on service name accordingly, default is false
+
+_SERVICENAMES_PREFIX_: Optional prefix for all `backend.service.names`. May be used when the services matching the endpoint names all share a common prefix which is not used in the _COMPONENTS_ name. Only applies when _SERVICENAME_ is not used.
 
 Usage:
 
-With this function it is possible to render ingress rules based on minimal input. Given that one or more URIs are given in kebap-case notation as _COMPONENTS_, and they are specified under the given _ENDPOINT_ in `hull.config.general.data.endpoints`, for each of them an ingress rule is created with the ingress host set to the hostname contained in the resolved _COMPONENT_ URI and one path for the _COMPONENT_ URI's subpath. The targeted service is defined by _SERVICENAME_ and _PORTNAME_. Note that for ingresses, only set URIs that exclude the `Internal` suffix are considered because ingresses deal with traffic incoming to the cluster.
+With this function it is possible to render ingress rules based on minimal input. Given that one or more URIs are given in kebap-case notation as _COMPONENTS_, and they are specified under the given _ENDPOINT_ in `hull.config.general.data.endpoints`, for each of them an ingress rule is created with the ingress host set to the hostname contained in the resolved _COMPONENT_ URI. 
+
+Per ingress rule the _COMPONENT_ value is converted to camel-case (eg. `log-report` becomes `logReport`) and the corresponding uri entry under the _ENDPOINT_ is looked up. This provides the ingress rules `path`. 
+
+The `backend` service is by default set to the _COMPONENT_ value so for example given _COMPONENT_ `log-report` and _ENDPOINT_ `vidicore`, the `vidicore.uri.logReport` rule has `backend.service.name: log-report`. In this case there exists the option to use a _SERVICENAMES_PREFIX_ which allows to map _COMPONENTS_ to services with a shared prefix. To provide an example for this, consider _SERVICENAMES_PREFIX_ is `configportal-` and _COMPONENTS_ is `api,ui,notification`, the respective `backend.service.names` become `configportal-api`, `configportal-ui` and `configportal-notification`.
+
+An alternative way to setup the ingress is to provide a _SERVICENAME_ in which case all _COMPONENTS_ will map to this single `backend.service.name` instead of mapping to per _COMPONENT_ converted names.
+
+For all rules it is possible to define whether the `backend.service.name` is static or not using _STATIC_SERVICENAME_. Also you may set the _PATHTYPE_ for all rules, the default is `ImplementationSpecific`.
+
+Each _COMPONENT_ entry may have an optional `=<PORT-NAME>` suffix stating the name of that components `backend.service.port.name`. This is independent of whether a single _SERVICENAME_ was provided or individual _COMPONENT_ based `backend.service.name`'s are used.
+
+
+
+Note that for ingresses, only set URIs that exclude the `Internal` suffix are considered because ingresses deal with traffic incoming to the cluster.
 
 Example:
 
@@ -988,22 +1148,28 @@ endpoints:
       logReport: http://vidicore-vidicore.preptest1:31060/LogReport
 ```
 
-and _COMPONENTS_="api,log-report", _ENDPOINT_="vidicore", _SERVICENAME_="vidicore" this creates two ingress rules where host is 'prept1-vidiflow.s4m.de' and the targeted service/port is vidicore/http for all three. The paths are however different with '/API' and '/LogReport'.
+and _COMPONENTS_="api,log-report=http-special-port", _ENDPOINT_="vidicore", _SERVICENAME_="vidicore" this creates two ingress rules where host is 'prept1-vidiflow.s4m.de' and the targeted service/port is vidicore/http for the `api`. The `logReport`'s port name is overwritten as `http-special-port`. The paths are different with '/API' and '/LogReport'.
 
 ### hull.vidispine.addon.library.component.job.database
 
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
+
 _COMPONENT_: The `component` to create a database job for
+
 _TYPE_: The type of Job. Allowed values: create|reset
+
+_SERVICEACCOUNTNAME_: The name of the ServiceAccount for the job. Defaults to `<RELEASE-PREFIX>-COMPONENT-TYPE-db` where <RELEASE-PREFIX> is determined by the HULL charts settings of `Chart.Name`, `Release.Name` and `fullNameOverride`.
+
 _CREATE_SCRIPT_CONFIGMAP: Name of an existing ConfigMap which contains a custom `create-database.sh` script. Only if set to a non-empty ConfigMap name a custom 'create-database.sh'script is executed from the ConfigMap, otherwise the built-in script is executed for _TYPE_ `create`
+
 Usage:
 
-This function full renders job objects that either create or reset a database defined for _COMPONENT_. The container used for these database operations is found in the `hull.config.specific.images.dbTools.repository` field (default is 'vpms/dbtools') and the tag to use is given in the `hull.config.specific.images.dbTools.tag` field (default "1.8"). In order to work correctly, the following environment variables are provided to each 'vpms/dbtools' instance executed:
-- DBHOST: retrieved from the database endpoints (`postgres` or `mssql`) `uri.address` field
-- DBPORT: retrieved from the database endpoints (`postgres` or `mssql`) `uri.address` field
-- DBTYPE: `postgres` or `mssql`, determined by hull.vidispine.addon.library.get.endpoint.key function
+This function full renders job objects that either create or reset a database defined for _COMPONENT_. The container used for these database operations is found in the `hull.config.specific.images.dbTools.repository` field (default is 'vpms/dbtools') and the tag to use is given in the `hull.config.specific.images.dbTools.tag` field (default "1.9-1"). In order to work correctly, the following environment variables are provided to each 'vpms/dbtools' instance executed:
+- DBHOST: retrieved from the database endpoints (`postgres` or `mssql`) `uri.address` field. Alternatively if the _COMPONENT_ specifies a `database.endpoint` entry the `host` is retrieved for this explicit _ENDPOINT_ instead
+- DBPORT: retrieved from the database endpoints (`postgres` or `mssql`) `uri.address` field. Alternatively if the _COMPONENT_ specifies a `database.endpoint` entry the `port` is retrieved for this explicit _ENDPOINT_ instead
+- DBTYPE: `postgres` or `mssql`, determined by `hull.vidispine.addon.library.get.endpoint.application` function
 - DBADMINUSER: retrieved from key AUTH_BASIC_DATABASE_ADMINUSERNAME from _COMPONENT_-auth secret (see 'hull.vidispine.addon.library.auth.secret.data')
 - DBUSERPOSTFIX: retrieved from key AUTH_BASIC_DATABASE_USERNAMESPOSTFIX from _COMPONENT_-auth secret (see 'hull.vidispine.addon.library.auth.secret.data')
 - DBADMINPASSWORD: retrieved from key AUTH_BASIC_DATABASE_ADMINPASSWORD from _COMPONENT_-auth secret (see 'hull.vidispine.addon.library.auth.secret.data')
@@ -1026,26 +1192,51 @@ For _TYPE_=delete the following is happening:
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
+
 _COMPONENT_: The `component` to create a volume section for
 need to be lowercase seperated with '-' (kebapcase) and are converted to the URI keys by making them camelCase.
+
 _HASH_CONFIGMAP_: Determines whether the `hashsumAnnotation` key is set on the ConfigMap volume if it is being created. This does not apply to the additional _CONFIGMAPS_, only to the one created if the component has at least one ConfigMap element. Defaults to true.
+
 _HASH_SECRET_: Determines whether the `hashsumAnnotation` key is set on the Secret volume if it is being created. This does not apply to the additional _SECRETS_, only to the one created if the component has at least one Secret element. Defaults to true.
+
 _SECRETS_: The additional Secrets to add to the volumes as comma-seperated list
+
 _CONFIGMAPS_: The additional configMap volumes to add to the volumes as comma-seperated list
+
 _EMPTYDIRS_: The additional emptyDir volumes to add to the volumes as comma-seperated list
+
 _PVCS_:  The additional persistentVolumeClaim volumes to add to the volumes as comma-seperated list
 
 Usage:
 
 This function renders a pods volumes section based on the arguments and rest of the charts configuration:
-First it traverses the _COMPONENT_ in `hull.config.specific.components` and adds all `mounts.secret`'s and `mounts.configmap`'s names as references to the volumes secret and configMap volumes. Furthermore it is possible to specify arbitrary `volumes` under a _COMPONENT_s `extraVolumes` property which are also added to the pods `volume` section. It also adds all Secrets and ConfigMaps names as references for all defined physical files which are stored under the `files/_COMPONENT_/mounts/secret` and `files/_COMPONENT_/mounts/configmap` folders. Furthermore it is possible to specify arbitrary `volume`'s under a _COMPONENT_'s `extraVolumes` property, these are also added to the pods `volume` section. This grants maximum freedom to add system-specific `volume`'s to the pod. Finally it adds all additional secret's, configMap's, emptyDir's and persistentVolumeClaim's static reference names provided as additional arguments where the name of the reference is the full object name which is to be included.
+First it traverses the _COMPONENT_ in `hull.config.specific.components` and adds a `secretRef` volume named `secret` if:
+- any secret exists at `hull.config.specific.components.common.mounts.secret`
+- any secret exists at `hull.config.specific.components._COMPONENT_.mounts.secret`
+- any file exists at path `files/common/mounts/secret`
+- any file exists at path `files/_COMPONENT_/mounts/secret`
+This works in conjunction with 'hull.vidispine.addon.library.component.secret.data' which adds the content from all above mentioned sources to a secret which can be used as a volume `secret` then due to this function.
+The same procedure is applied to the `configmap` case where a `configMapRef` volume named `configmap` is only added in case:
+- any configmap exists at `hull.config.specific.components.common.mounts.configmap`
+- any configmap exists at `hull.config.specific.components._COMPONENT_.mounts.configmap`
+- any file exists at path `files/common/mounts/configmap`
+- any file exists at path `files/_COMPONENT_/mounts/configmap`
+When accessing the collected data you can refer to the _COMPONENT_'s `configmap` volume.
+
+Furthermore it is possible to specify arbitrary `volume`'s under a _COMPONENT_'s `extraVolumes` property, these are also added to the pods `volume` section. This grants maximum freedom to add system-specific `volume`'s to the pod. 
+
+Finally it adds all additional secret's, configMap's, emptyDir's and persistentVolumeClaim's static reference names provided as additional arguments _SECRETS_, _CONFIGMAPS_, _EMPTYDIRS_ and _PVCS_ where the name of the reference is the full object name which is to be included unless you prefix `_HT^` to the name to make it `staticName: false`.
 
 ### hull.vidispine.addon.library.component.pod.env
 
 Parameters:
 
 _PARENT_CONTEXT_: The Helm charts global context
+
 _COMPONENT_: The `component` to create an env section for
+
+_FROM_SECRETS_: Optionally define addtional env vars from secrets keys
 
 Usage:
 
@@ -1065,3 +1256,107 @@ Additional env vars are added if preconditions are met:
   - CONNECTIONSTRINGS__<database.connectionStringEnvVarSuffix>: retrieved from key database-connectionString from _COMPONENT_ secret (see 'hull.vidispine.addon.library.component.secret.data')
 - if an `amq` or `amqInternal` endpoint is defined for endpoint `rabbitmq`:
   - ENDPOINTS__RABBITMQCONNECTIONSTRING: retrieved from key rabbitmq-connectionString from _COMPONENT_ secret (see 'hull.vidispine.addon.library.component.secret.data')
+
+Additional env vars can be generated from Secret or ConfigMap keys by populating the `FROM_SECRETS` and `FROM_CONFIGMAPS` parameters respectively. Multiple entries are allowed per parameter and need to be separated with `,`. Each individual entry consists of multiple values which are delimited by `=` signs. 
+
+At least three ordered values must be provided:
+1. the env var name
+2. the secret name (by default resolved to a dynamic name)
+3. the key name in the secret from which to get the value that is mapped
+Additional values may be optionally provided but can be left out:
+4. the `staticName` setting which modifies the secret name value, either `true` or `false` (default is false)
+5. the `optional` setting value, either `true` or `false`
+
+
+
+### hull.vidispine.addon.library.secret.name.vidispine.admin.user
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_SUFFIX_: The suffix attached to the `<SYSTEM_NAME>`. Defaults to `vidispine-admin-user`
+
+Usage:
+
+Call this method to retrieve the standardized name of the secret holding the vidispine service account holding admin credentials. This is usually `<SYSTEM_NAME>-vidispine-admin-user` (where `<SYSTEM_NAME>` is the brief technical string denoting the system) and is supposed to exist in the current namespace due to beiong reflected by the `reflector` application.
+
+
+
+### hull.vidispine.addon.library.secret.data.lookup.key
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_SECRET_NAME_: The suffix attached to the `<SYSTEM_NAME>`. Defaults to `vidispine-admin-user`
+
+_KEY_NAME_: The key to lookup in the secrets `data`
+
+Usage:
+
+Performs `lookup` Helm templating command to lookup a secret in the current namespace by its _SECRET_NAME_. If lookup was succesful, the `data` in the secret is accessed and the base64 decoded value of _KEY_NAME_ is returned if found, otherwise an empty string. 
+
+
+
+### hull.vidispine.addon.library.systemtype
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_TO_LOWER_: If true, the `systemType` value is converted to lower case
+
+Usage:
+
+Looks up the `systemType` which is expected to be set at `.Values.hull.config.specific.systemType` and optionally lower cases it before returning it.
+
+
+
+### hull.vidispine.addon.library.systemtype.path
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_FILE_: The file to retrieve from the `systemType` specific folder
+
+Usage:
+
+Returns a path constructed from `systemType`/`FILE` so a particular file for the given system.
+
+
+
+### hull.vidispine.addon.library.systemtype.in
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_CHECK_: One or more `systemType` values. If multiple values are used they need to be seperated with `,`
+
+_CASE_SENSITIVE_: If true, the check of `systemType` against `CHECK` values is considering the casing, otherwise it is case-invariant which is the default
+
+Usage:
+
+Upon providing one or a list of values in the `CHECK` parameters, the return value indicates whether the current `systemType` is in the given values or not. Optionally consider case in the check by setting `_CASE_SENSITIVE_` to `true`.
+
+
+
+### hull.vidispine.addon.library.systemtype.in.conditional.value
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_CHECK_: One or more `systemType` values. If multiple values are used they need to be seperated with `,`
+
+_CASE_SENSITIVE_: If true, the check of `systemType` against `CHECK` values is considering the casing, otherwise it is case-invariant which is the default
+
+_VALUE_TRUE_: The value to return in case `systemType` is contained in the `CHECK` values
+
+_VALUE_FALSE_: The value to return in case `systemType` is not contained in the `CHECK` values
+
+Usage:
+
+Checks whether `systemType` is in a list of values provided by `CHECK` which is the same as `hull.vidispine.addon.library.systemtype.in`, but returns provided `VALUE_TRUE` or `VALUE_FALSE` in the respective case.

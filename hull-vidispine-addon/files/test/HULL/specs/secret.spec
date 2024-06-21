@@ -43,7 +43,6 @@ Test creation of objects and features.
 
 * Set test object to "release-name-hull-test-hull-install"
 * Test Object has key "data§installation.yaml" with non empty value
-* Test Object has key "data§Installer.ps1" with non empty value
 ___
 
 * Clean the test execution folder

@@ -166,8 +166,17 @@ Icon: |-
   "installation": 
   {
     "name": "installation",
-    "mountPath": "/script"
+    "mountPath": "/script/installation.yaml",
+    "subPath": "installation.yaml"
   },
+{{ if $parent.Values.hull.config.general.data.installation.config.debug.debugInstallerScript }}
+  "installer": 
+  {
+    "name": "installation",
+    "mountPath": "/script/Installer.ps1",
+    "subPath": "Installer.ps1"
+  },
+{{ end }}
   "custom-installation-files":
   {
     "name": "custom-installation-files",
