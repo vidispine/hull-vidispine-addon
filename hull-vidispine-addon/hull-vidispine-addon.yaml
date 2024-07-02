@@ -270,9 +270,9 @@ hull:
     registry:
       _HULL_OBJECT_TYPE_DEFAULT_:
         annotations:
-          "helm.sh/hook": pre-install,pre-upgrade
-          "helm.sh/hook-weight": "-90"
-          "helm.sh/hook-delete-policy": before-hook-creation
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-90"
+          helm.sh/hook-delete-policy: before-hook-creation
 
     serviceaccount:
       default:
@@ -302,7 +302,7 @@ hull:
         enabled: false
         annotations:
           helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-10"
+          helm.sh/hook-weight: "-15"
           helm.sh/hook-delete-policy: before-hook-creation
 
     clusterrolebinding:
@@ -404,8 +404,8 @@ hull:
         - _HULL_OBJECT_TYPE_DEFAULT_
         - hull-install-setup
         annotations:
-          "helm.sh/hook": pre-install,pre-upgrade
-          "helm.sh/hook-weight": '-10'
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: '-10'
         parallelism: 1
         completions: 1
         backoffLimit: 6
@@ -432,8 +432,8 @@ hull:
         - hull-install-setup
         enabled: false
         annotations:
-          "helm.sh/hook": post-install,post-upgrade
-          "helm.sh/hook-weight": '50'
+          helm.sh/hook: post-install,post-upgrade
+          helm.sh/hook-weight: '50'
         parallelism: 1
         completions: 1
         backoffLimit: 6
@@ -461,21 +461,30 @@ hull:
           helm.sh/hook-weight: "-10"
           helm.sh/hook-delete-policy: before-hook-creation
    
+    configmap:
+      
+      hull-database:
+        enabled: false
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-15"
+          helm.sh/hook-delete-policy: before-hook-creation
+    
     secret:
 
       auth:
         annotations:
-          "helm.sh/hook": pre-install,pre-upgrade
-          "helm.sh/hook-weight": "-100"
-          "helm.sh/hook-delete-policy": before-hook-creation
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-100"
+          helm.sh/hook-delete-policy: before-hook-creation
         data: _HT/hull.vidispine.addon.library.auth.secret.data
 
       'custom-ca-certificates':
         enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
         annotations:
-          "helm.sh/hook": pre-install,pre-upgrade
-          "helm.sh/hook-weight": "-100"
-          "helm.sh/hook-delete-policy": before-hook-creation
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-100"
+          helm.sh/hook-delete-policy: before-hook-creation
         data: |-
           _HT!{
             {{ range $key,$value :=  (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates }}
@@ -624,7 +633,7 @@ hull:
         enabled: false
         annotations:
           helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-10"
+          helm.sh/hook-weight: "-15"
           helm.sh/hook-delete-policy: before-hook-creation
       'hull-install':
         sources:
