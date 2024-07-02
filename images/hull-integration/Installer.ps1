@@ -1347,14 +1347,14 @@ Class Installer
         if ([string]::IsNullOrWhitespace($entity.readConfigFromFile.key))
         {
           $this.WriteLog("**** No 'key' property provided, mapping full contents of '$($filePath)' to Config")
-          $entity.config = $fileContent  
+          $entity.config = $fileContent
         }
         else
         {
           $this.WriteLog("**** Value '$($entity.readConfigFromFile.key)' provided for 'key' property, mapping content of key from JSON file '$($filePath)' to Config")
           $fileContentJson = $fileContent | ConvertFrom-Json
-          $this.WriteLog("**** JSON file content: " + $fileContentJson)
-          $entity.config = $fileContentJson.$($entity.readConfigFromFile.key)
+          $entity.config = $fileContentJson.$($entity.readConfigFromFile.key) | ConvertTo-Json -Depth 100
+          $this.WriteLog("**** JSON file content extracted from key '$($entity.readConfigFromFile.key)': " + $entity.config)
         }
       }
     }
