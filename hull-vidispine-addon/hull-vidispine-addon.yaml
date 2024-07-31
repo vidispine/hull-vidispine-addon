@@ -3,7 +3,11 @@ hull:
   config:
     general:
       data:
-        endpoints: {}
+        endpoints:
+          vidicore:
+            auth:
+              basic:
+                adminUserSecretName: ""
         installation:
           config:
             customCaCertificates: {}
