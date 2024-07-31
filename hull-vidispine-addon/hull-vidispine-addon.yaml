@@ -7,7 +7,7 @@ hull:
           vidicore:
             auth:
               basic:
-                adminUserSecretName: ""
+                adminUserSecretName: "_HT/hull.vidispine.addon.library.secret.name.vidispine.admin.user"
         installation:
           config:
             customCaCertificates: {}
