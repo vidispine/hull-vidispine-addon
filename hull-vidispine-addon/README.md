@@ -202,7 +202,7 @@ By default the `hull-install` job is enabled but already pre-configured so that 
   - automatically loads the configuration section from `hull.config.general.data.installation`
   - loads all certificates provided under `hull.config.general.data.installation.config.customCaCertificates`
 - typical endpoints and subresources are predefined so that only entities need to be specified. The predefined subresources for the endpoints are skipped in case the endpoint is not defined. 
-  - endpoint with key `10_vidicore` is set up to do basic authentication on the vidispine endpoint defined in `hull.config.general.data.endpoints.vidicore.uri.api` using the `usernanme` and `password` credentials from VidiCore service admin user secret `<SYSTEMNAME>-vidispine-admin-user`
+  - endpoint with key `10_vidicore` is set up to do basic authentication on the vidispine endpoint defined in `hull.config.general.data.endpoints.vidicore.uri.api` using the `usernanme` and `password` credentials from VidiCore service admin user secret. The actual name of the VidiCore service admin user secret must be provided in the field `hull.config.general.data.endpoints.vidicore.auth.basic.adminUserSecretName` for authentication to be successful.
     - subresources are configured so that creating specific entities works out of the box for them
       - key `10_metadatafields` for inserting metadatafields into Vidispine
       - key `20_metadatafieldgroups` for inserting metadatafieldgroups into Vidispine  

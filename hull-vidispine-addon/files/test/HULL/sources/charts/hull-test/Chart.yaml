@@ -6,5 +6,5 @@ name: hull-test
 version: 1.30.0
 dependencies:
   - name: hull
-    version: "1.30.0"
+    version: "1.30.4"
     repository: "https://vidispine.github.io/hull"
