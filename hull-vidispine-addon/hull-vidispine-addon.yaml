@@ -3,7 +3,11 @@ hull:
   config:
     general:
       data:
-        endpoints: {}
+        endpoints:
+          vidicore:
+            auth:
+              basic:
+                adminUserSecretName: "_HT/hull.vidispine.addon.library.secret.name.vidispine.admin.user"
         installation:
           config:
             customCaCertificates: {}
@@ -29,8 +33,8 @@ hull:
               auth:
                 basic:
                   env:
-                    username: _HT!{{ printf "%s_%s" (include "hull.vidispine.addon.library.secret.name.vidispine.admin.user" (dict "PARENT_CONTEXT" (index . "$")) | replace "-" "_" | upper) "username" }}
-                    password: _HT!{{ printf "%s_%s" (include "hull.vidispine.addon.library.secret.name.vidispine.admin.user" (dict "PARENT_CONTEXT" (index . "$")) | replace "-" "_" | upper) "password" }}
+                    username: _HT!{{ printf "%s_%s" (_HT*hull.config.general.data.endpoints.vidicore.auth.basic.adminUserSecretName | replace "-" "_" | upper) "username" }}
+                    password: _HT!{{ printf "%s_%s" (_HT*hull.config.general.data.endpoints.vidicore.auth.basic.adminUserSecretName | replace "-" "_" | upper) "password" }}
               endpoint: _HT/hull.vidispine.addon.library.get.endpoint.uri.info:ENDPOINT:"vidicore":URI:"api"
               subresources:
                 10_metadatafields:
@@ -270,9 +274,9 @@ hull:
     registry:
       _HULL_OBJECT_TYPE_DEFAULT_:
         annotations:
-          "helm.sh/hook": pre-install,pre-upgrade
-          "helm.sh/hook-weight": "-90"
-          "helm.sh/hook-delete-policy": before-hook-creation
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-90"
+          helm.sh/hook-delete-policy: before-hook-creation
 
     serviceaccount:
       default:
@@ -302,7 +306,7 @@ hull:
         enabled: false
         annotations:
           helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-10"
+          helm.sh/hook-weight: "-15"
           helm.sh/hook-delete-policy: before-hook-creation
 
     clusterrolebinding:
@@ -382,9 +386,9 @@ hull:
                   secretRef:
                     name: auth
                 vidicore:
-                  prefix: _HT!{{ printf "%s_" (include "hull.vidispine.addon.library.secret.name.vidispine.admin.user" (dict "PARENT_CONTEXT" (index . "$"))) | replace "-" "_" | upper }}
+                  prefix: _HT!{{ printf "%s_" (_HT*hull.config.general.data.endpoints.vidicore.auth.basic.adminUserSecretName | replace "-" "_" | upper) }}
                   secretRef:
-                    name: _HT/hull.vidispine.addon.library.secret.name.vidispine.admin.user
+                    name: _HT*hull.config.general.data.endpoints.vidicore.auth.basic.adminUserSecretName
                     staticName: true
                     optional: true
               env:
@@ -404,8 +408,8 @@ hull:
         - _HULL_OBJECT_TYPE_DEFAULT_
         - hull-install-setup
         annotations:
-          "helm.sh/hook": pre-install,pre-upgrade
-          "helm.sh/hook-weight": '-10'
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: '-10'
         parallelism: 1
         completions: 1
         backoffLimit: 6
@@ -432,8 +436,8 @@ hull:
         - hull-install-setup
         enabled: false
         annotations:
-          "helm.sh/hook": post-install,post-upgrade
-          "helm.sh/hook-weight": '50'
+          helm.sh/hook: post-install,post-upgrade
+          helm.sh/hook-weight: '50'
         parallelism: 1
         completions: 1
         backoffLimit: 6
@@ -461,21 +465,30 @@ hull:
           helm.sh/hook-weight: "-10"
           helm.sh/hook-delete-policy: before-hook-creation
    
+    configmap:
+      
+      hull-database:
+        enabled: false
+        annotations:
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-15"
+          helm.sh/hook-delete-policy: before-hook-creation
+    
     secret:
 
       auth:
         annotations:
-          "helm.sh/hook": pre-install,pre-upgrade
-          "helm.sh/hook-weight": "-100"
-          "helm.sh/hook-delete-policy": before-hook-creation
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-100"
+          helm.sh/hook-delete-policy: before-hook-creation
         data: _HT/hull.vidispine.addon.library.auth.secret.data
 
       'custom-ca-certificates':
         enabled: _HT?(index . "$").Values.hull.config.general.data.installation.config.customCaCertificates
         annotations:
-          "helm.sh/hook": pre-install,pre-upgrade
-          "helm.sh/hook-weight": "-100"
-          "helm.sh/hook-delete-policy": before-hook-creation
+          helm.sh/hook: pre-install,pre-upgrade
+          helm.sh/hook-weight: "-100"
+          helm.sh/hook-delete-policy: before-hook-creation
         data: |-
           _HT!{
             {{ range $key,$value :=  (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates }}
@@ -624,7 +637,7 @@ hull:
         enabled: false
         annotations:
           helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-10"
+          helm.sh/hook-weight: "-15"
           helm.sh/hook-delete-policy: before-hook-creation
       'hull-install':
         sources:
