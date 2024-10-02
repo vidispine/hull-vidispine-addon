@@ -321,6 +321,27 @@ Class Installer
     [Console]::ResetColor()
   }
 
+  [string] GetAbsoluteFilePath([string] $path) 
+  {
+    # Get script path
+    $currentPath = (Get-Item -Path ".\" -Verbose).FullName
+    $filePath = ""
+    if ($path -like "*/*" )
+    {
+      $split = $path.split('/')
+      $filePath = Join-Path $currentPath "custom-installation-files-$($split[0])" $split[1]
+    }
+    else
+    {
+      $filePath = Join-Path $currentPath "custom-installation-files" $($path)
+    }
+    if (!(Test-Path $filePath))
+    {
+      throw [Exception]::new("ERROR --> File '$($filePath)' does not exist")
+    }
+    return $filePath
+  }
+
   hidden [string] LogInvokeWebRequestError()
   {
     return $this.LogInvokeWebRequestError($null, $null)
@@ -1103,7 +1124,7 @@ Class Installer
         else
         {
           $this.WriteLog("**** POSTing '$entityType' entry '$identifier' to create it")
-          $this.PostEntity($apiEndpoint, $identifier, $content, $auth, $entity.postQueryParams, $contentType, $headers)
+          $this.PostEntity($apiEndpoint, $identifier, $content, $auth, $entity.postQueryParams, $contentType, $headers, $entity.multiPartFormData -eq $true)
           $lastMethod = "POST"
           $lastUri = $apiEndpoint
         }
@@ -1118,11 +1139,36 @@ Class Installer
   }
 
   # Post an entity
-  hidden [PSCustomObject] PostEntity([string] $postUrl, [string] $identifier, [string] $json, [PSCustomObject] $auth, [PSCustomObject] $postQueryParams, [string] $contentType, [PSCustomObject] $headers)
+  hidden [PSCustomObject] PostEntity([string] $postUrl, [string] $identifier, [string] $json, [PSCustomObject] $auth, [PSCustomObject] $postQueryParams, [string] $contentType, [PSCustomObject] $headers, [bool] $multiPartFormData)
   {
     $this.WriteLog("**** 'URL before: $($postUrl)")
     $url = $this.AppendQueryParamsToUri($postUrl, $postQueryParams, $identifier, $false)
     $this.WriteLog("**** 'URL after: $($url)")
+
+    if ($multiPartFormData)
+    {
+      $decodedJson = $json | ConvertFrom-Json -AsHashTable
+      $multiPartFormDataField = @($decodedJson.Keys)[0]
+      $multiPartFormDataFilePath = $this.GetAbsoluteFilePath(@($decodedJson.Values)[0])
+      $multiPartFormDataFileName = Split-Path $multiPartFormDataFilePath -leaf
+      $this.WriteLog("***** MultiPartFormData: Field=$($multiPartFormDataField) FilePath=$($multiPartFormDataFilePath) FileName=$($multiPartFormDataFileName)'")
+    
+      $fileBytes = [System.IO.File]::ReadAllBytes($multiPartFormDataFilePath);
+      $fileEncoded = [System.Text.Encoding]::GetEncoding('UTF-8').GetString($fileBytes);
+      $boundary = [System.Guid]::NewGuid().ToString(); 
+      $LF = "`r`n";
+
+      $json = ( 
+          "--$boundary",
+          "Content-Disposition: form-data; name=`"$($multiPartFormDataField)`"; filename=`"$($multiPartFormDataFileName)`"",
+          "Content-Type: application/octet-stream$LF",
+          $fileEncoded,
+          "--$boundary--$LF" 
+      ) -join $LF
+
+      $headers["Content-Type"] = "multipart/form-data; boundary=`"$boundary`""
+    }
+
     return $this.InvokeWebRequest($url, "POST", $json, $headers)
   }
 
@@ -1226,21 +1272,7 @@ Class Installer
         if ([String]::IsNullOrEmpty($value))
         {
           $this.WriteLog("**** Determined file path '$($path)' as source for mapping'.")
-          $currentPath = (Get-Item -Path ".\" -Verbose).FullName
-          $filePath = ""
-          if ($path -like "*/*" )
-          {
-            $split = $path.split('/')
-            $filePath = Join-Path $currentPath "custom-installation-files-$($split[0])" $split[1]
-          }
-          else
-          {
-            $filePath = Join-Path $currentPath "custom-installation-files" $($path)
-          }
-          if (!(Test-Path $filePath))
-          {
-            throw [Exception]::new("ERROR --> File '$($filePath)' does not exist")
-          }
+          $filePath = $this.GetAbsoluteFilePath($path)
           $this.WriteLog("**** External Config file found: " + $filePath)
           
           $updateContent = Get-Content -Path $filePath | Out-String
