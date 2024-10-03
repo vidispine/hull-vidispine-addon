@@ -108,10 +108,12 @@ Icon: |-
 {{ define "hull.vidispine.addon.sources.folder.volumes" }}
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {
+{{ if $parent.Values.hull.config.general.data.installation.config.debug.debugInstallerScript }}
   "installation":
   { 
     "secret":{ "secretName": "hull-install" }
   },
+{{ end }}
   "custom-installation-files":
   {
     "secret": { "secretName": "custom-installation-files" }
@@ -163,12 +165,6 @@ Icon: |-
 {{ define "hull.vidispine.addon.sources.folder.volumemounts" }}
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {
-  "installation": 
-  {
-    "name": "installation",
-    "mountPath": "/script/installation.yaml",
-    "subPath": "installation.yaml"
-  },
 {{ if $parent.Values.hull.config.general.data.installation.config.debug.debugInstallerScript }}
   "installer": 
   {

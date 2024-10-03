@@ -640,12 +640,12 @@ hull:
           helm.sh/hook-weight: "-15"
           helm.sh/hook-delete-policy: before-hook-creation
       'hull-install':
+        enabled: _HT*hull.config.general.data.installation.config.debug.debugInstallerScript
         sources:
         - custom-installation-files-setup
         - _HULL_OBJECT_TYPE_DEFAULT_
         data:
           Installer.ps1:
-            enabled: _HT*hull.config.general.data.installation.config.debug.debugInstallerScript
             inline: |-
               *** ENABLE hull.config.general.data.installation.config.debug.debugInstallerScript
               *** AND COPY SCRIPT CODE FROM 
