@@ -10,6 +10,5 @@ RUN tar -zxf oras_${VERSION}_*.tar.gz -C oras-install/
 RUN mv oras-install/oras /usr/local/bin/
 RUN rm -rf oras_${VERSION}_*.tar.gz oras-install/
 COPY ./Installer.ps1 /script/Installer.ps1
-COPY ./installation.yaml /script/installation.yaml
 COPY ./get-custom-scripts /get-custom-scripts
 RUN oras --help
