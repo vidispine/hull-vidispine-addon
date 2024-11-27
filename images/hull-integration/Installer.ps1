@@ -467,7 +467,7 @@ Class Installer
       {
         throw [Exception]::new("ERROR --> Basic auth environment variable '$($auth.basic.env.password)' for 'password' is empty.")
       }
-      $authHeader = "Basic $([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($username + ":" + $password))))"
+      $authHeader = "Basic $([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($username + ":" + $password)))"
       $this.WriteLog("++++ Using Basic Auth for User '$($username)'. Password is $(if ($password -ne [String]::Empty) {"not "} else {" "} )empty.")
     }
 
