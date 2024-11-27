@@ -500,12 +500,15 @@ rabbitmq-connectionString:
 {{ $endpointApplication := include "hull.vidispine.addon.library.get.endpoint.application" (dict "PARENT_CONTEXT" $parent "ENDPOINT" $databaseKey) }}
 serviceAccountName: {{ $serviceAccountName }}
 restartPolicy: {{ default "Never" (index . "RESTART_POLICY") }}
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
 initContainers:
 {{ if $createScriptConfigMap }}
   copy-custom-scripts:
     image:
       repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
-      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.9-1" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
+      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "2.0-noroot" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
     args:
     - "/bin/sh"
     - "-c"
@@ -520,7 +523,7 @@ initContainers:
   set-custom-script-permissions:
     image:
       repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
-      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.9-1" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
+      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "2.0-noroot" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
     args:
     - "/bin/sh"
     - "-c"
@@ -533,7 +536,7 @@ initContainers:
   check-database-ready:
     image:
       repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
-      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.9-1" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
+      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "2.0-noroot" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
     env:
       DBHOST:
         value: {{ $databaseHost }}
@@ -603,7 +606,7 @@ containers:
 {{ end }}
     image:
       repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
-      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "1.9-1" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
+      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "2.0-noroot" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
     env:
       DBHOST:
         value: {{ $databaseHost }}

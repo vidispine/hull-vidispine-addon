@@ -644,6 +644,60 @@ hull:
         - custom-installation-files-setup
         - _HULL_OBJECT_TYPE_DEFAULT_
         data:
+          installation.yaml:
+            inline: |-
+                {{- with  (index $.Values "hull").config.general.data.installation }}
+                  {{- $configScope := . -}}
+                  {{- $configScopeEndpoints := dict -}}
+                  {{- if hasKey . "endpoints" -}}
+                      {{- $configScopeEndpoints = .endpoints -}}
+                  {{- end -}}
+                  {{- range $path, $_ := $.Files.Glob "files/hull-vidispine-addon/installation/endpoints/*.yaml" -}}
+                      {{- $configScopeEndpoints = mergeOverwrite $configScopeEndpoints (dict (base $path | trimSuffix ".yaml") (fromYaml ($.Files.Get $path))) -}}
+                  {{- end -}}
+                  {{- range $endpoint, $endpointval := $configScopeEndpoints -}}
+                      {{- $endpointScope := $endpointval -}}
+                      {{- if $endpointval.endpoint -}}
+                          {{- $subresources := dict -}}
+                          {{- if hasKey $endpointval "subresources" -}}
+                              {{- $subresources = $endpointval.subresources -}}
+                          {{- end -}}
+                          {{- range $path, $_ :=  $.Files.Glob (printf "%s/%s/%s" "files/hull-vidispine-addon/installation/endpoints" $endpoint "*.yaml") -}}
+                              {{- $subresources = mergeOverwrite $subresources (dict (base $path | trimSuffix ".yaml") (fromYaml ($.Files.Get $path))) -}}
+                          {{- end -}}
+                          {{- range $subresource, $subresourceval := $subresources }}
+                              {{- $subresourceScope := $subresourceval -}}
+                              {{- $entities := dict  -}}
+                              {{- if hasKey $subresourceval "entities" -}}
+                                  {{- $entities = $subresourceval.entities -}}
+                              {{- else -}}
+                                {{- $u := set $subresourceval "entities" dict }}
+                              {{- end -}}
+                              {{- range $path, $_ :=  $.Files.Glob (printf "%s/%s/%s/%s" "files/hull-vidispine-addon/installation/endpoints" $endpoint $subresource "*.yaml") -}}
+                                  {{- $entities = mergeOverwrite $entities (dict (base $path | trimSuffix ".yaml") (fromYaml ($.Files.Get $path))) -}}
+                              {{- end -}}
+                              {{- range $entity, $entityval := $entities }}
+                                  {{- $mergedDict := dict -}}
+                                  {{- if hasKey $subresourceval "_DEFAULTS_" -}}
+                                      {{- $mergedDict = deepCopy $subresourceval._DEFAULTS_ -}}
+                                  {{- end -}}
+                                  {{- $t := mergeOverwrite $mergedDict $entityval -}}
+                                  {{- $z := set (index $.Values "hull").config.general.data.installation "endpoints" $configScopeEndpoints }}
+                                  {{- if typeIs "map[string]interface {}" $mergedDict -}}
+                                      {{- if hasKey $mergedDict "config" -}}
+                                          {{- $configDict := $mergedDict.config -}}
+                                      {{- end }}
+                                  {{- end }}
+                                  {{- $t1 := set $subresourceval.entities $entity $mergedDict -}}
+                              {{- end }}
+                          {{- end }}
+                      {{- else -}}
+                          {{- $configScopeEndpoints = unset $configScopeEndpoints $endpoint -}}
+                      {{- end }}
+                  {{- end }}
+                  {{- $_ := include "hull.util.transformation" (dict "PARENT_CONTEXT" $ "SOURCE" $configScope "CALLER" nil "CALLER_KEY" nil "SOURCE_PATH" list) -}}
+                  {{- toYaml $configScope -}}
+                {{ end }}
           Installer.ps1:
             enabled: _HT*hull.config.general.data.installation.config.debug.debugInstallerScript
             inline: |-

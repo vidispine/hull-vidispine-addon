@@ -57,7 +57,25 @@ jobs:
       dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
       action: 'Push an image'
       imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)'
-  
+
+  - task: Docker@0
+    displayName: 'Docker Build noroot'
+    inputs:
+      containerregistrytype: 'Container Registry'
+      dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
+      dockerFile: './images/hull-integration/Dockerfile-noroot'
+      defaultContext: false
+      context: './images/hull-integration'
+      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)-noroot'
+ 
+  - task: Docker@0
+    displayName: 'Docker Push'
+    inputs:
+      containerregistrytype: 'Container Registry'
+      dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
+      action: 'Push an image'
+      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)-noroot'
+
   - script: |
         CHART_RELEASER_VERSION=1.5.0
         set -euo pipefail

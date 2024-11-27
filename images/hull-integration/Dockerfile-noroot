@@ -9,6 +9,12 @@ RUN mkdir -p oras-install/
 RUN tar -zxf oras_${VERSION}_*.tar.gz -C oras-install/
 RUN mv oras-install/oras /usr/local/bin/
 RUN rm -rf oras_${VERSION}_*.tar.gz oras-install/
+# Create a user group 'noroot'
+RUN groupadd noroot
+# Add a user noroot to group 'noroot'
+RUN useradd --create-home --shell /bin/bash -u 1001 -g noroot noroot
 COPY ./Installer.ps1 /script/Installer.ps1
+RUN chown -R noroot /script
 COPY ./get-custom-scripts /get-custom-scripts
+RUN chown -R noroot /get-custom-scripts
 RUN oras --help
