@@ -861,6 +861,24 @@ etcssl:
       key:  "CLIENT_{{ regexReplaceAll "-" ($component | upper) "_" }}_SECRET"
 {{ end }}
 {{ if (index $parent.Values.hull.config.specific.components $component).database }}
+'DBUSER':
+  valueFrom:
+    secretKeyRef:
+      name: auth
+      key: AUTH_BASIC_DATABASE_USERNAME
+      optional: true
+'DBPASSWORD':
+  valueFrom:
+    secretKeyRef:
+      name: auth
+      key: AUTH_BASIC_DATABASE_PASSWORD
+      optional: true
+'DBNAME':
+  valueFrom:
+    secretKeyRef:
+      name: auth
+      key: AUTH_BASIC_DATABASE_NAME
+      optional: true
 'DBUSERPOSTFIX':
   valueFrom:
     secretKeyRef:
