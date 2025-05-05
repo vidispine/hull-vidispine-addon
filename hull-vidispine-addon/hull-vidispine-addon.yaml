@@ -267,6 +267,15 @@ hull:
                     register: true
                     remove: false
                 
+  templates:
+    pod: 
+      global: {}
+      no-root:
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+    container:
+      global: {}
 ###################################################
 
   objects:
@@ -377,6 +386,8 @@ hull:
         annotations:
           "helm.sh/hook-delete-policy": before-hook-creation
         pod:
+          sources:
+          - no-root
           containers:
             installation:
               command: ["/bin/sh", "-c"]
@@ -420,7 +431,7 @@ hull:
             installation:
               image:
                 repository: hull/hull-integration
-                tag: <HULL-VIDISPINE-ADDON-VERSION>
+                tag: <HULL-VIDISPINE-ADDON-VERSION>-noroot
               args: _HT![
                 {{ if (or (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates (index . "$").Values.hull.config.general.data.installation.config.certificateSecrets) }}
                 echo Updating Certificates;
@@ -448,7 +459,7 @@ hull:
             installation:
               image:
                 repository: hull/hull-integration
-                tag: <HULL-VIDISPINE-ADDON-VERSION>
+                tag: <HULL-VIDISPINE-ADDON-VERSION>-noroot
               args: _HT![
                 {{ if (or (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates (index . "$").Values.hull.config.general.data.installation.config.certificateSecrets) }}
                 echo Updating Certificates;
