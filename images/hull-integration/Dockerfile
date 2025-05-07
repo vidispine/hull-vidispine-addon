@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:9.0.203-noble-amd64
+FROM mcr.microsoft.com/powershell:lts-7.4-ubuntu-22.04
 RUN pwsh -NonInteractive -Command Install-Module -Force -Scope AllUsers powershell-yaml
 RUN apt-get update
 RUN apt-get upgrade
