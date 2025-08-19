@@ -521,6 +521,7 @@ initContainers:
         name: custom-scripts
         mountPath: /custom-scripts
   set-custom-script-permissions:
+    enabled: false
     image:
       repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
       tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" "2.0-noroot" $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
@@ -650,6 +651,7 @@ volumes:
   script-configmap:
     configMap:
       name: {{ $createScriptConfigMap }}
+      defaultMode: 0777
   custom-scripts:
     emptyDir: {}
 {{ end }}
