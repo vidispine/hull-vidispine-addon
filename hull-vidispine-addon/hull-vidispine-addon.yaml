@@ -267,15 +267,15 @@ hull:
                     register: true
                     remove: false
                 
-  templates:
-    pod: 
-      global: {}
-      no-root:
-        securityContext:
-          runAsNonRoot: true
-          runAsUser: 1001
-    container:
-      global: {}
+    templates:
+      pod: 
+        global: {}
+        no-root:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+      container:
+        global: {}
 ###################################################
 
   objects:
