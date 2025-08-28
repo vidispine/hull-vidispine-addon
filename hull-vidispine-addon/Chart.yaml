@@ -3,4 +3,4 @@ apiVersion: v1
 appVersion: 1.33.1
 description: hull-vidispine-addon
 name: hull-vidispine-addon
-version: 1.33.2
+version: 1.33.1
