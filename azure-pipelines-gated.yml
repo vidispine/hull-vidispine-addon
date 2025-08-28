@@ -14,7 +14,7 @@ pr:
     - release-*
 
 pool:
-    vmImage: 'ubuntu-20.04'
+    vmImage: 'ubuntu-24.04'
 jobs:
 - job: RunTests
   steps:
