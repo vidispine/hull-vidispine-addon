@@ -318,7 +318,7 @@ hull:
           helm.sh/hook-weight: "-15"
           helm.sh/hook-delete-policy: before-hook-creation
 
-    clusterrolebinding:
+    rolebinding:
       hull-install-events:
         annotations:
           helm.sh/hook: pre-install,pre-upgrade
@@ -326,7 +326,7 @@ hull:
           helm.sh/hook-delete-policy: before-hook-creation
         roleRef:
           apiGroup: rbac.authorization.k8s.io
-          kind: ClusterRole
+          kind: Role
           name: _HT^events
         subjects:
         - kind: ServiceAccount
@@ -339,13 +339,14 @@ hull:
           helm.sh/hook-delete-policy: before-hook-creation
         roleRef:
           apiGroup: rbac.authorization.k8s.io
-          kind: ClusterRole
+          kind: Role
           name: _HT^events
         subjects:
         - kind: ServiceAccount
           name: _HT^hull-configure
           namespace: _HT!{{ (index . "$").Release.Namespace }}
-    clusterrole:
+    
+    role:
       events:
         annotations:
           helm.sh/hook: pre-install,pre-upgrade
