@@ -15,7 +15,7 @@ trigger: none
 pr: none
 
 pool:
-    vmImage: 'ubuntu-20.04'
+    vmImage: 'ubuntu-24.04'
 
 jobs:
 - job: RunTests
@@ -28,8 +28,11 @@ jobs:
       - version: "3.10.3"
       - version: "3.11.3"
       - version: "3.12.3"
-      - version: "3.13.2"
-
+      - version: "3.13.3"
+      - version: "3.14.4"
+      - version: "3.15.4"
+      - version: "3.16.4"
+      - version: "3.17.3"
 
 - job: CreateRelease
   dependsOn: RunTests
