@@ -21,8 +21,8 @@ foreach($chartInfo in $entity._helm_charts_)
   $this.WriteLog("~~~ SBOM: ---> Processing License for Helm Chart $($chartInfo.name) and Version $($chartInfo.version)")
   $rootArtifact = "$($entity._oci_endpoint_.server)/helm-charts/vpms/$($chartInfo.name):$($chartInfo.version)"
   $this.WriteLog("~~~ SBOM: Getting related artifact $($rootArtifact)")
-  $discoverCommand = "oras discover -o json --artifact-type 'mend/sbom' $($rootArtifact)"
-  $discover = (oras discover -o json --artifact-type 'mend/sbom' $($rootArtifact)) -join "`n"
+  $discoverCommand = "oras discover --format json --artifact-type 'mend/sbom' $($rootArtifact)"
+  $discover = (oras discover --format json --artifact-type 'mend/sbom' $($rootArtifact)) -join "`n"
   $discoverExitCode = $LASTEXITCODE
   $this.WriteLog("~~~ SBOM: oras discover - Exit Code: $($discoverExitCode)")
 
@@ -33,32 +33,32 @@ foreach($chartInfo in $entity._helm_charts_)
     $this.WriteLog("~~~ SBOM: $($discoverCommand) successful:")                              
     $this.WriteLog("~~~ SBOM: $($discoverJson)")
     
-    if (-not [bool]$discoverJson.PSObject.Properties['manifests'])
+    if (-not [bool]$discoverJson.PSObject.Properties['referrers'])
     {
-      $errorMessage = "~~~ SBOM: Manifests field for $($rootArtifact) does not exist! Skipping license upload ..."
+      $errorMessage = "~~~ SBOM: Referrers field for $($rootArtifact) does not exist! Skipping license upload ..."
       $this.WriteError($errorMessage)
       return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
     }
 
-    if (($discoverJson.manifests | Measure-Object).Count -eq 0)
+    if (($discoverJson.referrers | Measure-Object).Count -eq 0)
     {
-      $errorMessage = "~~~ SBOM: Manifests field for $($rootArtifact) has zero elements! Skipping license upload ..."
+      $errorMessage = "~~~ SBOM: Referrers field for $($rootArtifact) has zero elements! Skipping license upload ..."
       $this.WriteError($errorMessage)
       return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json                                
     }
     else
     {
-      if (($discoverJson.manifests | Measure-Object ).Count -gt 1)
+      if (($discoverJson.referrers | Measure-Object ).Count -gt 1)
       {
-        $errorMessage = "~~~ SBOM: Manifests field for $($rootArtifact) has more than one element! Only considering first element ..."
+        $errorMessage = "~~~ SBOM: Referrers field for $($rootArtifact) has more than one element! Only considering first element ..."
         $this.WriteError($errorMessage)
         return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
       }
 
       # Download Artifacts
       New-Item -ItemType Directory -Path $downloadDirectory
-      $pullCommand = "oras pull -o $downloadDirectory $rootArtifact@$(($discover | ConvertFrom-Json).manifests[0].digest)"
-      $pull = (oras pull -o $downloadDirectory $rootArtifact@$(($discover | ConvertFrom-Json).manifests[0].digest)) -join "`n"
+      $pullCommand = "oras pull -o $downloadDirectory $rootArtifact@$($discoverJson.referrers[0].digest)"
+      $pull = (oras pull -o $downloadDirectory $rootArtifact@$($discoverJson.referrers[0].digest)) -join "`n"
       $pullExitCode = $LASTEXITCODE
       $this.WriteLog("~~~ SBOM: oras pull Exit Code: $($pullExitCode)")
 
