@@ -516,6 +516,7 @@ hull:
           helm.sh/hook-delete-policy: before-hook-creation
         
       'custom-installation-files':
+        enabled: _HT?gt (len ((index . "$").Files.Glob "files/hull-vidispine-addon/installation/sources/*")) 0
         sources:
         - custom-installation-files-setup
         - _HULL_OBJECT_TYPE_DEFAULT_

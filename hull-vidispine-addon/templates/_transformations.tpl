@@ -112,10 +112,12 @@ Icon: |-
   { 
     "secret":{ "secretName": "hull-install" }
   },
+  {{ if (gt (len ($parent.Files.Glob "files/hull-vidispine-addon/installation/sources/*")) 0) }}  
   "custom-installation-files":
   {
     "secret": { "secretName": "custom-installation-files" }
   },
+  {{ end }}
   "etcssl":
   {
     "enabled": {{ if (or $parent.Values.hull.config.general.data.installation.config.customCaCertificates $parent.Values.hull.config.general.data.installation.config.certificateSecrets) }}true{{ else }}false{{ end }},
@@ -177,11 +179,13 @@ Icon: |-
     "subPath": "Installer.ps1"
   },
 {{ end }}
+{{ if (gt (len ($parent.Files.Glob "files/hull-vidispine-addon/installation/sources/*")) 0) }} 
   "custom-installation-files":
   {
     "name": "custom-installation-files",
     "mountPath": "/custom-installation-files"
   },
+{{ end }}
   "etcssl": 
   {
     "enabled": {{ if (or $parent.Values.hull.config.general.data.installation.config.customCaCertificates $parent.Values.hull.config.general.data.installation.config.certificateSecrets) }}true{{ else }}false{{ end }},
