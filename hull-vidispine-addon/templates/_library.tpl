@@ -949,39 +949,31 @@ etcssl:
 
 
 
-{{- define "hull.vidispine.addon.library.systemtype" -}}
+{{- define "hull.vidispine.addon.library.reference" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $toLower := default true (index . "TO_LOWER") -}}
-{{- $systemType := $parent.Values.hull.config.specific.systemType -}}
+{{- $toLower := default false (index . "TO_LOWER") -}}
+{{- $reference := default "" (index (include "hull.util.transformation.get" (dict "PARENT_CONTEXT" $parent "KEY" "key" "REFERENCE" (index . "REFERENCE")) | fromYaml) "key") -}}
 {{- if $toLower -}}
-{{- $systemType | lower -}}
+{{- $reference | lower -}}
 {{- else -}}
-{{- $systemType -}}
+{{- $reference -}}
 {{- end -}}
 {{- end -}}
 
 
 
-{{- define "hull.vidispine.addon.library.systemtype.path" -}}
-{{- $parent := (index . "PARENT_CONTEXT") -}}
-{{- $file := (index . "FILE") -}}
-{{- include "hull.vidispine.addon.library.systemtype" (dict "PARENT_CONTEXT" $parent) -}}/{{- $file -}}
-{{- end -}}
-
-
-
-{{- define "hull.vidispine.addon.library.systemtype.in" -}}
+{{- define "hull.vidispine.addon.library.reference.in" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $check := (index . "CHECK") -}}
 {{- $caseSensitive := default false (index . "CASE_SENSITIVE") -}}
-{{- $systemType := include "hull.vidispine.addon.library.systemtype" (dict "PARENT_CONTEXT" $parent "TO_LOWER" (not $caseSensitive)) -}}
+{{- $reference := include "hull.vidispine.addon.library.reference" (merge (dict "TO_LOWER" (not $caseSensitive)) .) -}}
 {{- if (not $caseSensitive) -}}
 {{- $check = $check | lower -}}
 {{- end -}}
 {{- $checks := regexSplit "," $check -1 -}}
 {{- $result := false -}}
 {{- range $checkValue := $checks -}}
-{{- if (eq $systemType ($checkValue | trim)) -}}
+{{- if (eq $reference ($checkValue | trim)) -}}
 {{- $result = true -}}
 {{- end -}}
 {{- end -}}
@@ -990,16 +982,56 @@ etcssl:
 
 
 
-{{- define "hull.vidispine.addon.library.systemtype.in.conditional.value" -}}
+{{- define "hull.vidispine.addon.library.reference.in.conditional.value" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $check := (index . "CHECK") -}}
 {{- $caseSensitive := default false (index . "CASE_SENSITIVE") -}}
 {{- $valueTrue := (index . "VALUE_TRUE") -}}
 {{- $valueFalse := default "" (index . "VALUE_FALSE") -}}
-{{- $systemTypeIn := include "hull.vidispine.addon.library.systemtype.in" (dict "PARENT_CONTEXT" $parent "CHECK" $check $parent "TO_LOWER" (not $caseSensitive)) -}}
-{{- if $systemTypeIn -}}
+{{- $referenceIn := include "hull.vidispine.addon.library.reference.in" . -}}
+{{- if $referenceIn -}}
 {{- $valueTrue -}}
 {{- else -}}
 {{- $valueFalse }}
 {{- end -}}
+{{- end -}}
+
+
+
+{{- define "hull.vidispine.addon.library.reference.path" -}}
+{{- $parent := (index . "PARENT_CONTEXT") -}}
+{{- $file := (index . "FILE") -}}
+{{- $forceSubfolder := default false (index . "FORCE_SUBFOLDER") -}}
+{{- $reference := include "hull.vidispine.addon.library.reference" . -}}
+{{- if (ne $reference "") -}}
+{{- printf "%s/%s" $reference $file -}}
+{{- else -}}
+{{- if not $forceSubfolder -}}
+{{- printf "%s" $file -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+
+
+{{- define "hull.vidispine.addon.library.systemtype" -}}
+{{- include "hull.vidispine.addon.library.reference" (merge (dict "REFERENCE" "hull.config.specific.systemType") .) -}}
+{{- end -}}
+
+
+
+{{- define "hull.vidispine.addon.library.systemtype.in" -}}
+{{- include "hull.vidispine.addon.library.reference.in" (merge (dict "REFERENCE" "hull.config.specific.systemType") .) -}}
+{{- end -}}
+
+
+
+{{- define "hull.vidispine.addon.library.systemtype.in.conditional.value" -}}
+{{- include "hull.vidispine.addon.library.reference.in.conditional.value" (merge (dict "REFERENCE" "hull.config.specific.systemType") .) -}}
+{{- end -}}
+
+
+
+{{- define "hull.vidispine.addon.library.systemtype.path" -}}
+{{- include "hull.vidispine.addon.library.reference.path" (merge (dict "REFERENCE" "hull.config.specific.systemType") .) -}}
 {{- end -}}

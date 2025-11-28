@@ -11,6 +11,7 @@
     C:\PS> .\Register.ps1 -ConfigFile "C:\\test.yaml"
     C:\PS> .\Register.ps1 -ConfigFile "C:\\test.yaml" -Stage "post-install"
 #>
+
 Param(
   [string]$ConfigFilePath,
   [string]$Stage = 'pre-install'
@@ -240,7 +241,7 @@ function Get-Node
       }
     }
   }
-} 
+}
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $installer = New-Object Installer
@@ -321,7 +322,7 @@ Class Installer
     [Console]::ResetColor()
   }
 
-  [string] GetAbsoluteFilePath([string] $path) 
+  [string] GetAbsoluteFilePath([string] $path, [bool] $forceSubfolder)
   {
     # Get script path
     $currentPath = (Get-Item -Path ".\" -Verbose).FullName
@@ -330,6 +331,15 @@ Class Installer
     {
       $split = $path.split('/')
       $filePath = Join-Path $currentPath "custom-installation-files-$($split[0])" $split[1]
+      if (!(Test-Path $filePath))
+      {
+        if ($forceSubfolder)
+        {
+          throw [Exception]::new("ERROR --> File '$($filePath)' does not exist and 'forceSubfolder' is true.")
+        }
+        $this.WriteLog("**** Did not find file at path '$filePath'. Checking again ignoring subfolder '$split[1]'.")
+        $filePath = Join-Path $currentPath "custom-installation-files" $split[1]
+      }
     }
     else
     {
@@ -448,7 +458,7 @@ Class Installer
     $authHeader = [String]::Empty
 
     $explicitAuthType = $false
-    if ($null -ne $auth.type) 
+    if ($null -ne $auth.type)
     {
       $this.WriteLog("++++ Auth type is explicitly set to '$($auth.type)'")
       $explicitAuthType = $true
@@ -458,7 +468,7 @@ Class Installer
       $this.WriteLog("++++ No explitit auth type is set, selecting first one defined.")
     }
 
-    if ($null -ne $auth.session -and (-not $explicitAuthType -or ($explicitAuthType -and $auth.type -eq "session"))) 
+    if ($null -ne $auth.session -and (-not $explicitAuthType -or ($explicitAuthType -and $auth.type -eq "session")))
     {
       if ($null -ne $this._sessionCookies)
       {
@@ -504,7 +514,7 @@ Class Installer
       {
         if ($headers.ContainsKey($header))
         {
-          $this.WriteLog("++++ OVerwriting Header '$($header)' with value '$($endpointExtraHeaders[$header])' from Endpoint Headers.")                              
+          $this.WriteLog("++++ OVerwriting Header '$($header)' with value '$($endpointExtraHeaders[$header])' from Endpoint Headers.")
         }
         else
         {
@@ -520,7 +530,7 @@ Class Installer
       {
         if ($headers.ContainsKey($header))
         {
-          $this.WriteLog("++++ OVerwriting Header '$($header)' with value '$($entity.extraHeaders[$header])' from Entity Headers.")                              
+          $this.WriteLog("++++ OVerwriting Header '$($header)' with value '$($entity.extraHeaders[$header])' from Entity Headers.")
         }
         else
         {
@@ -921,7 +931,7 @@ Class Installer
               $currentPath = (Get-Item -Path ".\" -Verbose).FullName
               $scriptPath = Join-Path $currentPath $entity.getCustomScriptFromFile
               $this.WriteLog("***** Using getCustomScriptFromFile $($scriptPath)")
-              $scriptblock = Get-Command $scriptPath | Select-Object -ExpandProperty ScriptBlock 
+              $scriptblock = Get-Command $scriptPath | Select-Object -ExpandProperty ScriptBlock
             }
             
             $this.WriteLog("[- Start Script -]")
@@ -1043,7 +1053,7 @@ Class Installer
         }
         else
         {
-          $this.WriteLog("$($jsonkey) not found in JSON response of getCustomScript") 
+          $this.WriteLog("$($jsonkey) not found in JSON response of getCustomScript")
         }
       }
     }
@@ -1149,21 +1159,21 @@ Class Installer
     {
       $decodedJson = $json | ConvertFrom-Json -AsHashTable
       $multiPartFormDataField = @($decodedJson.Keys)[0]
-      $multiPartFormDataFilePath = $this.GetAbsoluteFilePath(@($decodedJson.Values)[0])
+      $multiPartFormDataFilePath = $this.GetAbsoluteFilePath(@($decodedJson.Values)[0], $false)
       $multiPartFormDataFileName = Split-Path $multiPartFormDataFilePath -leaf
       $this.WriteLog("***** MultiPartFormData: Field=$($multiPartFormDataField) FilePath=$($multiPartFormDataFilePath) FileName=$($multiPartFormDataFileName)'")
     
       $fileBytes = [System.IO.File]::ReadAllBytes($multiPartFormDataFilePath);
       $fileEncoded = [System.Text.Encoding]::GetEncoding('UTF-8').GetString($fileBytes);
-      $boundary = [System.Guid]::NewGuid().ToString(); 
+      $boundary = [System.Guid]::NewGuid().ToString();
       $LF = "`r`n";
 
-      $json = ( 
+      $json = (
           "--$boundary",
           "Content-Disposition: form-data; name=`"$($multiPartFormDataField)`"; filename=`"$($multiPartFormDataFileName)`"",
           "Content-Type: application/octet-stream$LF",
           $fileEncoded,
-          "--$boundary--$LF" 
+          "--$boundary--$LF"
       ) -join $LF
 
       $headers["Content-Type"] = "multipart/form-data; boundary=`"$boundary`""
@@ -1272,7 +1282,7 @@ Class Installer
         if ([String]::IsNullOrEmpty($value))
         {
           $this.WriteLog("**** Determined file path '$($path)' as source for mapping'.")
-          $filePath = $this.GetAbsoluteFilePath($path)
+          $filePath = $this.GetAbsoluteFilePath($path, $entry.forceSubfolder)
           $this.WriteLog("**** External Config file found: " + $filePath)
           
           $updateContent = Get-Content -Path $filePath | Out-String
@@ -1307,7 +1317,7 @@ Class Installer
         if ($null -eq $updateContentJson)
         {
           $this.WriteLog("**** No JSON structure found, mapping full contents to Config Key '$($configKey)'")
-          $entity.config.$configKey = $updateContent  
+          $entity.config.$configKey = $updateContent
         }
         else
         {
@@ -1328,7 +1338,7 @@ Class Installer
   [PSCustomObject] ReadConfigFromFile([PSCustomObject] $entity, [int] $statusCode)
   {
     if ($null -ne $entity.readConfigFromFile)
-    {    
+    {
       $currentPath = (Get-Item -Path "./" -Verbose).FullName
 
       $filePath = [String]::Empty
@@ -1336,7 +1346,7 @@ Class Installer
       
       $contextPath = $entity.readConfigFromFile.path
 
-      if ([string]::IsNullOrWhitespace($entity.readConfigFromFile.putPath) -and 
+      if ([string]::IsNullOrWhitespace($entity.readConfigFromFile.putPath) -and
         [string]::IsNullOrWhitespace($entity.readConfigFromFile.postPath))
       {
         $this.WriteLog("**** Reading File from 'readConfigFromFile.path' value, no 'putPath' or 'postPath' set.")
