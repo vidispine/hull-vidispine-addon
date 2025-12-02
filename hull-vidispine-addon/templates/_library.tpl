@@ -982,6 +982,20 @@ etcssl:
 
 
 
+{{- define "hull.vidispine.addon.library.reference.conditional.value" -}}
+{{- $parent := (index . "PARENT_CONTEXT") -}}
+{{- $valueTrue := (index . "VALUE_TRUE") -}}
+{{- $valueFalse := default "" (index . "VALUE_FALSE") -}}
+{{- $reference := include "hull.vidispine.addon.library.reference" (merge (dict "TO_LOWER" false) .) -}}
+{{- if $reference -}}
+{{- $valueTrue -}}
+{{- else -}}
+{{- $valueFalse }}
+{{- end -}}
+{{- end -}}
+
+
+
 {{- define "hull.vidispine.addon.library.reference.in.conditional.value" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $check := (index . "CHECK") -}}

@@ -1334,6 +1334,24 @@ Upon providing one or a list of values in the `CHECK` parameters, the return val
 
 
 
+### hull.vidispine.addon.library.refernce.conditional.value
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_REFERENCE_: A reference in the form of a `_HT*` reference, e.g. `hull.config.specific.my_switch`, which may be used to look up a field in `values.yaml`. The reference must be a boolean field.
+
+_VALUE_TRUE_: The value to return in case the value resolved from _REFERENCE_ is `true`
+
+_VALUE_FALSE_: The value to return in case the value resolved from _REFERENCE_ is `false`
+
+Usage:
+
+Checks whether the value resolved from _REFERENCE_ is `true` or `false` and returns provided `VALUE_TRUE` or `VALUE_FALSE` in the respective case.
+
+
+
 ### hull.vidispine.addon.library.refernce.in.conditional.value
 
 Parameters:
