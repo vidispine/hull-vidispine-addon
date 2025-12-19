@@ -866,19 +866,19 @@ etcssl:
 'DBUSER':
   valueFrom:
     secretKeyRef:
-      name: auth
+      name: "{{ $component }}"
       key: AUTH_BASIC_DATABASE_USERNAME
       optional: true
 'DBPASSWORD':
   valueFrom:
     secretKeyRef:
-      name: auth
+      name: "{{ $component }}"
       key: AUTH_BASIC_DATABASE_PASSWORD
       optional: true
 'DBNAME':
   valueFrom:
     secretKeyRef:
-      name: auth
+      name: "{{ $component }}"
       key: AUTH_BASIC_DATABASE_NAME
       optional: true
 'DBUSERPOSTFIX':
