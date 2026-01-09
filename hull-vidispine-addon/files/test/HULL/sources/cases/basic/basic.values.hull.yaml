@@ -52,12 +52,9 @@ hull:
       command_two: command-two
       string_defined: i_am_string
       string_empty: ""
-      string_undefined: 
       number_defined: 999
-      number_undefined: 
       bool_defined_true: true
       bool_defined_false: false
-      bool_undefined: 
       annotations_dict:
         a: first
         b: second

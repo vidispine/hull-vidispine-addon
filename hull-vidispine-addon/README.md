@@ -179,7 +179,7 @@ Describes a particular entity on a subresource on an endpoint which is communica
 | `customGetScriptJsonResponseConfigReplacements` | An optional dictionary with key value pairs where the keys specify placeholders that are supposed to be contained in the `config` contents and values specify keys in a JSON response from `getCustomScript` which are supposed to be set by the script. <br><br> The idea behind this setting is to allow reading custom data from an API, store the results in a JSON key value dictionary and use the values to dynamically modify the `config` contents. It only works if a) a `getCustomScript` is used, b) the response JSON from the script populates keys with values, c) the `config` contains placeholder keys that are substituted with the JSON response values.<br><br>As an example let us assume a case where it is not possible to address a particular object instance via a GET call with an `identifier` because the `identifier` was dynamically created by a prior call and it is unknown if the object already exists or not. However it is known that for example a `name` property exists on the instances which is also unique for all object instances. To find out if an instance already exists, it may be possible to get a list of all objects of a particular kind and filter them via their `name` property in order to find the instance in question if it already exists, this would be the content of a `customGetScript`. Thus the JSON response from `getCustomScript` could look like this: `{"statusCode":200, "identifier":"123923213123"` in case an instance was already found via its name. Now it becomes possible to setup the <br><br>`customGetScriptJsonResponseConfigReplacements:`<br>&#160;&#160;`'$$identifier$$':`&#160;`identifier`<br><br>and a<br><br>`config:`<br>&#160;&#160;`id:`&#160;`'$$identifier$$'`<br>&#160;&#160;`value:`&#160;`something`<br><br>The value of `$$identifier$$` is then replaced in the `config` and now when doing a PUT call the correct object is being updated:<br><br>`config:`<br>&#160;&#160;`id:`&#160;`'123923213123'`<br>&#160;&#160;`value:`&#160;`something`<br><br> | | `GET`
 | `readConfigFromFile` | Allows to either map complete file contents to the `config` value or the contents from a particular JSON key from a file to `config`. The content of this field if provided must be a dictionary which can have the following fields: <br><br>`path`:  mandatory and points to the mounted file's path, the source file can be of any text format. Optionally you can additionally specify `putPath` and/or `postPath` to use different source files depending on PUT or POST case. Note that when specifying `putPath` and/or `postPath` you also need to specify `path` which is resorted to in case the PUT or POST case is not matched with a `putPath` or `postPath`<br> `key`: optional and if specified declares the source files JSON key to import from, for this to work the source file must be a JSON file.<br><br>To use this feature, the file being refered to needs to be mounted into the `hull-install` or `hull-configure` job's pod via providing an additional `volume` and `volumeMount`. | | `POST`<br>`PUT` | `readConfigFromFile:`<br>&#160;&#160;`path:`&#160;`workflow-deploy.json`
 | `readConfigValuesFromFiles` | OBSOLETE: Use `updateConfigValues` and set a 'path' instead! <br><br>Allows to either map complete file contents to a target JSON key in `config` or the contents from a particular JSON key from a file to a target JSON key in `config`. The content of this field if provided must be a dictionary where the key is the target JSON key in `config` and the value has two fields: <br><br>`path`:  mandatory and points to the mounted file's path, the source file can be of any text format <br> `key`: optional and if specified declares the source files JSON key to import, for this to work the source file must be a JSON file.<br><br>The difference to `readConfigFromFile` is that `readConfigValuesFromFiles` targets specific keys at JSON root level and does not replace the complete `config`, also you can first insert all of an external file into `config` using `readConfigFromFile` and then overwrite dedicated values using `readConfigValuesFromFiles`.<br><br>To use this feature, the files being refereed to needs to be mounted into the `hull-install` or `hull-configure` job's pod via providing an additional `volume` and `volumeMount`. | | `POST`<br>`PUT` | `readConfigValuesFromFiles:`<br>&#160;&#160;`description:`<br>&#160;&#160;&#160;&#160;`path:`&#160;`workflow-description.txt`<br>&#160;&#160;`definition:`<br>&#160;&#160;&#160;&#160;`path:`&#160;`workflow-definition.json`<br>&#160;&#160;&#160;&#160;`key:`&#160;`Definition`
-| `updateConfigValues` | Allows to overwrite a target JSON key in `config` after the `config` has been loaded either from `config` field value or via `readConfigFromFile`. Depending on configuration of an entry here, the source for the overwrite can be either a value given inline or the contents from a particular JSON key from an external file or a complete external file. <br><br>The content of this field if provided must be a dictionary where the key is the target JSON key in `config` and the value has one or more of the following fields: <br><br>`value`: the value to overwrite target `key`s value in `config` with. If provided, `path` and `key` fields are ignored. Optionally you can additionally specify `putValue` and/or `postValue` to use different updates depending on PUT or POST case. Note that when specifying `putValue` and/or `postValue` you also need to specify `value` which is resorted to in case the PUT or POST case is not matched with a `putValue` or `postValue`<br>`path`:  points to the mounted file's path, the source file can be of any text format. The `path` is relative to the `files/hull-vidispine-addon/installation/sources` folder and may contain a single subfolder seperated by `/` in the `path` fields value. Same as with `value`, optionally you can additionally specify `putPath` and/or `postPath` to use different source files depending on PUT or POST case. Note that when specifying `putPath` and/or `postPath` you also need to specify `path` which is resorted to in case the PUT or POST case is not matched with a `putPath` or `postPath`<br> `key`: optional when `path` is provided and if specified declares the source files JSON key to import from, for this to work the source file must be a JSON file.<br><br>The difference to `readConfigFromFile` is that `updateConfigValues` targets specific keys at JSON root level and does not replace the complete `config`. Also you can first insert all of an external file into `config` using `readConfigFromFile` and then overwrite dedicated values using `updateConfigValues` by referencing a source via `path` or directly via `value`.<br><br>To use this feature with the `path` option, the files being refered to need to be mounted into the `hull-install` or `hull-configure` job's pod via providing an additional `volume` and `volumeMount` which is handled under the hood automatically. Physical files only need to be stored under `files/hull-vidispine-addon/installation/sources` or a direct subfolder of this path. | | `POST`<br>`PUT` | `readConfigValuesFromFiles:`<br>&#160;&#160;`description:`<br>&#160;&#160;&#160;&#160;`path:`&#160;`workflow-description.txt`<br>&#160;&#160;`definition:`<br>&#160;&#160;&#160;&#160;`path:`&#160;`workflows/workflow-definition.json`<br>&#160;&#160;&#160;&#160;`key:`&#160;`Definition`
+| `updateConfigValues` | Allows to overwrite a target JSON key in `config` after the `config` has been loaded either from `config` field value or via `readConfigFromFile`. Depending on configuration of an entry here, the source for the overwrite can be either a value given inline or the contents from a particular JSON key from an external file or a complete external file. <br><br>The content of this field if provided must be a dictionary where the key is the target JSON key in `config` and the value has one or more of the following fields: <br><br>`value`: the value to overwrite target `key`s value in `config` with. If provided, `path` and `key` fields are ignored. Optionally you can additionally specify `putValue` and/or `postValue` to use different updates depending on PUT or POST case. Note that when specifying `putValue` and/or `postValue` you also need to specify `value` which is resorted to in case the PUT or POST case is not matched with a `putValue` or `postValue`<br><br>`path`:  points to the mounted file's path, the source file can be of any text format. The `path` is relative to the `files/hull-vidispine-addon/installation/sources` folder and may contain a single subfolder seperated by `/` in the `path` fields value. Same as with `value`, optionally you can additionally specify `putPath` and/or `postPath` to use different source files depending on PUT or POST case. Note that when specifying `putPath` and/or `postPath` you also need to specify `path` which is resorted to in case the PUT or POST case is not matched with a `putPath` or `postPath`<br><br>`forceSubfolder`: By default, when providing a `path` including a subfolder, if the file is not found within a given subfolder in `path`, the script checks whether a file of the same name is found in the root directory `files/hull-vidispine-addon/installation/sources` and loads it if it exists. This allows to provide default files and overwriting them only when needed. However, when a subfolder is used and it shall be enforced that the file must exist in the exact `path` within the subfolder, setting additional property `forceSubfolder` to true will raise an error if the file is not existing instead of checking the root folder for it.<br><br>`key`: optional when `path` is provided and if specified declares the source files JSON key to import from, for this to work the source file must be a JSON file.<br><br>The difference to `readConfigFromFile` is that `updateConfigValues` targets specific keys at JSON root level and does not replace the complete `config`. Also you can first insert all of an external file into `config` using `readConfigFromFile` and then overwrite dedicated values using `updateConfigValues` by referencing a source via `path` or directly via `value`.<br><br>To use this feature with the `path` option, the files being refered to need to be mounted into the `hull-install` or `hull-configure` job's pod via providing an additional `volume` and `volumeMount` which is handled under the hood automatically. Physical files only need to be stored under `files/hull-vidispine-addon/installation/sources` or a direct subfolder of this path. | | `POST`<br>`PUT` | `readConfigValuesFromFiles:`<br>&#160;&#160;`description:`<br>&#160;&#160;&#160;&#160;`path:`&#160;`workflow-description.txt`<br>&#160;&#160;`definition:`<br>&#160;&#160;&#160;&#160;`path:`&#160;`workflows/workflow-definition.json`<br>&#160;&#160;&#160;&#160;`key:`&#160;`Definition`
 | `config` | The free-form body of the request. For `contentType` of `application/json` the content of `config` is YAML so when PUTting or POSTing to APIs the content is converted from YAML to JSON and sent with header `Content-Type: application/json`. For `contentType` `application/xml` and `text/plain` the `config` is a string which must resemble proper XML for usage with `contentType` `application/xml`. If there is sensitive data in the `config` you can use the `${env:<ENVIRONMENT_VARIABLE>}` syntax to replace the placeholers with the actual environment variable content during processing. Normally all sensitive data is contained in a charts `auth` secret and since this secret is premounted into the `hull-install` and `hull-configure` containers, the data is accessible and can be referenced without further work. | | `POST`<br>`PUT` | `Name:`&#160;`Publish`<br>`Guid:`&#160;`c9689fe0-a0e9-40d7-af82-500bba342b62`<br>`UseCaseGroupName:`&#160;`Publish`<br>`UseCaseGroupOrderNo:`&#160;`2`<br>`OrderNo:`&#160;`1`<br>`ProductGuid:`<br>`- 62e052b1-6864-4502-87dc-944be4f5d783`<br>`UseCaseType:` `dynamic`<br>`Json:`&#160;`|`<br>&#160;&#160;`{"Overview":{"AllowToggleView":false,`<br>&#160;&#160;`"View":"detailed","Columns":[]},`<br>&#160;&#160;`"Fields:"`<br>&#160;&#160;`[{"Name":"targetStorage","DisplayName":"Target`<br>&#160;&#160;`Storage","Type":"VS_Storage","IsRequired":true,`<br>&#160;&#160;`"InputProperties":{"Storage":"Storage"}},`<br>&#160;&#160;`{"Name":"userSelectableWF",`<br>&#160;&#160;`"DisplayName":"User-Selectable`&#160;`Workflows",`<br>&#160;&#160;`"Type":"Multiple_Workflow",`<br>&#160;&#160;`"IsRequired":true},`<br>&#160;&#160;`{"Name":"userSelectableMetadata",`<br>&#160;&#160;`"DisplayName":"User-Selectable Metadata",`<br>&#160;&#160;`"Type":"CustomInput_MaskedControl"}],"Actions":`<br>&#160;&#160;`[{"IsEnabled":true,"Name":"Edit","OrderNo":1,`<br>&#160;&#160;`"TooltipMessage":"Edit this Publish `<br>&#160;&#160;`Configuration","Type":"edit"},`<br>&#160;&#160;`{"IsEnabled":true,`<br>&#160;&#160;`"Name":"Workflow Designer","OrderNo":3,`<br>&#160;&#160;`"TooltipMessage":"Open Workflow Designer",`<br>&#160;&#160;`"Type":"openWorkflow",`<br>&#160;&#160;`"SystemEndpointName":"workflow designer"}]`<br>&#160;&#160;`,"AllowMultipleConfig":false}`
 | `register` | If set to true, the entity will be created or modified | `false` | `POST` <br> `PUT`
 | `overwriteExisting` | The default behavior is to not overwrite existing entities in case they already exist. Set this field to `true` to overwrite any existing entity. | `false` | `POST` <br> `PUT`
@@ -242,11 +242,11 @@ Some of the keys have a numerical prefix which guarantees the order of execution
 
 Besides the ability to specify the configuration for `hull-vidispine-addon` it is also possible to provide it in parts via external files stored in your Helm chart. The reason for this is mainly to reduce the overall size and improve readability of the `values.yaml`. Hereby it is possible to mix dictionary entries from `values.yaml` definitions with those defined in external files as shown next. Technically two different methods are provided for integrating configuration content from external files with a different scope of application and technical implications.  
 
-The first `installation.yaml merging` approach is suitable for providing larger configuration sections from external files, the external files content is merged at Helm chart rendering with that of the `values.yaml` to create the `installation.yaml` configuration. Hence the merged result of inline `values.yaml` and all files provided via this method will be viewable in the `installation.yaml` content of the `hull-install` secret. This is suitable for most cases where not too large files need to be managed such as UseCaseDefinitions or UseCaseConfigurations.
+The first `installation.yaml merging` approach is suitable for providing larger configuration sections from external files, the external files content is merged at Helm chart rendering with that of the `values.yaml` to create the `installation.yaml` configuration. Hence the merged result of inline `values.yaml` and all files provided via this method will be viewable in the `installation.yaml` content of the `hull-install` ConfigMap. This is suitable for most cases where not too large files need to be managed such as UseCaseDefinitions or UseCaseConfigurations.
 
-The second `installation.yaml reference` approach allows to place separate files into a dedicated folder of the parent's Helm Chart (`files/hull-vidispine-addon/installation/sources`) from which they are stored automatically into a secret which in turn is accessible for the `hull-install` and `hull-configure` job pods. Using the `readConfigFromFile` and `updateConfigValues` instructions available on the `entity` specification level the file contents can serve as the complete `config` content or can be mapped to JSON properties of the `config` field. Use this approach for rather large files (licenses, workflow definitions, ...). To better organize the external files sourced via the `installation.yaml reference` approach you can optionally put the files into direct subfolders of `files/hull-vidispine-addon/installation/sources`. The subfolder names need to be exclusively alphabetical letters in lowercase (eg. `workflows`, `rules`, `ucds`, ...) and when refering to such a file with a `path` directive, prefix the filename with the subfolder name and a `/` (eg. `workflows/mygreatworkflow.bpmn`, `ucds/watchfolder_ingest.json`, ...). Note that the maximum number of subfolders currently usable is limited to 20.
+The second `installation.yaml reference` approach allows to place separate files into a dedicated folder of the parent's Helm Chart (`files/hull-vidispine-addon/installation/sources`) from which they are stored automatically into a ConfigMap which in turn is accessible for the `hull-install` and `hull-configure` job pods. Using the `readConfigFromFile` and `updateConfigValues` instructions available on the `entity` specification level the file contents can serve as the complete `config` content or can be mapped to JSON properties of the `config` field. Use this approach for rather large files (licenses, workflow definitions, ...). To better organize the external files sourced via the `installation.yaml reference` approach you can optionally put the files into direct subfolders of `files/hull-vidispine-addon/installation/sources`. The subfolder names need to be exclusively alphabetical letters in lowercase or `-` (eg. `workflows`, `rules`, `extra-rules`, `ucds`, ...) and when refering to such a file with a `path` directive, prefix the filename with the subfolder name and a `/` (eg. `workflows/mygreatworkflow.bpmn`, `ucds/watchfolder_ingest.json`, ...). Note that the maximum number of subfolders currently usable is limited to 20.
 
-When choosing either one approach, care needs to be taken to not overstep the maximum size of the Helm Charts versioned manifest secrets. For each release, Helm collects the contents of the `values.yaml`, all template files contents and all other files contained in the Helm Chart. The sum of this information must not exceed 1.5 MB of data, otherwise installation via Helm will fail. Note that the `installation.yaml merging` approach will not create additional secrets in your cluster, however it duplicates the external files data uncompresed into `values.yaml`. Using the `installation.yaml reference` approach the contents of the files imported only exists once in the overall manifest (as the source files contents) so it can be crucial for larger file contents to import them the second way to stay within the size limits. If the overall size of files in the `files/hull-vidispine-addon/installation/sources` starts exceeding the 1.5 mb mark start organizing them in subfolders, for each subfolder a new secret is created with 1.5 mb capacity.
+When choosing either one approach, care needs to be taken to not overstep the maximum size of the Helm Charts versioned manifest secrets. For each release, Helm collects the contents of the `values.yaml`, all template files contents and all other files contained in the Helm Chart. The sum of this information must not exceed 1.5 MB of data, otherwise installation via Helm will fail. Note that the `installation.yaml merging` approach will not create additional ConfigMaps in your cluster, however it duplicates the external files data uncompresed into `values.yaml`. Using the `installation.yaml reference` approach the contents of the files imported only exists once in the overall manifest (as the source files contents) so it can be crucial for larger file contents to import them the second way to stay within the size limits. If the overall size of files in the `files/hull-vidispine-addon/installation/sources` starts exceeding the 1.5 mb mark start organizing them in subfolders, for each subfolder a new ConfigMap is created with 1.5 mb capacity.
 
 
 
@@ -1300,6 +1300,98 @@ Performs `lookup` Helm templating command to lookup a secret in the current name
 
 
 
+### hull.vidispine.addon.library.reference
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_REFERENCE_: A reference in the form of a `_HT*` reference, e.g. `hull.config.specific.my_switch`, which may be used to look up a field in `values.yaml`.
+
+_TO_LOWER_: If true, the retrieved value for _REFERENCE_ is converted to lower case.
+
+Usage:
+
+Looks up a value from the `values.yaml` using a `_HT*` transformation with _REFERENCE_ as argument. Optionally the returned value can be lower cased before returning it.
+
+
+
+### hull.vidispine.addon.library.reference.in
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_REFERENCE_: A reference in the form of a `_HT*` reference, e.g. `hull.config.specific.my_switch`, which may be used to look up a field in `values.yaml`.
+
+_CHECK_: One or more values. If multiple values are used they need to be seperated with `,`
+
+_CASE_SENSITIVE_: If true, the check of value retrieved by _REFERENCE_ against `CHECK` values is considering the casing, otherwise it is case-invariant which is the default
+
+Usage:
+
+Upon providing one or a list of values in the `CHECK` parameters, the return value indicates whether the current value resolved from _REFERENCE_ is in the given values or not. Optionally consider case in the check by setting `_CASE_SENSITIVE_` to `true`.
+
+
+
+### hull.vidispine.addon.library.refernce.conditional.value
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_REFERENCE_: A reference in the form of a `_HT*` reference, e.g. `hull.config.specific.my_switch`, which may be used to look up a field in `values.yaml`. The reference must be a boolean field.
+
+_VALUE_TRUE_: The value to return in case the value resolved from _REFERENCE_ is `true`
+
+_VALUE_FALSE_: The value to return in case the value resolved from _REFERENCE_ is `false`
+
+Usage:
+
+Checks whether the value resolved from _REFERENCE_ is `true` or `false` and returns provided `VALUE_TRUE` or `VALUE_FALSE` in the respective case.
+
+
+
+### hull.vidispine.addon.library.refernce.in.conditional.value
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_REFERENCE_: A reference in the form of a `_HT*` reference, e.g. `hull.config.specific.my_switch`, which may be used to look up a field in `values.yaml`.
+
+_CHECK_: One or more values. If multiple values are used they need to be seperated with `,`
+
+_CASE_SENSITIVE_: If true, the check of the value resolved from _REFERENCE_ against `CHECK` values is considering the casing, otherwise it is case-invariant which is the default
+
+_VALUE_TRUE_: The value to return in case the value resolved from _REFERENCE_ is contained in the `CHECK` values
+
+_VALUE_FALSE_: The value to return in case the value resolved from _REFERENCE_ is not contained in the `CHECK` values
+
+Usage:
+
+Checks whether the value resolved from _REFERENCE_ is in a list of values provided by `CHECK` which is the same as `hull.vidispine.addon.library.reference.in`, but returns provided `VALUE_TRUE` or `VALUE_FALSE` in the respective case.
+
+
+
+### hull.vidispine.addon.library.reference.path
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_REFERENCE_: A reference in the form of a `_HT*` reference, e.g. `hull.config.specific.my_switch`, which may be used to look up a field in `values.yaml`. In this method that resolved value determines a subfolder to be returned in the file path. Optional field unless `FORCE_SUBFOLDER` is not set to true (see below), if it returns empty, no subfolder is added to the returned path. 
+
+_FILE_: The name of the file to get the relative path for
+
+_FORCE_SUBFOLDER_: If true, a subfolder must be present in the path to be returned. If no subfolder is resolved via the _REFERENCE_ field, the complete path returned is empty.
+
+Usage:
+
+Can be called to dynamically determine a subfolder for a file to load depending on another fields value in the `values.yaml`.
+
+
+
 ### hull.vidispine.addon.library.systemtype
 
 Parameters:
@@ -1311,20 +1403,6 @@ _TO_LOWER_: If true, the `systemType` value is converted to lower case
 Usage:
 
 Looks up the `systemType` which is expected to be set at `.Values.hull.config.specific.systemType` and optionally lower cases it before returning it.
-
-
-
-### hull.vidispine.addon.library.systemtype.path
-
-Parameters:
-
-_PARENT_CONTEXT_: The Helm charts global context
-
-_FILE_: The file to retrieve from the `systemType` specific folder
-
-Usage:
-
-Returns a path constructed from `systemType`/`FILE` so a particular file for the given system.
 
 
 
@@ -1361,3 +1439,19 @@ _VALUE_FALSE_: The value to return in case `systemType` is not contained in the 
 Usage:
 
 Checks whether `systemType` is in a list of values provided by `CHECK` which is the same as `hull.vidispine.addon.library.systemtype.in`, but returns provided `VALUE_TRUE` or `VALUE_FALSE` in the respective case.
+
+
+
+### hull.vidispine.addon.library.systemtype.path
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_FILE_: The file to retrieve from the `systemType` specific folder
+
+_FORCE_SUBFOLDER_: If true, a subfolder must be present in the path to be returned. If no subfolder is resolved via the `systemType` field, the complete path returned is empty.
+
+Usage:
+
+Returns a path constructed from `systemType`/`FILE` so a particular file for the given system.

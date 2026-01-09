@@ -749,9 +749,6 @@ hull:
                 string_empty:
                   enabled: true
                   value: _HT*hull.config.specific.string_empty
-                string_undefined:
-                  enabled: true
-                  value: _HT*hull.config.specific.string_undefined
               envFrom:
                 bool_defined_false:
                   configMapRef:
@@ -763,16 +760,9 @@ hull:
                     name: bool_defined_true
                     staticName: true
                     optional: _HT*hull.config.specific.bool_defined_true
-                #bool_undefined:
-                #  configMapRef:
-                #    name: bool_undefined
-                #    staticName: true
-                #    optional: _HT*hull.config.specific.bool_undefined
               ports:
                 number_defined: 
                   containerPort: _HT*hull.config.specific.number_defined
-                #number_undefined: 
-                #  containerPort: _HT*hull.config.specific.number_undefined
 
             internal_one:
               image:

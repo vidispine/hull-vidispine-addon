@@ -110,12 +110,12 @@ Icon: |-
 {
   "installation":
   { 
-    "secret":{ "secretName": "hull-install" }
+    "configMap":{ "name": "hull-install" }
   },
   {{ if (gt (len ($parent.Files.Glob "files/hull-vidispine-addon/installation/sources/*")) 0) }}  
   "custom-installation-files":
   {
-    "secret": { "secretName": "custom-installation-files" }
+    "configMap": { "name": "custom-installation-files" }
   },
   {{ end }}
   "etcssl":
@@ -150,9 +150,9 @@ Icon: |-
   {{ $_ := set $processedDict $folder "true" }}
   "custom-installation-files-{{ $folder }}":  
   {
-      secret: 
+      configMap: 
       {
-        secretName: "custom-installation-files-{{ $folderCount }}"
+        name: "custom-installation-files-{{ $folderCount }}"
       }
   },
   {{ end }}
@@ -237,7 +237,7 @@ Icon: |-
 
 
 
-{{ define "hull.vidispine.addon.sources.folder.secret" }}
+{{ define "hull.vidispine.addon.sources.folder.configmap" }}
 {{ $parent := (index . "PARENT_CONTEXT") }}
 {{ $folderIndex := (index . "FOLDER_INDEX") }}
 {
@@ -259,7 +259,7 @@ Icon: |-
 
 
 
-{{- define "hull.vidispine.addon.sources.folder.secret.count" -}}
+{{- define "hull.vidispine.addon.sources.folder.configmap.count" -}}
 {{- $parent := (index . "PARENT_CONTEXT") -}}
 {{- $folderIndex := (index . "FOLDER_INDEX") -}}
 {{- $processedDict := dict -}}
