@@ -8,8 +8,7 @@
         "null"
       ],
       "enum": [
-        "v1",
-        "resource.k8s.io/v1alpha2"
+        "v1"
       ]
     },
     "code": {
@@ -59,7 +58,8 @@
           "type": [
             "array",
             "null"
-          ]
+          ],
+          "x-kubernetes-list-type": "atomic"
         },
         "group": {
           "description": "The group attribute of the resource associated with the status StatusReason.",
@@ -181,11 +181,6 @@
       "group": "",
       "kind": "Status",
       "version": "v1"
-    },
-    {
-      "group": "resource.k8s.io",
-      "kind": "Status",
-      "version": "v1alpha2"
     }
   ],
   "additionalProperties": false,

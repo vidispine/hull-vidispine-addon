@@ -88,6 +88,7 @@
                   "array",
                   "null"
                 ],
+                "x-kubernetes-list-type": "set",
                 "x-kubernetes-patch-strategy": "merge"
               },
               "generateName": {
@@ -183,7 +184,8 @@
                 "type": [
                   "array",
                   "null"
-                ]
+                ],
+                "x-kubernetes-list-type": "atomic"
               },
               "name": {
                 "description": "Name must be unique within a namespace. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names",
@@ -252,6 +254,10 @@
                   "array",
                   "null"
                 ],
+                "x-kubernetes-list-map-keys": [
+                  "uid"
+                ],
+                "x-kubernetes-list-type": "map",
                 "x-kubernetes-patch-merge-key": "uid",
                 "x-kubernetes-patch-strategy": "merge"
               },
@@ -290,10 +296,10 @@
                 "description": "HorizontalPodAutoscalerBehavior configures the scaling behavior of the target in both Up and Down directions (scaleUp and scaleDown fields respectively).",
                 "properties": {
                   "scaleDown": {
-                    "description": "HPAScalingRules configures the scaling behavior for one direction. These Rules are applied after calculating DesiredReplicas from metrics for the HPA. They can limit the scaling velocity by specifying scaling policies. They can prevent flapping by specifying the stabilization window, so that the number of replicas is not set instantly, instead, the safest value from the stabilization window is chosen.",
+                    "description": "HPAScalingRules configures the scaling behavior for one direction via scaling Policy Rules and a configurable metric tolerance.\n\nScaling Policy Rules are applied after calculating DesiredReplicas from metrics for the HPA. They can limit the scaling velocity by specifying scaling policies. They can prevent flapping by specifying the stabilization window, so that the number of replicas is not set instantly, instead, the safest value from the stabilization window is chosen.\n\nThe tolerance is applied to the metric values and prevents scaling too eagerly for small metric variations. (Note that setting a tolerance requires the beta HPAConfigurableTolerance feature gate to be enabled.)",
                     "properties": {
                       "policies": {
-                        "description": "policies is a list of potential scaling polices which can be used during scaling. At least one policy must be specified, otherwise the HPAScalingRules will be discarded as invalid",
+                        "description": "policies is a list of potential scaling polices which can be used during scaling. If not set, use the default values: - For scale up: allow doubling the number of pods, or an absolute change of 4 pods in a 15s window. - For scale down: allow all pods to be removed in a 15s window.",
                         "items": {
                           "description": "HPAScalingPolicy is a single policy which must hold true for a specified past interval.",
                           "properties": {
@@ -342,6 +348,22 @@
                         "type": [
                           "integer",
                           "null"
+                        ]
+                      },
+                      "tolerance": {
+                        "oneOf": [
+                          {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          }
                         ]
                       }
                     },
@@ -352,10 +374,10 @@
                     "additionalProperties": false
                   },
                   "scaleUp": {
-                    "description": "HPAScalingRules configures the scaling behavior for one direction. These Rules are applied after calculating DesiredReplicas from metrics for the HPA. They can limit the scaling velocity by specifying scaling policies. They can prevent flapping by specifying the stabilization window, so that the number of replicas is not set instantly, instead, the safest value from the stabilization window is chosen.",
+                    "description": "HPAScalingRules configures the scaling behavior for one direction via scaling Policy Rules and a configurable metric tolerance.\n\nScaling Policy Rules are applied after calculating DesiredReplicas from metrics for the HPA. They can limit the scaling velocity by specifying scaling policies. They can prevent flapping by specifying the stabilization window, so that the number of replicas is not set instantly, instead, the safest value from the stabilization window is chosen.\n\nThe tolerance is applied to the metric values and prevents scaling too eagerly for small metric variations. (Note that setting a tolerance requires the beta HPAConfigurableTolerance feature gate to be enabled.)",
                     "properties": {
                       "policies": {
-                        "description": "policies is a list of potential scaling polices which can be used during scaling. At least one policy must be specified, otherwise the HPAScalingRules will be discarded as invalid",
+                        "description": "policies is a list of potential scaling polices which can be used during scaling. If not set, use the default values: - For scale up: allow doubling the number of pods, or an absolute change of 4 pods in a 15s window. - For scale down: allow all pods to be removed in a 15s window.",
                         "items": {
                           "description": "HPAScalingPolicy is a single policy which must hold true for a specified past interval.",
                           "properties": {
@@ -404,6 +426,22 @@
                         "type": [
                           "integer",
                           "null"
+                        ]
+                      },
+                      "tolerance": {
+                        "oneOf": [
+                          {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          }
                         ]
                       }
                     },
@@ -544,7 +582,8 @@
                                         "type": [
                                           "array",
                                           "null"
-                                        ]
+                                        ],
+                                        "x-kubernetes-list-type": "atomic"
                                       }
                                     },
                                     "required": [
@@ -560,7 +599,8 @@
                                   "type": [
                                     "array",
                                     "null"
-                                  ]
+                                  ],
+                                  "x-kubernetes-list-type": "atomic"
                                 },
                                 "matchLabels": {
                                   "additionalProperties": {
@@ -718,7 +758,8 @@
                                         "type": [
                                           "array",
                                           "null"
-                                        ]
+                                        ],
+                                        "x-kubernetes-list-type": "atomic"
                                       }
                                     },
                                     "required": [
@@ -734,7 +775,8 @@
                                   "type": [
                                     "array",
                                     "null"
-                                  ]
+                                  ],
+                                  "x-kubernetes-list-type": "atomic"
                                 },
                                 "matchLabels": {
                                   "additionalProperties": {
@@ -867,7 +909,8 @@
                                         "type": [
                                           "array",
                                           "null"
-                                        ]
+                                        ],
+                                        "x-kubernetes-list-type": "atomic"
                                       }
                                     },
                                     "required": [
@@ -883,7 +926,8 @@
                                   "type": [
                                     "array",
                                     "null"
-                                  ]
+                                  ],
+                                  "x-kubernetes-list-type": "atomic"
                                 },
                                 "matchLabels": {
                                   "additionalProperties": {
@@ -1051,7 +1095,7 @@
                       "additionalProperties": false
                     },
                     "type": {
-                      "description": "type is the type of metric source.  It should be one of \"ContainerResource\", \"External\", \"Object\", \"Pods\" or \"Resource\", each mapping to a matching field in the object. Note: \"ContainerResource\" type is available on when the feature-gate HPAContainerMetrics is enabled",
+                      "description": "type is the type of metric source.  It should be one of \"ContainerResource\", \"External\", \"Object\", \"Pods\" or \"Resource\", each mapping to a matching field in the object.",
                       "type": "string"
                     }
                   },
@@ -1334,7 +1378,8 @@
                                         "type": [
                                           "array",
                                           "null"
-                                        ]
+                                        ],
+                                        "x-kubernetes-list-type": "atomic"
                                       }
                                     },
                                     "required": [
@@ -1350,7 +1395,8 @@
                                   "type": [
                                     "array",
                                     "null"
-                                  ]
+                                  ],
+                                  "x-kubernetes-list-type": "atomic"
                                 },
                                 "matchLabels": {
                                   "additionalProperties": {
@@ -1501,7 +1547,8 @@
                                         "type": [
                                           "array",
                                           "null"
-                                        ]
+                                        ],
+                                        "x-kubernetes-list-type": "atomic"
                                       }
                                     },
                                     "required": [
@@ -1517,7 +1564,8 @@
                                   "type": [
                                     "array",
                                     "null"
-                                  ]
+                                  ],
+                                  "x-kubernetes-list-type": "atomic"
                                 },
                                 "matchLabels": {
                                   "additionalProperties": {
@@ -1643,7 +1691,8 @@
                                         "type": [
                                           "array",
                                           "null"
-                                        ]
+                                        ],
+                                        "x-kubernetes-list-type": "atomic"
                                       }
                                     },
                                     "required": [
@@ -1659,7 +1708,8 @@
                                   "type": [
                                     "array",
                                     "null"
-                                  ]
+                                  ],
+                                  "x-kubernetes-list-type": "atomic"
                                 },
                                 "matchLabels": {
                                   "additionalProperties": {
@@ -1766,7 +1816,7 @@
                       "additionalProperties": false
                     },
                     "type": {
-                      "description": "type is the type of metric source.  It will be one of \"ContainerResource\", \"External\", \"Object\", \"Pods\" or \"Resource\", each corresponds to a matching field in the object. Note: \"ContainerResource\" type is available on when the feature-gate HPAContainerMetrics is enabled",
+                      "description": "type is the type of metric source.  It will be one of \"ContainerResource\", \"External\", \"Object\", \"Pods\" or \"Resource\", each corresponds to a matching field in the object.",
                       "type": "string"
                     }
                   },

@@ -82,6 +82,7 @@
                   "array",
                   "null"
                 ],
+                "x-kubernetes-list-type": "set",
                 "x-kubernetes-patch-strategy": "merge"
               },
               "generateName": {
@@ -177,7 +178,8 @@
                 "type": [
                   "array",
                   "null"
-                ]
+                ],
+                "x-kubernetes-list-type": "atomic"
               },
               "name": {
                 "description": "Name must be unique within a namespace. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names",
@@ -246,6 +248,10 @@
                   "array",
                   "null"
                 ],
+                "x-kubernetes-list-map-keys": [
+                  "uid"
+                ],
+                "x-kubernetes-list-type": "map",
                 "x-kubernetes-patch-merge-key": "uid",
                 "x-kubernetes-patch-strategy": "merge"
               },
@@ -413,7 +419,8 @@
                               "type": [
                                 "array",
                                 "null"
-                              ]
+                              ],
+                              "x-kubernetes-list-type": "atomic"
                             }
                           },
                           "required": [
@@ -429,7 +436,8 @@
                         "type": [
                           "array",
                           "null"
-                        ]
+                        ],
+                        "x-kubernetes-list-type": "atomic"
                       },
                       "matchLabels": {
                         "additionalProperties": {
@@ -479,7 +487,8 @@
                               "type": [
                                 "array",
                                 "null"
-                              ]
+                              ],
+                              "x-kubernetes-list-type": "atomic"
                             }
                           },
                           "required": [
@@ -495,7 +504,8 @@
                         "type": [
                           "array",
                           "null"
-                        ]
+                        ],
+                        "x-kubernetes-list-type": "atomic"
                       },
                       "matchLabels": {
                         "additionalProperties": {
@@ -673,7 +683,8 @@
                               "type": [
                                 "array",
                                 "null"
-                              ]
+                              ],
+                              "x-kubernetes-list-type": "atomic"
                             }
                           },
                           "required": [
@@ -689,7 +700,8 @@
                         "type": [
                           "array",
                           "null"
-                        ]
+                        ],
+                        "x-kubernetes-list-type": "atomic"
                       },
                       "matchLabels": {
                         "additionalProperties": {
@@ -728,7 +740,7 @@
                 ]
               },
               "validationActions": {
-                "description": "validationActions declares how Validations of the referenced ValidatingAdmissionPolicy are enforced. If a validation evaluates to false it is always enforced according to these actions.\n\nFailures defined by the ValidatingAdmissionPolicy's FailurePolicy are enforced according to these actions only if the FailurePolicy is set to Fail, otherwise the failures are ignored. This includes compilation errors, runtime errors and misconfigurations of the policy.\n\nvalidationActions is declared as a set of action values. Order does not matter. validationActions may not contain duplicates of the same action.\n\nThe supported actions values are:\n\n\"Deny\" specifies that a validation failure results in a denied request.\n\n\"Warn\" specifies that a validation failure is reported to the request client in HTTP Warning headers, with a warning code of 299. Warnings can be sent both for allowed or denied admission responses.\n\n\"Audit\" specifies that a validation failure is included in the published audit event for the request. The audit event will contain a `validation.policy.admission.k8s.io/validation_failure` audit annotation with a value containing the details of the validation failures, formatted as a JSON list of objects, each with the following fields: - message: The validation failure message string - policy: The resource name of the ValidatingAdmissionPolicy - binding: The resource name of the ValidatingAdmissionPolicyBinding - expressionIndex: The index of the failed validations in the ValidatingAdmissionPolicy - validationActions: The enforcement actions enacted for the validation failure Example audit annotation: `\"validation.policy.admission.k8s.io/validation_failure\": \"[{\"message\": \"Invalid value\", {\"policy\": \"policy.example.com\", {\"binding\": \"policybinding.example.com\", {\"expressionIndex\": \"1\", {\"validationActions\": [\"Audit\"]}]\"`\n\nClients should expect to handle additional values by ignoring any values not recognized.\n\n\"Deny\" and \"Warn\" may not be used together since this combination needlessly duplicates the validation failure both in the API response body and the HTTP warning headers.\n\nRequired.",
+                "description": "validationActions declares how Validations of the referenced ValidatingAdmissionPolicy are enforced. If a validation evaluates to false it is always enforced according to these actions.\n\nFailures defined by the ValidatingAdmissionPolicy's FailurePolicy are enforced according to these actions only if the FailurePolicy is set to Fail, otherwise the failures are ignored. This includes compilation errors, runtime errors and misconfigurations of the policy.\n\nvalidationActions is declared as a set of action values. Order does not matter. validationActions may not contain duplicates of the same action.\n\nThe supported actions values are:\n\n\"Deny\" specifies that a validation failure results in a denied request.\n\n\"Warn\" specifies that a validation failure is reported to the request client in HTTP Warning headers, with a warning code of 299. Warnings can be sent both for allowed or denied admission responses.\n\n\"Audit\" specifies that a validation failure is included in the published audit event for the request. The audit event will contain a `validation.policy.admission.k8s.io/validation_failure` audit annotation with a value containing the details of the validation failures, formatted as a JSON list of objects, each with the following fields: - message: The validation failure message string - policy: The resource name of the ValidatingAdmissionPolicy - binding: The resource name of the ValidatingAdmissionPolicyBinding - expressionIndex: The index of the failed validations in the ValidatingAdmissionPolicy - validationActions: The enforcement actions enacted for the validation failure Example audit annotation: `\"validation.policy.admission.k8s.io/validation_failure\": \"[{\\\"message\\\": \\\"Invalid value\\\", {\\\"policy\\\": \\\"policy.example.com\\\", {\\\"binding\\\": \\\"policybinding.example.com\\\", {\\\"expressionIndex\\\": \\\"1\\\", {\\\"validationActions\\\": [\\\"Audit\\\"]}]\"`\n\nClients should expect to handle additional values by ignoring any values not recognized.\n\n\"Deny\" and \"Warn\" may not be used together since this combination needlessly duplicates the validation failure both in the API response body and the HTTP warning headers.\n\nRequired.",
                 "items": {
                   "type": [
                     "string",
@@ -757,7 +769,7 @@
           {
             "group": "admissionregistration.k8s.io",
             "kind": "ValidatingAdmissionPolicyBinding",
-            "version": "v1beta1"
+            "version": "v1"
           }
         ],
         "additionalProperties": false
@@ -817,12 +829,15 @@
       "additionalProperties": false
     }
   },
+  "required": [
+    "items"
+  ],
   "type": "object",
   "x-kubernetes-group-version-kind": [
     {
       "group": "admissionregistration.k8s.io",
       "kind": "ValidatingAdmissionPolicyBindingList",
-      "version": "v1beta1"
+      "version": "v1"
     }
   ],
   "additionalProperties": false,

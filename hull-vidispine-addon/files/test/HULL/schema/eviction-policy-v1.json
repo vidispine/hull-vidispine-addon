@@ -49,6 +49,7 @@
             "certificates.k8s.io/v1alpha1",
             "certificates.k8s.io/v1beta1",
             "coordination.k8s.io/v1",
+            "coordination.k8s.io/v1alpha2",
             "coordination.k8s.io/v1beta1",
             "discovery.k8s.io/v1",
             "discovery.k8s.io/v1beta1",
@@ -62,7 +63,6 @@
             "imagepolicy.k8s.io/v1alpha1",
             "internal.apiserver.k8s.io/v1alpha1",
             "networking.k8s.io/v1",
-            "networking.k8s.io/v1alpha1",
             "networking.k8s.io/v1beta1",
             "node.k8s.io/v1",
             "node.k8s.io/v1alpha1",
@@ -72,13 +72,17 @@
             "rbac.authorization.k8s.io/v1",
             "rbac.authorization.k8s.io/v1alpha1",
             "rbac.authorization.k8s.io/v1beta1",
-            "resource.k8s.io/v1alpha2",
+            "resource.k8s.io/v1",
+            "resource.k8s.io/v1alpha3",
+            "resource.k8s.io/v1beta1",
+            "resource.k8s.io/v1beta2",
             "scheduling.k8s.io/v1",
             "scheduling.k8s.io/v1alpha1",
             "scheduling.k8s.io/v1beta1",
             "storage.k8s.io/v1",
             "storage.k8s.io/v1alpha1",
-            "storage.k8s.io/v1beta1"
+            "storage.k8s.io/v1beta1",
+            "storagemigration.k8s.io/v1beta1"
           ]
         },
         "dryRun": {
@@ -92,13 +96,21 @@
           "type": [
             "array",
             "null"
-          ]
+          ],
+          "x-kubernetes-list-type": "atomic"
         },
         "gracePeriodSeconds": {
           "description": "The duration in seconds before the object should be deleted. Value must be non-negative integer. The value zero indicates delete immediately. If this value is nil, the default grace period for the specified type will be used. Defaults to a per object value if not specified. zero means delete immediately.",
           "format": "int64",
           "type": [
             "integer",
+            "null"
+          ]
+        },
+        "ignoreStoreReadErrorWithClusterBreakingPotential": {
+          "description": "if set to true, it will trigger an unsafe deletion of the resource in case the normal deletion flow fails with a corrupt object error. A resource is considered corrupt if it can not be retrieved from the underlying storage successfully because of a) its data can not be transformed e.g. decryption failure, or b) it fails to decode into an object. NOTE: unsafe deletion ignores finalizer constraints, skips precondition checks, and removes the object from the storage. WARNING: This may potentially break the cluster if the workload associated with the resource being unsafe-deleted relies on normal deletion flow. Use only if you REALLY know what you are doing. The default value is false, and the user must opt in to enable it",
+          "type": [
+            "boolean",
             "null"
           ]
         },
@@ -299,6 +311,11 @@
         {
           "group": "coordination.k8s.io",
           "kind": "DeleteOptions",
+          "version": "v1alpha2"
+        },
+        {
+          "group": "coordination.k8s.io",
+          "kind": "DeleteOptions",
           "version": "v1beta1"
         },
         {
@@ -364,11 +381,6 @@
         {
           "group": "networking.k8s.io",
           "kind": "DeleteOptions",
-          "version": "v1alpha1"
-        },
-        {
-          "group": "networking.k8s.io",
-          "kind": "DeleteOptions",
           "version": "v1beta1"
         },
         {
@@ -414,7 +426,22 @@
         {
           "group": "resource.k8s.io",
           "kind": "DeleteOptions",
-          "version": "v1alpha2"
+          "version": "v1"
+        },
+        {
+          "group": "resource.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1alpha3"
+        },
+        {
+          "group": "resource.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+        },
+        {
+          "group": "resource.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta2"
         },
         {
           "group": "scheduling.k8s.io",
@@ -443,6 +470,11 @@
         },
         {
           "group": "storage.k8s.io",
+          "kind": "DeleteOptions",
+          "version": "v1beta1"
+        },
+        {
+          "group": "storagemigration.k8s.io",
           "kind": "DeleteOptions",
           "version": "v1beta1"
         }
@@ -511,6 +543,7 @@
             "array",
             "null"
           ],
+          "x-kubernetes-list-type": "set",
           "x-kubernetes-patch-strategy": "merge"
         },
         "generateName": {
@@ -606,7 +639,8 @@
           "type": [
             "array",
             "null"
-          ]
+          ],
+          "x-kubernetes-list-type": "atomic"
         },
         "name": {
           "description": "Name must be unique within a namespace. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names",
@@ -675,6 +709,10 @@
             "array",
             "null"
           ],
+          "x-kubernetes-list-map-keys": [
+            "uid"
+          ],
+          "x-kubernetes-list-type": "map",
           "x-kubernetes-patch-merge-key": "uid",
           "x-kubernetes-patch-strategy": "merge"
         },

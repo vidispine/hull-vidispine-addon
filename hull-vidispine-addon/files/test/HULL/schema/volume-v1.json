@@ -130,7 +130,8 @@
               "null"
             ]
           },
-          "type": "array"
+          "type": "array",
+          "x-kubernetes-list-type": "atomic"
         },
         "path": {
           "description": "path is Optional: Used as the mounted root, rather than the full Ceph tree, default is /",
@@ -157,7 +158,7 @@
           "description": "LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.",
           "properties": {
             "name": {
-              "description": "Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+              "description": "Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
               "type": [
                 "string",
                 "null"
@@ -209,7 +210,7 @@
           "description": "LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.",
           "properties": {
             "name": {
-              "description": "Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+              "description": "Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
               "type": [
                 "string",
                 "null"
@@ -283,10 +284,11 @@
           "type": [
             "array",
             "null"
-          ]
+          ],
+          "x-kubernetes-list-type": "atomic"
         },
         "name": {
-          "description": "Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+          "description": "Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
           "type": [
             "string",
             "null"
@@ -324,7 +326,7 @@
           "description": "LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.",
           "properties": {
             "name": {
-              "description": "Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+              "description": "Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
               "type": [
                 "string",
                 "null"
@@ -475,7 +477,8 @@
           "type": [
             "array",
             "null"
-          ]
+          ],
+          "x-kubernetes-list-type": "atomic"
         }
       },
       "type": [
@@ -575,6 +578,7 @@
                     "array",
                     "null"
                   ],
+                  "x-kubernetes-list-type": "set",
                   "x-kubernetes-patch-strategy": "merge"
                 },
                 "generateName": {
@@ -670,7 +674,8 @@
                   "type": [
                     "array",
                     "null"
-                  ]
+                  ],
+                  "x-kubernetes-list-type": "atomic"
                 },
                 "name": {
                   "description": "Name must be unique within a namespace. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names",
@@ -739,6 +744,10 @@
                     "array",
                     "null"
                   ],
+                  "x-kubernetes-list-map-keys": [
+                    "uid"
+                  ],
+                  "x-kubernetes-list-type": "map",
                   "x-kubernetes-patch-merge-key": "uid",
                   "x-kubernetes-patch-strategy": "merge"
                 },
@@ -784,7 +793,8 @@
                   "type": [
                     "array",
                     "null"
-                  ]
+                  ],
+                  "x-kubernetes-list-type": "atomic"
                 },
                 "dataSource": {
                   "description": "TypedLocalObjectReference contains enough information to let you locate the typed referenced object inside the same namespace.",
@@ -817,6 +827,7 @@
                   "additionalProperties": false
                 },
                 "dataSourceRef": {
+                  "description": "TypedObjectReference contains enough information to let you locate the typed referenced object",
                   "properties": {
                     "apiGroup": {
                       "description": "APIGroup is the group for the resource being referenced. If APIGroup is not specified, the specified Kind must be in the core API group. For any other third-party types, APIGroup is required.",
@@ -934,7 +945,8 @@
                             "type": [
                               "array",
                               "null"
-                            ]
+                            ],
+                            "x-kubernetes-list-type": "atomic"
                           }
                         },
                         "required": [
@@ -950,7 +962,8 @@
                       "type": [
                         "array",
                         "null"
-                      ]
+                      ],
+                      "x-kubernetes-list-type": "atomic"
                     },
                     "matchLabels": {
                       "additionalProperties": {
@@ -981,7 +994,7 @@
                   ]
                 },
                 "volumeAttributesClassName": {
-                  "description": "volumeAttributesClassName may be used to set the VolumeAttributesClass used by this claim. If specified, the CSI driver will create or update the volume with the attributes defined in the corresponding VolumeAttributesClass. This has a different purpose than storageClassName, it can be changed after the claim is created. An empty string value means that no VolumeAttributesClass will be applied to the claim but it's not allowed to reset this field to empty string once it is set. If unspecified and the PersistentVolumeClaim is unbound, the default VolumeAttributesClass will be set by the persistentvolume controller if it exists. If the resource referred to by volumeAttributesClass does not exist, this PersistentVolumeClaim will be set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource exists. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#volumeattributesclass (Alpha) Using this field requires the VolumeAttributesClass feature gate to be enabled.",
+                  "description": "volumeAttributesClassName may be used to set the VolumeAttributesClass used by this claim. If specified, the CSI driver will create or update the volume with the attributes defined in the corresponding VolumeAttributesClass. This has a different purpose than storageClassName, it can be changed after the claim is created. An empty string or nil value indicates that no VolumeAttributesClass will be applied to the claim. If the claim enters an Infeasible error state, this field can be reset to its previous value (including nil) to cancel the modification. If the resource referred to by volumeAttributesClass does not exist, this PersistentVolumeClaim will be set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource exists. More info: https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/",
                   "type": [
                     "string",
                     "null"
@@ -1058,7 +1071,8 @@
           "type": [
             "array",
             "null"
-          ]
+          ],
+          "x-kubernetes-list-type": "atomic"
         },
         "wwids": {
           "description": "wwids Optional: FC volume world wide identifiers (wwids) Either wwids or combination of targetWWNs and lun must be set, but not both simultaneously.",
@@ -1071,7 +1085,8 @@
           "type": [
             "array",
             "null"
-          ]
+          ],
+          "x-kubernetes-list-type": "atomic"
         }
       },
       "type": [
@@ -1118,7 +1133,7 @@
           "description": "LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.",
           "properties": {
             "name": {
-              "description": "Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+              "description": "Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
               "type": [
                 "string",
                 "null"
@@ -1240,7 +1255,7 @@
       "description": "Represents a Glusterfs mount that lasts the lifetime of a pod. Glusterfs volumes do not support ownership management or SELinux relabeling.",
       "properties": {
         "endpoints": {
-          "description": "endpoints is the endpoint name that details Glusterfs topology. More info: https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod",
+          "description": "endpoints is the endpoint name that details Glusterfs topology.",
           "type": "string"
         },
         "path": {
@@ -1283,6 +1298,30 @@
       "required": [
         "path"
       ],
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false
+    },
+    "image": {
+      "description": "ImageVolumeSource represents a image volume resource.",
+      "properties": {
+        "pullPolicy": {
+          "description": "Policy for pulling OCI objects. Possible values are: Always: the kubelet always attempts to pull the reference. Container creation will fail If the pull fails. Never: the kubelet never pulls the reference and only uses a local image or artifact. Container creation will fail if the reference isn't present. IfNotPresent: the kubelet pulls if the reference isn't already present on disk. Container creation will fail if the reference isn't present and the pull fails. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reference": {
+          "description": "Required: Image or artifact reference to be used. Behaves in the same way as pod.spec.containers[*].image. Pull secrets will be assembled in the same way as for the container image by looking up node credentials, SA image pull secrets, and pod spec image pull secrets. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
       "type": [
         "object",
         "null"
@@ -1347,7 +1386,8 @@
           "type": [
             "array",
             "null"
-          ]
+          ],
+          "x-kubernetes-list-type": "atomic"
         },
         "readOnly": {
           "description": "readOnly here will force the ReadOnly setting in VolumeMounts. Defaults to false.",
@@ -1360,7 +1400,7 @@
           "description": "LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.",
           "properties": {
             "name": {
-              "description": "Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+              "description": "Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
               "type": [
                 "string",
                 "null"
@@ -1517,9 +1557,9 @@
           ]
         },
         "sources": {
-          "description": "sources is the list of volume projections",
+          "description": "sources is the list of volume projections. Each entry in this list handles one source.",
           "items": {
-            "description": "Projection that may be projected along with other supported volume types",
+            "description": "Projection that may be projected along with other supported volume types. Exactly one of these fields must be set.",
             "properties": {
               "clusterTrustBundle": {
                 "description": "ClusterTrustBundleProjection describes how to select a set of ClusterTrustBundle objects and project their contents into the pod filesystem.",
@@ -1551,7 +1591,8 @@
                               "type": [
                                 "array",
                                 "null"
-                              ]
+                              ],
+                              "x-kubernetes-list-type": "atomic"
                             }
                           },
                           "required": [
@@ -1567,7 +1608,8 @@
                         "type": [
                           "array",
                           "null"
-                        ]
+                        ],
+                        "x-kubernetes-list-type": "atomic"
                       },
                       "matchLabels": {
                         "additionalProperties": {
@@ -1663,10 +1705,11 @@
                     "type": [
                       "array",
                       "null"
-                    ]
+                    ],
+                    "x-kubernetes-list-type": "atomic"
                   },
                   "name": {
-                    "description": "Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                    "description": "Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
                     "type": [
                       "string",
                       "null"
@@ -1785,9 +1828,74 @@
                     "type": [
                       "array",
                       "null"
+                    ],
+                    "x-kubernetes-list-type": "atomic"
+                  }
+                },
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "additionalProperties": false
+              },
+              "podCertificate": {
+                "description": "PodCertificateProjection provides a private key and X.509 certificate in the pod filesystem.",
+                "properties": {
+                  "certificateChainPath": {
+                    "description": "Write the certificate chain at this path in the projected volume.\n\nMost applications should use credentialBundlePath.  When using keyPath and certificateChainPath, your application needs to check that the key and leaf certificate are consistent, because it is possible to read the files mid-rotation.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "credentialBundlePath": {
+                    "description": "Write the credential bundle at this path in the projected volume.\n\nThe credential bundle is a single file that contains multiple PEM blocks. The first PEM block is a PRIVATE KEY block, containing a PKCS#8 private key.\n\nThe remaining blocks are CERTIFICATE blocks, containing the issued certificate chain from the signer (leaf and any intermediates).\n\nUsing credentialBundlePath lets your Pod's application code make a single atomic read that retrieves a consistent key and certificate chain.  If you project them to separate files, your application code will need to additionally check that the leaf certificate was issued to the key.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "keyPath": {
+                    "description": "Write the key at this path in the projected volume.\n\nMost applications should use credentialBundlePath.  When using keyPath and certificateChainPath, your application needs to check that the key and leaf certificate are consistent, because it is possible to read the files mid-rotation.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "keyType": {
+                    "description": "The type of keypair Kubelet will generate for the pod.\n\nValid values are \"RSA3072\", \"RSA4096\", \"ECDSAP256\", \"ECDSAP384\", \"ECDSAP521\", and \"ED25519\".",
+                    "type": "string"
+                  },
+                  "maxExpirationSeconds": {
+                    "description": "maxExpirationSeconds is the maximum lifetime permitted for the certificate.\n\nKubelet copies this value verbatim into the PodCertificateRequests it generates for this projection.\n\nIf omitted, kube-apiserver will set it to 86400(24 hours). kube-apiserver will reject values shorter than 3600 (1 hour).  The maximum allowable value is 7862400 (91 days).\n\nThe signer implementation is then free to issue a certificate with any lifetime *shorter* than MaxExpirationSeconds, but no shorter than 3600 seconds (1 hour).  This constraint is enforced by kube-apiserver. `kubernetes.io` signers will never issue certificates with a lifetime longer than 24 hours.",
+                    "format": "int32",
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "signerName": {
+                    "description": "Kubelet's generated CSRs will be addressed to this signer.",
+                    "type": "string"
+                  },
+                  "userAnnotations": {
+                    "additionalProperties": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "description": "userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.\n\nThese values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.\n\nEntries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.\n\nSigners should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.",
+                    "type": [
+                      "object",
+                      "null"
                     ]
                   }
                 },
+                "required": [
+                  "signerName",
+                  "keyType"
+                ],
                 "type": [
                   "object",
                   "null"
@@ -1832,10 +1940,11 @@
                     "type": [
                       "array",
                       "null"
-                    ]
+                    ],
+                    "x-kubernetes-list-type": "atomic"
                   },
                   "name": {
-                    "description": "Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                    "description": "Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
                     "type": [
                       "string",
                       "null"
@@ -1897,7 +2006,8 @@
           "type": [
             "array",
             "null"
-          ]
+          ],
+          "x-kubernetes-list-type": "atomic"
         }
       },
       "type": [
@@ -1985,7 +2095,8 @@
               "null"
             ]
           },
-          "type": "array"
+          "type": "array",
+          "x-kubernetes-list-type": "atomic"
         },
         "pool": {
           "description": "pool is the rados pool name. Default is rbd. More info: https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it",
@@ -2005,7 +2116,7 @@
           "description": "LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.",
           "properties": {
             "name": {
-              "description": "Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+              "description": "Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
               "type": [
                 "string",
                 "null"
@@ -2069,7 +2180,7 @@
           "description": "LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.",
           "properties": {
             "name": {
-              "description": "Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+              "description": "Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
               "type": [
                 "string",
                 "null"
@@ -2170,7 +2281,8 @@
           "type": [
             "array",
             "null"
-          ]
+          ],
+          "x-kubernetes-list-type": "atomic"
         },
         "optional": {
           "description": "optional field specify whether the Secret or its keys must be defined",
@@ -2214,7 +2326,7 @@
           "description": "LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.",
           "properties": {
             "name": {
-              "description": "Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+              "description": "Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
               "type": [
                 "string",
                 "null"
