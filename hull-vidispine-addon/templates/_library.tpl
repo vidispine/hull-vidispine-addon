@@ -1053,5 +1053,5 @@ etcssl:
 
 
 {{- define "hull.vidispine.addon.library.systemtype.path" -}}
-{{- include "hull.vidispine.addon.library.reference.path" (merge (dict "REFERENCE" "hull.config.specific.systemType") .) -}}
+{{- include "hull.vidispine.addon.library.reference.path" (merge (dict "REFERENCE" "hull.config.specific.systemType" "TO_LOWER" true) .) -}}
 {{- end -}}
