@@ -3,23 +3,37 @@ $licenseDirectory = "/oci_license"
 $downloadDirectory = "$($licenseDirectory)/download"
 $docDirectory = "$($licenseDirectory)/extracted"
 $errorMessage = ""
+$oci_server = $entity._oci_endpoint_.server
+$oci_username = $entity._oci_endpoint_.username
+$oci_password = $entity._oci_endpoint_.password
 
 # Log in to OCI
-if ([String]::IsNullOrWhitespace($entity._oci_endpoint_.server))
+if ([String]::IsNullOrWhitespace($oci_server))
 {
-  $errorMessage = "~~~ SBOM: Did not find OCI registry server name, you may need to configure a registry object for this chart!"
-  $this.WriteError($errorMessage)
-  return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
+  $infoMessage = "~~~ SBOM: Did not find OCI registry server name in configuration, checking for environment variables..."  
+  $this.WriteLog($infoMessage)
+  if ($env:OCI_REGISTRY_SERVER -and $env:OCI_REGISTRY_USERNAME -and $env:OCI_REGISTRY_PASSWORD)  {
+    $oci_server = $env:OCI_REGISTRY_SERVER
+    $oci_username = $env:OCI_REGISTRY_USERNAME
+    $oci_password = $env:OCI_REGISTRY_PASSWORD
+    $this.WriteLog("~~~ SBOM: Found OCI registry server information in environment variables, using it for login")
+  }
+  else
+  {
+    $errorMessage = "~~~ SBOM: Did not find OCI registry server name in configuration or environment variables! Cannot log in to OCI registry, cannot retrieve license information. Please provide OCI registry credentials either via configuration or environment variables!"
+    $this.WriteError($errorMessage)
+    return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
+  }
 }
-$this.WriteLog("~~~ SBOM: Logging in to $($entity._oci_endpoint_.server)")
-oras login $entity._oci_endpoint_.server --username $entity._oci_endpoint_.username --password $entity._oci_endpoint_.password
-$this.WriteLog("~~~ SBOM: Logged in to $($entity._oci_endpoint_.server)")
+$this.WriteLog("~~~ SBOM: Logging in to $($oci_server)")
+oras login $oci_server --username $oci_username --password $oci_password
+$this.WriteLog("~~~ SBOM: Logged in to $($oci_server)")
 
 foreach($chartInfo in $entity._helm_charts_) 
 {
   # Get artifacts
   $this.WriteLog("~~~ SBOM: ---> Processing License for Helm Chart $($chartInfo.name) and Version $($chartInfo.version)")
-  $rootArtifact = "$($entity._oci_endpoint_.server)/helm-charts/vpms/$($chartInfo.name):$($chartInfo.version)"
+  $rootArtifact = "$($oci_server)/helm-charts/vpms/$($chartInfo.name):$($chartInfo.version)"
   $this.WriteLog("~~~ SBOM: Getting related artifact $($rootArtifact)")
   $discoverCommand = "oras discover --format json --artifact-type 'mend/sbom' $($rootArtifact)"
   $discover = (oras discover --format json --artifact-type 'mend/sbom' $($rootArtifact)) -join "`n"

@@ -404,6 +404,34 @@ hull:
                     staticName: true
                     optional: true
               env:
+                OCI_REGISTRY_SERVER:
+                  enabled: _HT?gt (len (keys (default dict (index . "$").Values.hull.objects.registry))) 1
+                  value: |-
+                    _HT!
+                      {{ range $name, $spec := (index . "$").Values.hull.objects.registry }}
+                      {{ if (ne $name "_HULL_OBJECT_TYPE_DEFAULT_") }}
+                      {{ $spec.server }} 
+                      {{ end }}
+                      {{ end }}
+                OCI_REGISTRY_USERNAME:
+                  enabled: _HT?gt (len (keys (default dict (index . "$").Values.hull.objects.registry))) 1
+                  value: |-
+                    _HT!
+                      {{ range $name, $spec := (index . "$").Values.hull.objects.registry }}
+                      {{ if (ne $name "_HULL_OBJECT_TYPE_DEFAULT_") }}
+                      {{ $spec.username }} 
+                      {{ end }}
+                      {{ end }}
+                OCI_REGISTRY_PASSWORD:
+                  enabled: _HT?gt (len (keys (default dict (index . "$").Values.hull.objects.registry))) 1
+                  value: |-
+                    _HT!
+                      {{ range $name, $spec := (index . "$").Values.hull.objects.registry }}
+                      {{ if (ne $name "_HULL_OBJECT_TYPE_DEFAULT_") }}
+                      {{ $spec.password }} 
+                      {{ end }}
+                      {{ end }}
+
                 HTTP_PROXY:
                   enabled: _HT?ne (index . "$").Values.hull.config.general.data.installation.config.proxy.httpProxy ""
                   value: _HT*hull.config.general.data.installation.config.proxy.httpProxy
