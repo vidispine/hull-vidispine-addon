@@ -1,21 +1,19 @@
 FROM mcr.microsoft.com/powershell:lts-7.4-ubuntu-22.04
-RUN pwsh -NonInteractive -Command Install-Module -Force -Scope AllUsers powershell-yaml
-RUN apt-get update
-RUN apt-get -y upgrade
-RUN apt-get -y install curl
+RUN apt-get update \
+ && apt-get -y upgrade \
+ && apt-get -y install curl \
+ && pwsh -NonInteractive -Command Install-Module -Force -Scope AllUsers powershell-yaml \
+ && rm -rf /var/lib/apt/lists/*
 ENV VERSION="1.3.0"
-RUN curl -LO "https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_linux_amd64.tar.gz" 
-RUN ls
-RUN mkdir -p oras-install/
-RUN tar -zxf oras_${VERSION}_*.tar.gz -C oras-install/
-RUN mv oras-install/oras /usr/local/bin/
-RUN rm -rf oras_${VERSION}_*.tar.gz oras-install/
-# Create a user group 'noroot'
-RUN groupadd noroot
-# Add a user noroot to group 'noroot'
-RUN useradd --create-home --shell /bin/bash -u 1001 -g noroot noroot
-COPY ./Installer.ps1 /script/Installer.ps1
-RUN chown -R noroot /script
-COPY ./get-custom-scripts /get-custom-scripts
-RUN chown -R noroot /get-custom-scripts
-RUN oras --help
+RUN curl -LO "https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_linux_amd64.tar.gz" \
+ && ls \
+ && mkdir -p oras-install/ \
+ && tar -zxf oras_${VERSION}_*.tar.gz -C oras-install/ \
+ && mv oras-install/oras /usr/local/bin/ \
+ && rm -rf oras_${VERSION}_*.tar.gz oras-install/ \
+ && oras --help
+# Create a user group 'noroot' and add a user noroot to group 'noroot'
+RUN groupadd noroot \
+ && useradd --create-home --shell /bin/bash -u 1001 -g noroot noroot
+COPY --chown=noroot:noroot ./Installer.ps1 /script/Installer.ps1
+COPY --chown=noroot:noroot ./get-custom-scripts /get-custom-scripts
