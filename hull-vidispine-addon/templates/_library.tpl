@@ -335,7 +335,7 @@ CLIENT_CONFIGPORTAL_INSTALLATION_ID:
 CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
   inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.configportal.auth.token.installationClientSecret }}
 {{ end }}
-{{ if (gt (len (keys (dig "registry" dict $parent.Values.hull.objects)))) 1 }}
+{{ if (gt (len (keys (dig "registry" dict $parent.Values.hull.objects))) 1) }}
 {{ range $name, $spec := $parent.Values.hull.objects.registry }}
 {{ if (ne $name "_HULL_OBJECT_TYPE_DEFAULT_") }}
 OCI_REGISTRY_SERVER:
