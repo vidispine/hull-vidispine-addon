@@ -404,24 +404,6 @@ hull:
                     staticName: true
                     optional: true
               env:
-                OCI_REGISTRY_SERVER:
-                  valueFrom:
-                    secretKeyRef:
-                      name: oci-registry
-                      key: server
-                      optional: true
-                OCI_REGISTRY_USERNAME:
-                  valueFrom:
-                    secretKeyRef:
-                      name: oci-registry
-                      key: username
-                      optional: true
-                OCI_REGISTRY_PASSWORD:
-                  valueFrom:
-                    secretKeyRef:
-                      name: oci-registry
-                      key: password
-                      optional: true
                 HTTP_PROXY:
                   enabled: _HT?ne (index . "$").Values.hull.config.general.data.installation.config.proxy.httpProxy ""
                   value: _HT*hull.config.general.data.installation.config.proxy.httpProxy
@@ -523,25 +505,7 @@ hull:
             {{ $key }}: { inline: {{ $value | quote }} },
             {{ end }}
           }
-      
-      oci-registry:
-        enabled: _HT?gt (len (keys (default dict (index . "$").Values.hull.objects.registry))) 1
-        annotations:
-          helm.sh/hook: pre-install,pre-upgrade
-          helm.sh/hook-weight: "-100"
-          helm.sh/hook-delete-policy: before-hook-creation
-        data: |-
-          _HT!
-            {
-              {{ range $name, $spec := (index . "$").Values.hull.objects.registry }}
-              {{ if (ne $name "_HULL_OBJECT_TYPE_DEFAULT_") }}
-              {{ printf "%s_server" $name }}: { inline: {{ $spec.server | quote }} },
-              {{ printf "%s_username" $name }}: { inline: {{ $spec.username | quote }} },
-              {{ printf "%s_password" $name }}: { inline: {{ $spec.password | quote }} },
-              {{ end }}
-              {{ end }}
-            }
-    
+   
     configmap:
     
       'custom-installation-files-setup':
