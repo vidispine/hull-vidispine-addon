@@ -1,19 +1,38 @@
-FROM mcr.microsoft.com/powershell:lts-7.4-ubuntu-22.04
+FROM ubuntu:24.04
+ARG PS_VERSION=7.6.0
+ENV ORAS_VERSION="1.3.1"
+# Keep EXACTLY the same Dockerfile and Dockerfile-noroot, except USER noroot (shared layers)!
+# ORAS release checksum sources (ORAS setup or Release information, Linux amd64):
+# Store here, don't read at build time!
+# https://github.com/oras-project/oras/releases/download/v<version>/oras_<version>_checksums.txt
+# https://github.com/oras-project/setup-oras/blob/main/src/lib/data/releases.json
+# https://api.github.com/repos/oras-project/oras/releases/tags/v<version> (large Release content JSON)
+ENV ORAS_CHECKSUM="d52c4af76ce6a3ceb8579e51fb751a43ac051cca67f965f973a0b0e897a2bb86"
+# 1.3.0: ENV ORAS_CHECKSUM="6cdc692f929100feb08aa8de584d02f7bcc30ec7d88bc2adc2054d782db57c64"
 RUN apt-get update \
- && apt-get -y upgrade \
- && apt-get -y install curl \
+ && apt-get -y --no-install-recommends upgrade \
+ && apt-get -y install --no-install-recommends ca-certificates curl \
+ && echo "Setting variables from /etc/os-release..." \
+ && . /etc/os-release \
+ && echo "OS VERSION_ID: ${VERSION_ID}" \
+ && curl -fsSLO https://packages.microsoft.com/config/ubuntu/${VERSION_ID}/packages-microsoft-prod.deb \
+ && dpkg -i packages-microsoft-prod.deb \
+ && rm packages-microsoft-prod.deb \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends powershell \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/* /var/cache/apt/* \
  && pwsh -NonInteractive -Command Install-Module -Force -Scope AllUsers powershell-yaml \
- && rm -rf /var/lib/apt/lists/*
-ENV VERSION="1.3.0"
-RUN curl -LO "https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_linux_amd64.tar.gz" \
- && ls \
+ && echo "Downloading and installing ORAS CLI version ${ORAS_VERSION}..." \
+ && curl -LO "https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_amd64.tar.gz" \
+ && echo "${ORAS_CHECKSUM}  oras_${ORAS_VERSION}_linux_amd64.tar.gz" | sha256sum -c - \
  && mkdir -p oras-install/ \
- && tar -zxf oras_${VERSION}_*.tar.gz -C oras-install/ \
+ && tar -zxf oras_${ORAS_VERSION}_*.tar.gz -C oras-install/ \
  && mv oras-install/oras /usr/local/bin/ \
- && rm -rf oras_${VERSION}_*.tar.gz oras-install/ \
- && oras --help
-# Create a user group 'noroot' and add a user noroot to group 'noroot'
-RUN groupadd noroot \
+ && rm -rf oras_${ORAS_VERSION}_*.tar.gz oras-install/ \
+ && oras --help \
+ && groupadd -g 1001 noroot \
  && useradd --create-home --shell /bin/bash -u 1001 -g noroot noroot
 COPY --chown=noroot:noroot ./Installer.ps1 /script/Installer.ps1
 COPY --chown=noroot:noroot ./get-custom-scripts /get-custom-scripts
+USER noroot
