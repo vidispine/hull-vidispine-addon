@@ -213,13 +213,13 @@ false
     {{- $databasePort -}}
   {{- end -}}
   {{- if (eq $info "usernamesPostfix") -}}
-    {{- default "" $endpoint.auth.basic.usernamesPostfix -}}
+    {{- dig "auth" "basic" "usernamesPostfix" "" $endpoint -}}
   {{- end -}}
   {{- if (eq $info "adminUsername") -}}
-    {{- $endpoint.auth.basic.adminUsername -}}
+    {{- dig "auth" "basic" "adminUsername" "" $endpoint -}}
   {{- end -}}
   {{- if (eq $info "adminPassword") -}}
-    {{- $endpoint.auth.basic.adminPassword -}}
+    {{- dig "auth" "basic" "adminPassword" "" $endpoint -}}
   {{- end -}}
   {{- if (eq $info "connectionString") -}}
     {{- if (eq $endpointApplication "mssql") -}}
@@ -244,12 +244,12 @@ false
       ;Port=
       {{- (toString $databasePort) -}}
       ;Database=
-      {{- (index $parent.Values.hull.config.specific.components $component).database.name | lower -}}
+      {{- (dig "database" "name" "" (index $parent.Values.hull.config.specific.components $component)) | lower -}}
       ;User ID=
-      {{- (index $parent.Values.hull.config.specific.components $component).database.username | lower -}}
-      {{- (default "" $endpoint.auth.basic.usernamesPostfix) | lower -}}
+      {{- (dig "database" "username" "" (index $parent.Values.hull.config.specific.components $component)) | lower -}}
+      {{- (dig "auth" "basic" "usernamesPostfix" "" $endpoint) | lower -}}
       ;Password=
-      {{- (index $parent.Values.hull.config.specific.components $component).database.password -}}
+      {{- (dig "database" "password" "" (index $parent.Values.hull.config.specific.components $component)) | lower -}}
     {{- end -}}
   {{- end -}}
 {{- end -}}
@@ -261,12 +261,18 @@ false
       {{- $remainder := trimPrefix (printf "%s://" $start) $url }}
       {{- if (and (contains ":" $remainder) (contains "@" $remainder)) }}
         {{- printf "%s" $url }}
-      {{- else -}}      
-        {{- printf "%s://" $start -}}
-        {{- $endpoint.auth.basic.username -}}
-        {{- printf "%s" ":" }}
-        {{- $endpoint.auth.basic.password -}}
-        {{- printf "@%s" $remainder }}
+      {{- else -}}
+        {{- $username := dig "auth" "basic" "username" "" $endpoint -}}
+        {{- $password := dig "auth" "basic" "password" "" $endpoint -}}
+        {{- if (and (ne $username "") (ne $password "")) }}          
+          {{- printf "%s://" $start -}}
+          {{- $username -}}
+          {{- printf "%s" ":" }}
+          {{- $password -}}
+          {{- printf "@%s" $remainder }}
+        {{- else -}}
+          {{- printf "%s" $url }}
+        {{- end -}}            
       {{- end -}}
     {{- end -}}    
   {{- end -}}
@@ -328,6 +334,18 @@ CLIENT_CONFIGPORTAL_INSTALLATION_ID:
 {{ if (ne "" (dig "configportal" "auth" "token" "installationClientSecret" "" $parent.Values.hull.config.general.data.endpoints)) }}
 CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
   inline: {{ default "" $parent.Values.hull.config.general.data.endpoints.configportal.auth.token.installationClientSecret }}
+{{ end }}
+{{ if (gt (len (keys (dig "registry" dict $parent.Values.hull.objects))) 1) }}
+{{ range $name, $spec := $parent.Values.hull.objects.registry }}
+{{ if (ne $name "_HULL_OBJECT_TYPE_DEFAULT_") }}
+OCI_REGISTRY_SERVER:
+  inline: {{ $spec.server }}
+OCI_REGISTRY_USERNAME:
+  inline: {{ $spec.username }}
+OCI_REGISTRY_PASSWORD:
+  inline: {{ $spec.password }}
+{{ end }}
+{{ end }}
 {{ end }}
 {{ end }}
 
@@ -408,20 +426,20 @@ CLIENT_CONFIGPORTAL_INSTALLATION_SECRET:
 {{- $endpointApplication := include "hull.vidispine.addon.library.get.endpoint.application" (dict "PARENT_CONTEXT" $parent "ENDPOINT" $databaseKey) }}
 {{ if (eq "mssql" $endpointApplication) }}
 AUTH_BASIC_DATABASE_NAME:
-  inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name }}
+  inline: {{ dig "name" "" (index $parent.Values.hull.config.specific.components $component).database }}
 AUTH_BASIC_DATABASE_USERNAME:
-  inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username }}
+  inline: {{ dig "username" "" (index $parent.Values.hull.config.specific.components $component).database }}
     {{ $databaseUsernamesPostfix }}
 {{ end }}
 {{ if (eq "postgres" $endpointApplication) }}
 AUTH_BASIC_DATABASE_NAME:
-  inline: {{ (index $parent.Values.hull.config.specific.components $component).database.name | lower }}
+  inline: {{ dig "name" "" (index $parent.Values.hull.config.specific.components $component).database | lower }}
 AUTH_BASIC_DATABASE_USERNAME:
-  inline: {{ (index $parent.Values.hull.config.specific.components $component).database.username | lower }}
+  inline: {{ dig "username" "" (index $parent.Values.hull.config.specific.components $component).database | lower }}
     {{ $databaseUsernamesPostfix | lower }}
 {{ end }}
 AUTH_BASIC_DATABASE_PASSWORD:
-  inline: {{ (index $parent.Values.hull.config.specific.components $component).database.password }}
+  inline: {{ dig "password" "" (index $parent.Values.hull.config.specific.components $component).database }}
 database-connectionString:
 {{ if (hasKey (index $parent.Values.hull.config.specific.components $component).database "connectionString") }}
   inline: {{ (index $parent.Values.hull.config.specific.components $component).database.connectionString }}
@@ -1047,5 +1065,5 @@ etcssl:
 
 
 {{- define "hull.vidispine.addon.library.systemtype.path" -}}
-{{- include "hull.vidispine.addon.library.reference.path" (merge (dict "REFERENCE" "hull.config.specific.systemType") .) -}}
+{{- include "hull.vidispine.addon.library.reference.path" (merge (dict "REFERENCE" "hull.config.specific.systemType" "TO_LOWER" true) .) -}}
 {{- end -}}

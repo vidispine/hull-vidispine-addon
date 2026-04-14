@@ -505,7 +505,7 @@ hull:
             {{ $key }}: { inline: {{ $value | quote }} },
             {{ end }}
           }
-    
+   
     configmap:
     
       'custom-installation-files-setup':

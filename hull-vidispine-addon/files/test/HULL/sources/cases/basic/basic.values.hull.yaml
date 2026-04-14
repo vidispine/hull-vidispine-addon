@@ -182,7 +182,6 @@ hull:
             annotation: "I am an Annotation"
           }
 
-      nulled: null
         
       static_name:
         staticName: true
