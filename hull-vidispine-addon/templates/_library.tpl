@@ -249,7 +249,7 @@ false
       {{- (dig "database" "username" "" (index $parent.Values.hull.config.specific.components $component)) | lower -}}
       {{- (dig "auth" "basic" "usernamesPostfix" "" $endpoint) | lower -}}
       ;Password=
-      {{- (dig "database" "password" "" (index $parent.Values.hull.config.specific.components $component)) | lower -}}
+      {{- (dig "database" "password" "" (index $parent.Values.hull.config.specific.components $component)) -}}
     {{- end -}}
   {{- end -}}
 {{- end -}}
