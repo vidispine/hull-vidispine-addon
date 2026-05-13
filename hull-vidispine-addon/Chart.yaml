@@ -1,6 +1,6 @@
 # Basic chart description and version
-apiVersion: v1
-appVersion: "1.35"
+apiVersion: v2
+appVersion: "1.36"
 description: hull-vidispine-addon
 name: hull-vidispine-addon
-version: 1.35.4
+version: 1.36.0
