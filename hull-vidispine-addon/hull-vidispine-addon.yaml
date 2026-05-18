@@ -28,6 +28,9 @@ hull:
               defaultServiceAccountIsHook: false
             runtime:
               sourcesFolders: _HT/hull.vidispine.addon.sources.folder.configmap.count
+            images:
+              dbTools:
+                tag: 3.1.1-1-noroot
           endpoints:
             10_vidicore:
               auth:
