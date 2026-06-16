@@ -25,9 +25,14 @@ if ([String]::IsNullOrWhitespace($oci_server))
     return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
   }
 }
-$this.WriteLog("~~~ SBOM: Logging in to $($oci_server)")
-oras login $oci_server --username $oci_username --password $oci_password
-$this.WriteLog("~~~ SBOM: Logged in to $($oci_server)")
+# `oras login` takes a bare registry HOST and rejects a reference that includes a repository path
+# (e.g. an ECR endpoint with a version prefix like "<acct>.dkr.ecr.<region>.amazonaws.com/26.1" ->
+# "invalid reference: invalid registry"). Log in to the host only; $oci_server (which may carry the
+# path) is still used to build the artifact reference below, so `oras discover` targets the right repo.
+$oci_login_host = $oci_server.Split("/")[0]
+$this.WriteLog("~~~ SBOM: Logging in to $($oci_login_host)")
+oras login $oci_login_host --username $oci_username --password $oci_password
+$this.WriteLog("~~~ SBOM: Logged in to $($oci_login_host)")
 
 foreach($chartInfo in $entity._helm_charts_) 
 {
@@ -49,24 +54,26 @@ foreach($chartInfo in $entity._helm_charts_)
     
     if (-not [bool]$discoverJson.PSObject.Properties['referrers'])
     {
-      $errorMessage = "~~~ SBOM: Referrers field for $($rootArtifact) does not exist! Skipping license upload ..."
-      $this.WriteError($errorMessage)
-      return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
+      # No mend/sbom referrer attached to this chart -> nothing to upload. Skip gracefully; a missing
+      # license artifact must not fail the install (returning 500 here aborts the whole release).
+      $infoMessage = "~~~ SBOM: Referrers field for $($rootArtifact) does not exist! Skipping license upload ..."
+      $this.WriteLog($infoMessage)
+      return @{ "statusCode" = 200; "errorMessage" = $infoMessage } | ConvertTo-Json
     }
 
     if (($discoverJson.referrers | Measure-Object).Count -eq 0)
     {
-      $errorMessage = "~~~ SBOM: Referrers field for $($rootArtifact) has zero elements! Skipping license upload ..."
-      $this.WriteError($errorMessage)
-      return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json                                
+      $infoMessage = "~~~ SBOM: Referrers field for $($rootArtifact) has zero elements! Skipping license upload ..."
+      $this.WriteLog($infoMessage)
+      return @{ "statusCode" = 200; "errorMessage" = $infoMessage } | ConvertTo-Json
     }
     else
     {
       if (($discoverJson.referrers | Measure-Object ).Count -gt 1)
       {
-        $errorMessage = "~~~ SBOM: Referrers field for $($rootArtifact) has more than one element! Only considering first element ..."
-        $this.WriteError($errorMessage)
-        return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
+        # Multiple mend/sbom referrers -> warn and proceed with the first (the download below uses
+        # referrers[0]). This is informational, not a failure, so don't abort the install.
+        $this.WriteLog("~~~ SBOM: Referrers field for $($rootArtifact) has more than one element! Only considering first element ...")
       }
 
       # Download Artifacts
