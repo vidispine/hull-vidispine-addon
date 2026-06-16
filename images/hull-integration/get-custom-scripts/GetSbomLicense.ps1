@@ -54,26 +54,24 @@ foreach($chartInfo in $entity._helm_charts_)
     
     if (-not [bool]$discoverJson.PSObject.Properties['referrers'])
     {
-      # No mend/sbom referrer attached to this chart -> nothing to upload. Skip gracefully; a missing
-      # license artifact must not fail the install (returning 500 here aborts the whole release).
-      $infoMessage = "~~~ SBOM: Referrers field for $($rootArtifact) does not exist! Skipping license upload ..."
-      $this.WriteLog($infoMessage)
-      return @{ "statusCode" = 200; "errorMessage" = $infoMessage } | ConvertTo-Json
+      $errorMessage = "~~~ SBOM: Referrers field for $($rootArtifact) does not exist! Skipping license upload ..."
+      $this.WriteError($errorMessage)
+      return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
     }
 
     if (($discoverJson.referrers | Measure-Object).Count -eq 0)
     {
-      $infoMessage = "~~~ SBOM: Referrers field for $($rootArtifact) has zero elements! Skipping license upload ..."
-      $this.WriteLog($infoMessage)
-      return @{ "statusCode" = 200; "errorMessage" = $infoMessage } | ConvertTo-Json
+      $errorMessage = "~~~ SBOM: Referrers field for $($rootArtifact) has zero elements! Skipping license upload ..."
+      $this.WriteError($errorMessage)
+      return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json                                
     }
     else
     {
       if (($discoverJson.referrers | Measure-Object ).Count -gt 1)
       {
-        # Multiple mend/sbom referrers -> warn and proceed with the first (the download below uses
-        # referrers[0]). This is informational, not a failure, so don't abort the install.
-        $this.WriteLog("~~~ SBOM: Referrers field for $($rootArtifact) has more than one element! Only considering first element ...")
+        $errorMessage = "~~~ SBOM: Referrers field for $($rootArtifact) has more than one element! Only considering first element ..."
+        $this.WriteError($errorMessage)
+        return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
       }
 
       # Download Artifacts
