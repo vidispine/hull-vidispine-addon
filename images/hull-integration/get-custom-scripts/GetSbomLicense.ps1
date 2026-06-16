@@ -25,9 +25,14 @@ if ([String]::IsNullOrWhitespace($oci_server))
     return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
   }
 }
-$this.WriteLog("~~~ SBOM: Logging in to $($oci_server)")
-oras login $oci_server --username $oci_username --password $oci_password
-$this.WriteLog("~~~ SBOM: Logged in to $($oci_server)")
+# `oras login` takes a bare registry HOST and rejects a reference that includes a repository path
+# (e.g. an ECR endpoint with a version prefix like "<acct>.dkr.ecr.<region>.amazonaws.com/26.1" ->
+# "invalid reference: invalid registry"). Log in to the host only; $oci_server (which may carry the
+# path) is still used to build the artifact reference below, so `oras discover` targets the right repo.
+$oci_login_host = $oci_server.Split("/")[0]
+$this.WriteLog("~~~ SBOM: Logging in to $($oci_login_host)")
+oras login $oci_login_host --username $oci_username --password $oci_password
+$this.WriteLog("~~~ SBOM: Logged in to $($oci_login_host)")
 
 foreach($chartInfo in $entity._helm_charts_) 
 {
