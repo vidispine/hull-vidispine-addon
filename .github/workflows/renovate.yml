@@ -3,7 +3,17 @@ name: Renovate
 on:
   schedule:
     - cron: "0 3 * * 1" # Every Monday at 03:00 UTC
-  workflow_dispatch: {} # Allow manual runs from the Actions tab
+  workflow_dispatch: # Manual runs from the Actions tab
+    inputs:
+      dry_run:
+        description: "Dry run (log only, create no branches/PRs)"
+        type: boolean
+        default: false
+      log_level:
+        description: "Renovate log level"
+        type: choice
+        options: [info, debug]
+        default: info
 
 permissions:
   contents: write
@@ -21,6 +31,9 @@ jobs:
         env:
           # Only look at this repository.
           RENOVATE_REPOSITORIES: ${{ github.repository }}
+          # Manual-run options (empty/ignored on scheduled runs).
+          RENOVATE_DRY_RUN: ${{ inputs.dry_run && 'full' || '' }}
+          LOG_LEVEL: ${{ inputs.log_level || 'info' }}
           # Credentials for cr.vidinet.net. A single host rule (no hostType) covers
           # both Docker images and Helm charts pulled from this registry.
           RENOVATE_HOST_RULES: >-

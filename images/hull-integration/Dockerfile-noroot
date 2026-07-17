@@ -1,4 +1,5 @@
 FROM ubuntu:24.04
+# renovate: datasource=github-releases depName=PowerShell/PowerShell
 ARG PS_VERSION=7.6.0
 ENV ORAS_VERSION="1.3.1"
 # Keep EXACTLY the same Dockerfile and Dockerfile-noroot, except USER noroot (shared layers)!

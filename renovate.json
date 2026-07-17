@@ -4,25 +4,31 @@
   "ignorePaths": ["**/files/test/**"],
   "packageRules": [
     {
-      "description": "Public Docker images (base images, tools) use coerced semver. cr.vidinet.net images are governed by the per-image 'versioning=' in their renovate comment instead.",
-      "matchDatasources": ["docker"],
-      "matchPackageNames": ["!/^cr\\.vidinet\\.net\\//"],
-      "versioning": "semver-coerced"
+      "description": "Base image 'ubuntu' is intentionally a floating '24.04' tag (always pulls the newest 24.04 at build time), so no update PRs for now. Do NOT re-enable with plain semver: that would jump to non-LTS releases like 24.10. When we later pin it, use ubuntu versioning restricted to LTS.",
+      "matchDepNames": ["ubuntu"],
+      "enabled": false
+    },
+    {
+      "description": "UPDATE LEVEL (single place) for all tracked images and Dockerfile packages. NOTE: matchUpdateTypes lists the update types to BLOCK (enabled=false), not to allow. Current = MINOR level: block [\"major\"] => minor + patch stay enabled and collapse into ONE PR at the highest allowed version. PATCH level: block [\"major\", \"minor\"] AND add top-level \"separateMinorPatch\": true (so a patch still gets a PR when a now-blocked minor exists). MAJOR level (allow everything): delete this whole rule.",
+      "matchManagers": ["custom.regex"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
     }
   ],
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Track the PowerShell version pinned via 'ARG PS_VERSION' in the Dockerfiles",
+      "description": "DOCKERFILE-ARG packages: track versions pinned via 'ARG <NAME>_VERSION' with a 'renovate:' comment above them",
       "managerFilePatterns": ["/(^|/)Dockerfile[^/]*$/"],
-      "matchStrings": ["ARG PS_VERSION=(?<currentValue>\\S+)"],
-      "datasourceTemplate": "github-releases",
-      "depNameTemplate": "PowerShell/PowerShell",
-      "extractVersionTemplate": "^v(?<version>.+)$"
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?\\s+ARG \\S+=(?<currentValue>\\S+)"
+      ],
+      "extractVersionTemplate": "^v?(?<version>.+)$",
+      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver-coerced{{/if}}"
     },
     {
       "customType": "regex",
-      "description": "Update cr.vidinet.net image tags annotated with a 'renovate:' comment above the 'tag:' line",
+      "description": "IMAGES: update cr.vidinet.net image tags annotated with a 'renovate:' comment above the 'tag:' line",
       "managerFilePatterns": ["/(^|/)hull-vidispine-addon\\.yaml$/"],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?\\s+tag:\\s*[\"']?(?<currentValue>[^\"'\\s]+)"
