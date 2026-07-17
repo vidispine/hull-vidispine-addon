@@ -1,0 +1,27 @@
+name: Renovate
+
+on:
+  schedule:
+    - cron: "0 3 * * 1" # Every Monday at 03:00 UTC
+  workflow_dispatch: {} # Allow manual runs from the Actions tab
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Renovate
+        uses: renovatebot/github-action@v46
+        with:
+          # PAT with repo scope (recommended so Renovate PRs trigger CI). GITHUB_TOKEN also works.
+          token: ${{ secrets.RENOVATE_TOKEN }}
+        env:
+          # Only look at this repository.
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          # Credentials for cr.vidinet.net. A single host rule (no hostType) covers
+          # both Docker images and Helm charts pulled from this registry.
+          RENOVATE_HOST_RULES: >-
+            [{"matchHost":"cr.vidinet.net","username":"${{ secrets.VIDINET_REGISTRY_USERNAME }}","password":"${{ secrets.VIDINET_REGISTRY_PASSWORD }}"}]

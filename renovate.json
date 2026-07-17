@@ -1,0 +1,23 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "ignorePaths": ["**/files/test/**"],
+  "packageRules": [
+    {
+      "description": "Update Docker image tags using coerced semantic versioning",
+      "matchDatasources": ["docker"],
+      "versioning": "semver-coerced"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Track the PowerShell version pinned via 'ARG PS_VERSION' in the Dockerfiles",
+      "managerFilePatterns": ["/(^|/)Dockerfile[^/]*$/"],
+      "matchStrings": ["ARG PS_VERSION=(?<currentValue>\\S+)"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "PowerShell/PowerShell",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    }
+  ]
+}
