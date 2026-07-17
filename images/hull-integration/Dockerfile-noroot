@@ -1,14 +1,14 @@
 FROM ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90
 # renovate: datasource=github-releases depName=PowerShell/PowerShell
 ARG PS_VERSION=7.6.0
-ENV ORAS_VERSION="1.3.1"
+ENV ORAS_VERSION="1.3.3"
 # Keep EXACTLY the same Dockerfile and Dockerfile-noroot, except USER noroot (shared layers)!
 # ORAS release checksum sources (ORAS setup or Release information, Linux amd64):
 # Store here, don't read at build time!
 # https://github.com/oras-project/oras/releases/download/v<version>/oras_<version>_checksums.txt
 # https://github.com/oras-project/setup-oras/blob/main/src/lib/data/releases.json
 # https://api.github.com/repos/oras-project/oras/releases/tags/v<version> (large Release content JSON)
-ENV ORAS_CHECKSUM="d52c4af76ce6a3ceb8579e51fb751a43ac051cca67f965f973a0b0e897a2bb86"
+ENV ORAS_CHECKSUM="9ce999f8d2de03fc03968b29d743077a58783e545e5eaa53917ca177352d0e59"
 # 1.3.0: ENV ORAS_CHECKSUM="6cdc692f929100feb08aa8de584d02f7bcc30ec7d88bc2adc2054d782db57c64"
 RUN apt-get update \
  && apt-get -y --no-install-recommends upgrade \
