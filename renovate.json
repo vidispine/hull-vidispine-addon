@@ -4,8 +4,9 @@
   "ignorePaths": ["**/files/test/**"],
   "packageRules": [
     {
-      "description": "Update Docker image tags using coerced semantic versioning",
+      "description": "Public Docker images (base images, tools) use coerced semver. cr.vidinet.net images are governed by the per-image 'versioning=' in their renovate comment instead.",
       "matchDatasources": ["docker"],
+      "matchPackageNames": ["!/^cr\\.vidinet\\.net\\//"],
       "versioning": "semver-coerced"
     }
   ],
@@ -18,6 +19,15 @@
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "PowerShell/PowerShell",
       "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "Update cr.vidinet.net image tags annotated with a 'renovate:' comment above the 'tag:' line",
+      "managerFilePatterns": ["/(^|/)hull-vidispine-addon\\.yaml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?\\s+tag:\\s*[\"']?(?<currentValue>[^\"'\\s]+)"
+      ],
+      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}docker{{/if}}"
     }
   ]
 }
