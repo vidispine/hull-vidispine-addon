@@ -22,6 +22,7 @@ permissions:
 jobs:
   renovate:
     runs-on: ubuntu-latest
+    environment: renovate-vidispine-content-wf
     steps:
       # --- PRODUCTION option: short-lived (~1h) GitHub App token that also triggers CI. ---
       # 1. Create a GitHub App (Settings > Developer settings > GitHub Apps) with repo
