@@ -4,8 +4,14 @@
   "ignorePaths": ["**/files/test/**"],
   "packageRules": [
     {
-      "description": "Base image 'ubuntu' is intentionally a floating '24.04' tag (always pulls the newest 24.04 at build time), so no update PRs for now. Do NOT re-enable with plain semver: that would jump to non-LTS releases like 24.10. When we later pin it, use ubuntu versioning restricted to LTS.",
+      "description": "Base image 'ubuntu': stay on the 24.04 LTS tag but pin it by digest, and let Renovate keep that digest current (tracks the latest 24.04 rebuild for reproducible-yet-updated builds).",
       "matchDepNames": ["ubuntu"],
+      "pinDigests": true
+    },
+    {
+      "description": "Base image 'ubuntu': block tag version changes so it never moves off 24.04 to a non-LTS (24.10) or the next LTS (26.04) - only digest updates are allowed. Bump the tag by hand when adopting the next LTS.",
+      "matchDepNames": ["ubuntu"],
+      "matchUpdateTypes": ["major", "minor"],
       "enabled": false
     },
     {
