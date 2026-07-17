@@ -13,14 +13,13 @@ ENV ORAS_CHECKSUM="d52c4af76ce6a3ceb8579e51fb751a43ac051cca67f965f973a0b0e897a2b
 RUN apt-get update \
  && apt-get -y --no-install-recommends upgrade \
  && apt-get -y install --no-install-recommends ca-certificates curl \
- && echo "Setting variables from /etc/os-release..." \
- && . /etc/os-release \
- && echo "OS VERSION_ID: ${VERSION_ID}" \
- && curl -fsSLO https://packages.microsoft.com/config/ubuntu/${VERSION_ID}/packages-microsoft-prod.deb \
- && dpkg -i packages-microsoft-prod.deb \
- && rm packages-microsoft-prod.deb \
- && apt-get update \
- && apt-get install -y --no-install-recommends powershell \
+ && echo "Downloading and installing PowerShell ${PS_VERSION} (.deb) from the matching GitHub release..." \
+ && curl -fsSLO "https://github.com/PowerShell/PowerShell/releases/download/v${PS_VERSION}/powershell_${PS_VERSION}-1.deb_amd64.deb" \
+ && echo "Verifying the .deb against the release checksums (hashes.sha256 is UTF-16, decode first)..." \
+ && curl -fsSLO "https://github.com/PowerShell/PowerShell/releases/download/v${PS_VERSION}/hashes.sha256" \
+ && iconv -f UTF-16 -t UTF-8 hashes.sha256 | grep -F "powershell_${PS_VERSION}-1.deb_amd64.deb" | sha256sum --check - \
+ && apt-get install -y --no-install-recommends "./powershell_${PS_VERSION}-1.deb_amd64.deb" \
+ && rm "powershell_${PS_VERSION}-1.deb_amd64.deb" hashes.sha256 \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* /var/cache/apt/* \
  && pwsh -NonInteractive -Command Install-Module -Force -Scope AllUsers powershell-yaml \
