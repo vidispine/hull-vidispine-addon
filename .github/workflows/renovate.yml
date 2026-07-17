@@ -23,11 +23,27 @@ jobs:
   renovate:
     runs-on: ubuntu-latest
     steps:
+      # --- PRODUCTION option: short-lived (~1h) GitHub App token that also triggers CI. ---
+      # 1. Create a GitHub App (Settings > Developer settings > GitHub Apps) with repo
+      #    permissions: Contents = Read/write, Pull requests = Read/write, Workflows = Read/write.
+      # 2. Install it on this repo. Save the App ID and a generated private key as the
+      #    secrets APP_ID and APP_PRIVATE_KEY.
+      # 3. Uncomment this step and set the Renovate step's token to
+      #    ${{ steps.app-token.outputs.token }} instead of GITHUB_TOKEN.
+      # - name: Generate GitHub App token
+      #   id: app-token
+      #   uses: actions/create-github-app-token@v2
+      #   with:
+      #     app-id: ${{ secrets.APP_ID }}
+      #     private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Run Renovate
-        uses: renovatebot/github-action@v46
+        uses: renovatebot/github-action@v46.1.19
         with:
-          # PAT with repo scope (recommended so Renovate PRs trigger CI). GITHUB_TOKEN also works.
-          token: ${{ secrets.RENOVATE_TOKEN }}
+          # Built-in, auto-expiring token (no PAT, no secret to manage). Good for testing.
+          # Note: PRs opened with GITHUB_TOKEN do NOT trigger other workflows (CI).
+          # For production, swap to the GitHub App token: ${{ steps.app-token.outputs.token }}
+          token: ${{ secrets.GITHUB_TOKEN }}
         env:
           # Only look at this repository.
           RENOVATE_REPOSITORIES: ${{ github.repository }}
