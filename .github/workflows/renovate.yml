@@ -18,8 +18,8 @@ on:
         description: "Base branch to scan + target PRs against (blank = default branch). Set a feature branch to test config/hook changes that only live on that branch."
         type: string
         default: ""
-      branch_prefix_with_timestamp:
-        description: "Add a timestamp to every Renovate branch name (renovate/<dep> -> renovate/<dep>-<timestamp>). Useful for testing, so each run creates new branches instead of skipping existing ones."
+      add_unique_branch_prefix:
+        description: "Add a unique section to every Renovate branch name (renovate/<dep> -> renovate/<unique>/<dep>). Useful for testing, so each run creates new branches instead of skipping existing ones."
         type: boolean
         default: false
       pr_hourly_limit:
@@ -27,7 +27,7 @@ on:
         type: number
         default: 10
       recreate_when:
-        description: "Re-raise update PRs you already closed/merged. 'always' = propose again every run even after a revert (repeat testing). 'auto' (Renovate default) = only when the update changed. 'never' = fully respect closed PRs."
+        description: "Re-raise update closed/merged PRs?. 'always' = propose again every run even after revert (repeat testing). 'auto' (Renovate default) = only when the update changed. 'never' = fully respect closed PRs."
         type: choice
         options: [auto, always, never]
         default: auto
@@ -79,7 +79,7 @@ jobs:
           # branch to test config/hook changes that only exist on that branch.
           RENOVATE_BASE_BRANCHES: ${{ inputs.base_branch != '' && format('["{0}"]', inputs.base_branch) || format('["{0}"]', github.event.repository.default_branch) }}
           # Only set a branch prefix with timestamp 'renovate-yyyyymmddhhmmss' if the input is true. Otherwise, leave it blank to use Renovate's default 'renovate/<dep>'.
-          RENOVATE_BRANCH_PREFIX: ${{ inputs.branch_prefix_with_timestamp && format('renovate/{0}/', github.run_id) || 'renovate/' }}
+          RENOVATE_BRANCH_PREFIX: ${{ inputs.add_unique_branch_prefix && format('renovate/{0}/', github.run_id) || 'renovate/' }}
           # Defeat Renovate's memory of CLOSED/MERGED PRs. Renovate does NOT read git history -
           # it compares the current file contents on the base branch to the datasource - but it
           # WILL refuse to re-raise an update whose PR you previously closed. recreateWhen=auto
