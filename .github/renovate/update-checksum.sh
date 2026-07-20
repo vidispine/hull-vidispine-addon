@@ -67,6 +67,8 @@ case "$DEP_NAME" in
     else
       decoded="$(tr -d '\000' < "$tmp")"
     fi
+    echo "Searching checksum for: ${asset} in ..."
+    echo "$decoded" | head -n 50
     checksum="$(printf '%s\n' "$decoded" | extract_checksum "$asset")"
     [ -n "$checksum" ] || { echo "ERROR: no checksum found for '${asset}'" >&2; exit 1; }
     update_arg PS_CHECKSUM "$checksum"
