@@ -26,6 +26,11 @@ on:
         description: "Maximum Renovate PRs per hour. Positive values only, no 0, Renovate default = 2. Increase if you need more for testing!"
         type: number
         default: 10
+      recreate_when:
+        description: "Re-raise update PRs you already closed/merged. 'always' = propose again every run even after a revert (repeat testing). 'auto' (Renovate default) = only when the update changed. 'never' = fully respect closed PRs."
+        type: choice
+        options: [auto, always, never]
+        default: auto
 
 permissions:
   contents: write
@@ -75,6 +80,13 @@ jobs:
           RENOVATE_BASE_BRANCHES: ${{ inputs.base_branch != '' && format('["{0}"]', inputs.base_branch) || format('["{0}"]', github.event.repository.default_branch) }}
           # Only set a branch prefix with timestamp 'renovate-yyyyymmddhhmmss' if the input is true. Otherwise, leave it blank to use Renovate's default 'renovate/<dep>'.
           RENOVATE_BRANCH_PREFIX: ${{ inputs.branch_prefix_with_timestamp && format('renovate/{0}/', github.run_id) || 'renovate/' }}
+          # Defeat Renovate's memory of CLOSED/MERGED PRs. Renovate does NOT read git history -
+          # it compares the current file contents on the base branch to the datasource - but it
+          # WILL refuse to re-raise an update whose PR you previously closed. recreateWhen=auto
+          # (the default) only recreates when the update content changed; 'always' re-proposes
+          # every run, so a reverted version comes back and repeat testing works; 'never' fully
+          # respects closed PRs. Scheduled runs get the default 'auto'.
+          RENOVATE_RECREATE_WHEN: ${{ inputs.recreate_when || 'auto' }}
 
           # Namespace every Renovate branch AND PR by its target (base) branch, always -
           # for the default branch too, not just test branches. This keeps each base
