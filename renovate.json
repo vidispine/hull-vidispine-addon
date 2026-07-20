@@ -9,6 +9,11 @@
       "pinDigests": true
     },
     {
+      "description": "Disable GitHub Actions updates. Temporarily, not possible with GITHUB_TOKEN only.",
+      "matchManagers": ["github-actions"],
+      "enabled": false
+    },
+    {
       "description": "Block any major version updates. Remove or empty array to allow major updates.",
       "matchUpdateTypes": ["major"],
       "enabled": false
