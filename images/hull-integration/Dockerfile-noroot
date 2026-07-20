@@ -9,6 +9,7 @@ FROM ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebff
 # renovate: datasource=github-releases depName=PowerShell/PowerShell
 ARG PS_VERSION=7.6.3
 # Checksum of powershell_${PS_VERSION}-1.deb_amd64.deb (from the release hashes.sha256).
+# Source: https://github.com/PowerShell/PowerShell/releases/download/v<version>/hashes.sha256
 ARG PS_CHECKSUM=f03200f25c511583c648aecb8d8ce75789db2cf668b39803ee639476d716a3dd
 # renovate: datasource=github-releases depName=oras-project/oras
 ARG ORAS_VERSION=1.3.3
