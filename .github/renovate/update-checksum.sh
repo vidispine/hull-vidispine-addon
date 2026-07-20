@@ -32,10 +32,12 @@ fi
 
 # Read a "<sha256>  <filename>" style checksum list from stdin and print the hash for
 # an exact filename match. Tolerates the leading '*' (binary-mode marker) that some
-# release checksum files put in front of the filename.
+# release checksum files put in front of the filename, and a trailing CR (PowerShell's
+# hashes.sha256 uses Windows CRLF line endings, which iconv preserves; without stripping
+# it the filename compare would never match and produce "no checksum found").
 extract_checksum() {
   local target="$1"
-  awk -v f="$target" '{ n=$2; sub(/^\*/, "", n); if (n == f) { print $1; exit } }'
+  awk -v f="$target" '{ sub(/\r$/, ""); n=$2; sub(/^\*/, "", n); if (n == f) { print $1; exit } }'
 }
 
 # Rewrite `ARG <name>=...` to the new value in every Dockerfile.
