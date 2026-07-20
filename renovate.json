@@ -9,15 +9,14 @@
       "pinDigests": true
     },
     {
-      "description": "Base image 'ubuntu': block tag version changes so it never moves off 24.04 to a non-LTS (24.10) or the next LTS (26.04) - only digest updates are allowed. Bump the tag by hand when adopting the next LTS.",
-      "matchDepNames": ["ubuntu"],
-      "matchUpdateTypes": ["major", "minor"],
+      "description": "Block any major version updates. Remove or empty array to allow major updates.",
+      "matchUpdateTypes": ["major"],
       "enabled": false
     },
     {
-      "description": "UPDATE LEVEL (single place) for all tracked images and Dockerfile packages. NOTE: matchUpdateTypes lists the update types to BLOCK (enabled=false), not to allow. Current = MINOR level: block [\"major\"] => minor + patch stay enabled and collapse into ONE PR at the highest allowed version. PATCH level: block [\"major\", \"minor\"] AND add top-level \"separateMinorPatch\": true (so a patch still gets a PR when a now-blocked minor exists). MAJOR level (allow everything): delete this whole rule.",
-      "matchManagers": ["custom.regex"],
-      "matchUpdateTypes": ["major"],
+      "description": "Base image 'ubuntu': block tag version changes so it never moves off 24.04 to a non-LTS (24.10) or the next LTS (26.04) - only digest updates are allowed. Bump the tag by hand when adopting the next LTS.",
+      "matchDepNames": ["ubuntu"],
+      "matchUpdateTypes": ["major", "minor"],
       "enabled": false
     },
     {

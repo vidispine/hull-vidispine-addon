@@ -1455,3 +1455,107 @@ _FORCE_SUBFOLDER_: If true, a subfolder must be present in the path to be return
 Usage:
 
 Returns a path constructed from `systemType`/`FILE` so a particular file for the given system.
+
+# Update with Mend Renovate
+
+This repo contains a GitHub workflow (similar to Azure DevOps pipeline) to update the Docker images and versions installed in a _Dockerfile_ build.  
+Renovate currently has all managers enabled by default, so any match might trigger an update. Only major version updates are blocked.
+
+Files:
+- _.github\workflows\renovate.yml_ - The GitHub workflow.
+- _renovate.json_ - The Renovate configuration.
+
+A _schedule:_ entry with a crontab specifies automated runs. Currently: 3AM UTC, Monday to Friday.
+
+Main parts of the _renovate.json_ configuration are the _packageRules_ and _customManagers_.
+
+_packageRules_ with a setting _"enabled": false_ are typically used to block undesirable auto-updates, such as _major_ versions.
+
+This Renovate workflow only affects it's own Git repository, no need to access others.
+
+## GitHub Environment and Secrets
+
+The workflow needs a GitHub environment _renovate-vidispine-content-wf_, specified in _.github\workflows\renovate.yml_, where secret and environment variable values can be configured.
+
+Secrets:
+- *GITHUB_TOKEN*: Automatically created, access to GitHub repository.
+- *VIDINET_REGISTRY_USERNAME*: User for _cr.vidinet.net_ (still needs user+pw credentials)
+- *VIDINET_REGISTRY_PASSWORD*: Password for _cr.vidinet.net_ (still needs user+pw credentials)
+
+As of now, only simple read access is needed for the _cr.vidinet.net_ registry.
+
+## Renovate and CI Checks, Automerge
+
+The current configuration only runs without CI checks (like gated builds) and creates pull requests for manual approval and merge. 
+
+To enable starting CI checks or automerge, enable an app token, as already pre-implemented in comments in the _renovate.yml_!
+
+## Default Settings
+
+The setting _"extends": ["config:recommended"]_ adds a default configuration, delivered with the currently running Renovate. Further settings extend this.
+
+See also: https://docs.renovatebot.com/presets-config/
+
+## Ignored Test Folders
+
+File paths under any _files/test/_ directory structure are marked as ignored through the _ignorePaths_ setting. They require manual updates (Dockerfile and Python code).
+
+## Docker Images
+
+Controlled by annotation comments with "_renovate:_"; example from _hull-vidispine-addon.yaml_:
+```yaml
+  images:
+    dbTools:
+      # renovate: datasource=docker depName=cr.vidinet.net/vpms/dbtools
+      tag: 4.0.0
+```
+Note that this definition is different from most other Docker image settings in YAML files. It is an image-tag values definition, which is later inserted into other YAML via template variables. 
+
+The _depName_ in the annotation must contain the whole image name _cr.vidinet.net/vpms/dbtools_. _cr.vidinet.net_ is the registry, _vpms/dbtools_ the repository. The Renovate _customManager_ of type _regex_ captures the annotation variables via regex in _matchStrings_.
+
+Currently only affecting file _hull-vidispine-addon.yaml_.
+
+Example for later usage in *hull-vidispine-addon/templates/_library.tpl*:
+```yaml
+{{ $dbToolsDefaultVersion := $parent.Values.hull.config.general.data.installation.config.images.dbTools.tag }}
+# [...]
+  copy-custom-scripts:
+    image:
+      repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
+      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" $dbToolsDefaultVersion $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
+    args:
+      # [...]
+```
+
+
+## Dockerfile Configurations
+
+Affects base image versions and components installed in Dockerfiles. Example in _Dockerfile_:
+```dockerfile
+FROM ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90
+# renovate: datasource=github-releases depName=PowerShell/PowerShell
+ARG PS_VERSION=7.6.3
+```
+
+The file filter in _customManagers_ applies to files starting with _Dockerfile_.
+
+### ORAS
+
+**ORAS is not updated at all!** It requires lookup of a checksum for new builds, which is not supported by Renovate directly.
+
+### Base Image _ubuntu_
+
+No annotation comment. Always stays on given version like _24.04_, but the _@sha256:_ digest is updated to the latest version. Note that the digest is decisive for what image is installed, if present, not the version tag like _24.04_!
+
+### PowerShell Core
+
+Annotation comment "_# renovate:_" over *ARG PS_VERSION=*, resolved in _renovate.json_ _customManagers_. 
+
+Now uses a GitHub release instead of one from Microsoft. It uses a checksum verification at build time, which is weaker than a checksume coded during update of the _Dockerfile_, but currently the only way for auto-update.
+
+Version range specified by **Regex** in _renovate.json_ _packageRules_. Stays within the _major-minor_ version range. Typically with an even minor number, marking LTS versions like _7.6_.
+
+## Other Updates
+
+When all Renovate managers are enabled by default, updates can happen in other places.
+This includes the Renovate workflow file itself, _renovate.yml_, where GitHub Actions may receive version updates.
