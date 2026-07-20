@@ -64,6 +64,23 @@ jobs:
           # NOT change this. Blank -> repo default branch (normal operation); set a feature
           # branch to test config/hook changes that only exist on that branch.
           RENOVATE_BASE_BRANCHES: ${{ inputs.base_branch != '' && format('["{0}"]', inputs.base_branch) || format('["{0}"]', github.event.repository.default_branch) }}
+          # Namespace every Renovate branch AND PR by its target (base) branch, always -
+          # for the default branch too, not just test branches. This keeps each base
+          # branch's updates fully separate so they can't cross-contaminate:
+          #  * ADDITIONAL_BRANCH_PREFIX folds the base branch into the head-branch name
+          #    (renovate/master-<dep> vs renovate/<test-branch>-<dep>). Renovate detects
+          #    "already handled" updates by head-branch name, so a run targeting one base
+          #    branch never sees - and is never skipped/blocked by - another branch's PRs.
+          #    Testing against a feature branch therefore leaves the master namespace
+          #    untouched; delete the test branch + its renovate/<test-branch>-* branches
+          #    to clean up afterwards.
+          #  * COMMIT_MESSAGE_SUFFIX tags the PR title with the base branch (e.g. "[master]")
+          #    so PRs are also distinguishable by name, on top of the branch separation.
+          # NOTE: enabling this renames master's head branches from renovate/<dep> to
+          # renovate/master-<dep>; on the first run any pre-existing renovate/<dep> PRs are
+          # recreated once under the new names.
+          RENOVATE_ADDITIONAL_BRANCH_PREFIX: ${{ inputs.base_branch != '' && format('{0}-', inputs.base_branch) || format('{0}-', github.event.repository.default_branch) }}
+          RENOVATE_COMMIT_MESSAGE_SUFFIX: ${{ inputs.base_branch != '' && format('[{0}]', inputs.base_branch) || format('[{0}]', github.event.repository.default_branch) }}
           # Credentials for cr.vidinet.net. A single host rule (no hostType) covers
           # both Docker images and Helm charts pulled from this registry.
           RENOVATE_HOST_RULES: >-
