@@ -18,6 +18,10 @@ on:
         description: "Base branch to scan + target PRs against (blank = default branch). Set a feature branch to test config/hook changes that only live on that branch."
         type: string
         default: ""
+      branch_prefix_with_timestamp:
+        description: "Add a timestamp to every Renovate branch name (renovate/<dep> -> renovate/<dep>-<timestamp>). Useful for testing, so each run creates new branches instead of skipping existing ones."
+        type: boolean
+        default: false
       pr_hourly_limit:
         description: "Maximum Renovate PRs per hour. Positive values only, no 0, Renovate default = 2. Increase if you need more for testing!"
         type: number
@@ -69,6 +73,9 @@ jobs:
           # NOT change this. Blank -> repo default branch (normal operation); set a feature
           # branch to test config/hook changes that only exist on that branch.
           RENOVATE_BASE_BRANCHES: ${{ inputs.base_branch != '' && format('["{0}"]', inputs.base_branch) || format('["{0}"]', github.event.repository.default_branch) }}
+          # Only set a branch prefix with timestamp 'renovate-yyyyymmddhhmmss' if the input is true. Otherwise, leave it blank to use Renovate's default 'renovate/<dep>'.
+          RENOVATE_BRANCH_PREFIX: ${{ inputs.branch_prefix_with_timestamp && format('renovate/{0}/', github.run_id) || 'renovate/' }}
+
           # Namespace every Renovate branch AND PR by its target (base) branch, always -
           # for the default branch too, not just test branches. This keeps each base
           # branch's updates fully separate so they can't cross-contaminate:
