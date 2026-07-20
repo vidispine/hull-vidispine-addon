@@ -18,6 +18,10 @@ on:
         description: "Base branch to scan + target PRs against (blank = default branch). Set a feature branch to test config/hook changes that only live on that branch."
         type: string
         default: ""
+      pr_hourly_limit:
+        description: "Maximum Renovate PRs per hour. Positive values only, no 0, Renovate default = 2. Increase if you need more for testing!"
+        type: number
+        default: 10
 
 permissions:
   contents: write
@@ -52,6 +56,7 @@ jobs:
         env:
           # Only look at this repository.
           RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_PR_HOURLY_LIMIT: ${{ inputs.pr_hourly_limit || 10 }}
           # Allowlist for postUpgradeTasks commands (self-hosted requirement). Only commands
           # matching one of these regexes may run. Keeps the checksum-refresh hook (see
           # renovate.json -> postUpgradeTasks) in sync with each version bump.
