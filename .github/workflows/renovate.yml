@@ -48,6 +48,10 @@ jobs:
         env:
           # Only look at this repository.
           RENOVATE_REPOSITORIES: ${{ github.repository }}
+          # Allowlist for postUpgradeTasks commands (self-hosted requirement). Only commands
+          # matching one of these regexes may run. Keeps the checksum-refresh hook (see
+          # renovate.json -> postUpgradeTasks) in sync with each version bump.
+          RENOVATE_ALLOWED_COMMANDS: '["^bash \.github/renovate/update-checksum\.sh "]'
           # Manual-run options (empty/ignored on scheduled runs).
           RENOVATE_DRY_RUN: ${{ inputs.dry_run && 'full' || '' }}
           LOG_LEVEL: ${{ inputs.log_level || 'info' }}

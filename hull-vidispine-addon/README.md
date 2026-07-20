@@ -1535,13 +1535,25 @@ Affects base image versions and components installed in Dockerfiles. Example in 
 FROM ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90
 # renovate: datasource=github-releases depName=PowerShell/PowerShell
 ARG PS_VERSION=7.6.3
+# Kept in sync with PS_VERSION by the postUpgradeTask checksum hook (see below).
+ARG PS_CHECKSUM=f03200f25c511583c648aecb8d8ce75789db2cf668b39803ee639476d716a3dd
 ```
 
 The file filter in _customManagers_ applies to files starting with _Dockerfile_.
 
+### Checksum hook (PowerShell + ORAS)
+
+Downloaded components are verified against a checksum that is **stored in the Dockerfile** (`ARG PS_CHECKSUM`, `ARG ORAS_CHECKSUM`), not fetched live at build time. To keep those checksums in sync with the versions automatically, Renovate runs a [postUpgradeTask](https://docs.renovatebot.com/configuration-options/#postupgradetasks) after each bump:
+
+- _renovate.json_ → `postUpgradeTasks` calls `bash .github/renovate/update-checksum.sh {{{depName}}} {{{newVersion}}}` (`executionMode: update`, once per dependency) and adds the changed _Dockerfile*_ to the same PR (`fileFilters`).
+- [.github/renovate/update-checksum.sh](../.github/renovate/update-checksum.sh) fetches the official release checksum file for the new version and rewrites the matching `ARG <NAME>_CHECKSUM=` line in every Dockerfile.
+- So a single Renovate PR contains **both** the version bump and its new checksum. The build stays offline (no live checksum fetch).
+
+**Self-hosted-only!**: `postUpgradeTasks` commands must match the `allowedCommands` allowlist, set as `RENOVATE_ALLOWED_COMMANDS` in [renovate.yml](../.github/workflows/renovate.yml). Renovate via `renovatebot/github-action` is self-hosted, so this is available; the Mend-hosted app disables it.
+
 ### ORAS
 
-**ORAS is not updated at all!** It requires lookup of a checksum for new builds, which is not supported by Renovate directly.
+Tracked via a "_# renovate:_" annotation over *ARG ORAS_VERSION=* (datasource `github-releases`, depName `oras-project/oras`), resolved by the same _customManagers_ entry as PowerShell. The `ARG ORAS_CHECKSUM` is refreshed automatically by the checksum hook described above. Major updates are blocked by the global _packageRules_ rule.
 
 ### Base Image _ubuntu_
 
@@ -1551,7 +1563,7 @@ No annotation comment. Always stays on given version like _24.04_, but the _@sha
 
 Annotation comment "_# renovate:_" over *ARG PS_VERSION=*, resolved in _renovate.json_ _customManagers_. 
 
-Now uses a GitHub release instead of one from Microsoft. It uses a checksum verification at build time, which is weaker than a checksume coded during update of the _Dockerfile_, but currently the only way for auto-update.
+Uses a GitHub release instead of one from Microsoft. The `.deb` is verified against the stored `ARG PS_CHECKSUM`, which the checksum hook (see above) keeps in sync with `PS_VERSION` on every bump - so verification no longer depends on a live checksum download at build time.
 
 Version range specified by **Regex** in _renovate.json_ _packageRules_. Stays within the _major-minor_ version range. Typically with an even minor number, marking LTS versions like _7.6_.
 

@@ -23,8 +23,20 @@
       "description": "Regex filter for used LTS. PowerShell is pinned to the current LTS minor line 7.6.x -> patch updates only. PowerShell uses EVEN minors for LTS (7.4, 7.6, ...) and ODD minors for STS (7.5, 7.7, ...); this allowedVersions blocks any move off 7.6, so no STS like 7.5.x/7.7.x. Bump this range by hand when adopting the next LTS (e.g. 7.8).",
       "matchDepNames": ["PowerShell/PowerShell"],
       "allowedVersions": "/^7\\.6\\./"
+    },
+    {
+      "description": "ORAS: patch updates only. Block minor and major bumps so it stays on the current minor line (e.g. 1.3.x); bump the ARG by hand when adopting a new minor. Uses matchUpdateTypes rather than an allowedVersions regex because ORAS has no LTS/minor-parity constraint, so this needs no editing when the minor is bumped manually - patch updates resume automatically on the new line.",
+      "matchDepNames": ["oras-project/oras"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
     }
   ],
+  "postUpgradeTasks": {
+    "description": "After a version bump, refresh the matching ARG *_CHECKSUM in the Dockerfiles so the version and its checksum land in the same PR (build stays offline, no live checksum fetch). Self-hosted only: the command must be allowlisted via allowedCommands (RENOVATE_ALLOWED_COMMANDS in .github/workflows/renovate.yml).",
+    "commands": ["bash .github/renovate/update-checksum.sh {{{depName}}} {{{newVersion}}}"],
+    "fileFilters": ["**/Dockerfile*"],
+    "executionMode": "update"
+  },
   "customManagers": [
     {
       "customType": "regex",
