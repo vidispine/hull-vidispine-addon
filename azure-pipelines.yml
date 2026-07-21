@@ -47,43 +47,42 @@ jobs:
         fi
         echo "##vso[task.setvariable variable=HULL_VSADDON_VERSION;]${HULL_VSADDON_VERSION}"
         echo "-Y set hull-integration version to ${HULL_VSADDON_VERSION}"
-  - task: Docker@0
+  - task: Docker@2
     displayName: 'Docker Build noroot'
     inputs:
-      containerregistrytype: 'Container Registry'
-      dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
-      dockerFile: './images/hull-integration/Dockerfile'
-      defaultContext: false
-      context: './images/hull-integration'
-      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)-noroot'
- 
-  - task: Docker@0
+      command: build
+      containerRegistry: '${{ parameters.DockerRegistryEndpoint }}'
+      repository: 'hull/hull-integration'
+      Dockerfile: './images/hull-integration/Dockerfile'
+      buildContext: './images/hull-integration'
+      tags: '$(HULL_VSADDON_VERSION)-noroot'
+
+  - task: Docker@2
     displayName: 'Docker Push noroot'
     inputs:
-      containerregistrytype: 'Container Registry'
-      dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
-      action: 'Push an image'
-      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)-noroot'
+      command: push
+      containerRegistry: '${{ parameters.DockerRegistryEndpoint }}'
+      repository: 'hull/hull-integration'
+      tags: '$(HULL_VSADDON_VERSION)-noroot'
 
-  - task: Docker@0
+  - task: Docker@2
     displayName: 'Docker Build root'
     inputs:
-      containerregistrytype: 'Container Registry'
-      dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
-      dockerFile: './images/hull-integration/Dockerfile.root'
-      defaultContext: false
-      context: './images/hull-integration'
-      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)'
-      # prepend "--build-art" in Docker@2 task!
-      buildArguments: "BASE_TAG=$(HULL_VSADDON_VERSION)-noroot"
- 
-  - task: Docker@0
+      command: build
+      containerRegistry: '${{ parameters.DockerRegistryEndpoint }}'
+      repository: 'hull/hull-integration'
+      Dockerfile: './images/hull-integration/Dockerfile.root'
+      buildContext: './images/hull-integration'
+      tags: '$(HULL_VSADDON_VERSION)'
+      arguments: '--build-arg BASE_TAG=$(HULL_VSADDON_VERSION)-noroot'
+
+  - task: Docker@2
     displayName: 'Docker Push root'
     inputs:
-      containerregistrytype: 'Container Registry'
-      dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
-      action: 'Push an image'
-      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)'
+      command: push
+      containerRegistry: '${{ parameters.DockerRegistryEndpoint }}'
+      repository: 'hull/hull-integration'
+      tags: '$(HULL_VSADDON_VERSION)'
 
   - script: |
         CHART_RELEASER_VERSION=1.5.0
