@@ -10,6 +10,10 @@ parameters:
   displayName: 'The name of the service connection representing the Docker registry to push to.'
   type: string
   default: "vidinet Docker Registry"
+- name: DevNoChart
+  displayName: "Create images with tags dev/dev-noroot, don't create helm chart"
+  type: boolean
+  default: false
 
 trigger: none
 pr: none
@@ -32,46 +36,54 @@ jobs:
   dependsOn: RunTests
   steps:
   - script: |
-        export HULL_VSADDON_VERSION=`sed -n 's/^version:\s//p' ./hull-vidispine-addon/Chart.yaml | sed 's/\"//g'` 
-        echo "-> hull-vidispine-addon version is ${HULL_VSADDON_VERSION}"
+        DEV_NO_CHART="${{ parameters.DevNoChart }}"
+        if [ "${DEV_NO_CHART,,}" = "true" ]; then
+          export HULL_VSADDON_VERSION="dev"
+          echo "-> DevNoChart is true; using 'dev' version tag"
+        else
+          export HULL_VSADDON_VERSION=`sed -n 's/^version:\s//p' ./hull-vidispine-addon/Chart.yaml | sed 's/\"//g'`
+          echo "-> hull-vidispine-addon version is ${HULL_VSADDON_VERSION}"
+          sed -i -e "s/<HULL-VIDISPINE-ADDON-VERSION>/$HULL_VSADDON_VERSION/g" ./hull-vidispine-addon/hull-vidispine-addon.yaml
+        fi
         echo "##vso[task.setvariable variable=HULL_VSADDON_VERSION;]${HULL_VSADDON_VERSION}"
         echo "-Y set hull-integration version to ${HULL_VSADDON_VERSION}"
-        sed -i -e "s/<HULL-VIDISPINE-ADDON-VERSION>/$HULL_VSADDON_VERSION/g" ./hull-vidispine-addon/hull-vidispine-addon.yaml
   - task: Docker@0
-    displayName: 'Docker Build'
+    displayName: 'Docker Build noroot'
     inputs:
       containerregistrytype: 'Container Registry'
       dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
       dockerFile: './images/hull-integration/Dockerfile'
       defaultContext: false
       context: './images/hull-integration'
-      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)'
+      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)-noroot'
  
   - task: Docker@0
-    displayName: 'Docker Push'
+    displayName: 'Docker Push noroot'
     inputs:
       containerregistrytype: 'Container Registry'
       dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
       action: 'Push an image'
-      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)'
+      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)-noroot'
 
   - task: Docker@0
-    displayName: 'Docker Build noroot'
+    displayName: 'Docker Build root'
     inputs:
       containerregistrytype: 'Container Registry'
       dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
-      dockerFile: './images/hull-integration/Dockerfile-noroot'
+      dockerFile: './images/hull-integration/Dockerfile.root'
       defaultContext: false
       context: './images/hull-integration'
-      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)-noroot'
+      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)'
+      # prepend "--build-art" in Docker@2 task!
+      buildArguments: "BASE_TAG=$(HULL_VSADDON_VERSION)-noroot"
  
   - task: Docker@0
-    displayName: 'Docker Push'
+    displayName: 'Docker Push root'
     inputs:
       containerregistrytype: 'Container Registry'
       dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
       action: 'Push an image'
-      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)-noroot'
+      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)'
 
   - script: |
         CHART_RELEASER_VERSION=1.5.0
@@ -87,4 +99,5 @@ jobs:
         sudo ./cr upload --git-repo hull-vidispine-addon --owner vidispine --token $(GITHUBTOKEN) || true
         mkdir .cr-index
         wget https://vidispine.github.io/hull-vidispine-addon/index.yaml -O .cr-index/index.yaml
-        sudo ./cr index --git-repo hull-vidispine-addon --owner vidispine --token $(GITHUBTOKEN) --charts-repo https://vidispine.github.io/hull-vidispine-addon --push 
+        sudo ./cr index --git-repo hull-vidispine-addon --owner vidispine --token $(GITHUBTOKEN) --charts-repo https://vidispine.github.io/hull-vidispine-addon --push
+    condition: and(succeeded(), not(${{ parameters.DevNoChart }}))
