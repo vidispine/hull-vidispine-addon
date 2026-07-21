@@ -1,0 +1,66 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "ignorePaths": ["**/files/test/**"],
+  "packageRules": [
+    {
+      "description": "Base image 'ubuntu': stay on the 24.04 LTS tag but pin it by digest, and let Renovate keep that digest current (tracks the latest 24.04 rebuild for reproducible-yet-updated builds).",
+      "matchDepNames": ["ubuntu"],
+      "pinDigests": true
+    },
+    {
+      "description": "Disable GitHub Actions updates. Temporarily, not possible with GITHUB_TOKEN only.",
+      "matchManagers": ["github-actions"],
+      "enabled": false
+    },
+    {
+      "description": "Block any major version updates. Remove or empty array to allow major updates.",
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": "Base image 'ubuntu': block tag version changes so it never moves off 24.04 to a non-LTS (24.10) or the next LTS (26.04) - only digest updates are allowed. Bump the tag by hand when adopting the next LTS.",
+      "matchDepNames": ["ubuntu"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
+    },
+    {
+      "description": "Regex filter for used LTS. PowerShell is pinned to the current LTS minor line 7.6.x -> patch updates only. PowerShell uses EVEN minors for LTS (7.4, 7.6, ...) and ODD minors for STS (7.5, 7.7, ...); this allowedVersions blocks any move off 7.6, so no STS like 7.5.x/7.7.x. Bump this range by hand when adopting the next LTS (e.g. 7.8).",
+      "matchDepNames": ["PowerShell/PowerShell"],
+      "allowedVersions": "/^7\\.6\\./"
+    },
+    {
+      "description": "ORAS: patch updates only. Block minor and major bumps so it stays on the current minor line (e.g. 1.3.x); bump the ARG by hand when adopting a new minor. Uses matchUpdateTypes rather than an allowedVersions regex because ORAS has no LTS/minor-parity constraint, so this needs no editing when the minor is bumped manually - patch updates resume automatically on the new line.",
+      "matchDepNames": ["oras-project/oras"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
+    }
+  ],
+  "postUpgradeTasks": {
+    "description": "After a version bump, refresh the matching ARG *_CHECKSUM in the Dockerfiles so the version and its checksum land in the same PR (build stays offline, no live checksum fetch). Self-hosted only: the command must be allowlisted via allowedCommands (RENOVATE_ALLOWED_COMMANDS in .github/workflows/renovate.yml).",
+    "commands": ["bash .github/renovate/update-checksum.sh {{{depName}}} {{{newVersion}}}"],
+    "fileFilters": ["**/Dockerfile*"],
+    "executionMode": "update"
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "DOCKERFILE-ARG packages: track versions pinned via 'ARG <NAME>_VERSION' with a 'renovate:' comment above them",
+      "managerFilePatterns": ["/(^|/)Dockerfile[^/]*$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?\\s+ARG \\S+=(?<currentValue>\\S+)"
+      ],
+      "extractVersionTemplate": "^v?(?<version>.+)$",
+      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver-coerced{{/if}}"
+    },
+    {
+      "customType": "regex",
+      "description": "IMAGES: update cr.vidinet.net image tags annotated with a 'renovate:' comment above the 'tag:' line",
+      "managerFilePatterns": ["/(^|/)hull-vidispine-addon\\.yaml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?\\s+tag:\\s*[\"']?(?<currentValue>[^\"'\\s]+)"
+      ],
+      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}docker{{/if}}"
+    }
+  ]
+}

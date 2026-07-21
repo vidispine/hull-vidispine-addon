@@ -30,7 +30,8 @@ hull:
               sourcesFolders: _HT/hull.vidispine.addon.sources.folder.configmap.count
             images:
               dbTools:
-                tag: 3.1.1-1-noroot
+                # renovate: datasource=docker depName=cr.vidinet.net/vpms/dbtools
+                tag: 4.0.0
           endpoints:
             10_vidicore:
               auth:
