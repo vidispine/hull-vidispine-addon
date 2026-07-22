@@ -5,6 +5,7 @@
 
 parameters:
 - name: RunTests
+  type: boolean
   default: false
 - name: DockerRegistryEndpoint
   displayName: 'The name of the service connection representing the Docker registry to push to.'

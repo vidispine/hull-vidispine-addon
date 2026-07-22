@@ -4,6 +4,7 @@
 # https://aka.ms/yaml
 parameters:
 - name: RunTests
+  type: boolean
   default: true
 
 trigger: none
