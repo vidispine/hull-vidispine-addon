@@ -36,6 +36,29 @@ jobs:
 - job: CreateRelease
   dependsOn: RunTests
   steps:
+  - task: Bash@3
+    displayName: 'Display Agent Docker Info'
+    inputs:
+      targetType: 'inline'
+      script: |
+        # 1. Full runtime state: storage driver, snapshotters, runtimes,
+        #    cgroup driver, registry mirrors, live-restore, versions, etc.
+        docker info
+
+        # 2. Client + server version/build/API details
+        docker version
+
+        # 3. The daemon config file (flags NOT shown here are compiled/CLI defaults) - root required
+        cat /etc/docker/daemon.json 2>/dev/null || echo "no daemon.json (all defaults)"
+
+        # 4. How the daemon is actually launched (systemd unit + drop-ins / ExecStart flags)
+        systemctl cat docker.service
+
+        # 5. Effective runtime environment of the daemon (proxies, etc.)
+        systemctl show docker.service -p Environment
+
+        # 6. containerd side (if you care about its config) - root required
+        cat /etc/containerd/config.toml 2>/dev/null || echo "containerd using defaults"
   - script: |
         DEV_NO_CHART="${{ parameters.DevNoChart }}"
         if [ "${DEV_NO_CHART,,}" = "true" ]; then
