@@ -436,10 +436,10 @@ hull:
             installation:
               image:
                 repository: hull/hull-integration
-                tag: <HULL-VIDISPINE-ADDON-VERSION>-noroot
+                tag: <HULL-VIDISPINE-ADDON-VERSION>
               args: _HT![
                 {{ if (or (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates (index . "$").Values.hull.config.general.data.installation.config.certificateSecrets) }}
-                echo Updating Certificates;
+                echo Updating Certificates (requires writable mount or root, no stop on failure);
                 update-ca-certificates;
                 {{ end }}
                 echo Run hull-install Script;
@@ -464,10 +464,10 @@ hull:
             installation:
               image:
                 repository: hull/hull-integration
-                tag: <HULL-VIDISPINE-ADDON-VERSION>-noroot
+                tag: <HULL-VIDISPINE-ADDON-VERSION>
               args: _HT![
                 {{ if (or (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates (index . "$").Values.hull.config.general.data.installation.config.certificateSecrets) }}
-                echo Updating Certificates;
+                echo Updating Certificates (requires writable mount or root, no stop on failure);
                 update-ca-certificates;
                 {{ end }}
                 echo Run hull-configure Script;

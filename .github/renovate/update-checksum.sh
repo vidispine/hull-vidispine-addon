@@ -23,7 +23,8 @@ set -euo pipefail
 DEP_NAME="${1:?usage: update-checksum.sh <depName> <newVersion>}"
 NEW_VERSION="${2:?usage: update-checksum.sh <depName> <newVersion>}"
 
-# All Dockerfiles that carry the *_CHECKSUM ARGs (Dockerfile and Dockerfile-noroot).
+# All Dockerfiles that carry the *_CHECKSUM ARGs (Dockerfile and variants).
+# May be reduced to single Dockerfile, if we are sure we don't need variants.
 mapfile -t DOCKERFILES < <(find images -type f -name 'Dockerfile*' | sort)
 if [ "${#DOCKERFILES[@]}" -eq 0 ]; then
   echo "ERROR: no Dockerfiles found under images/" >&2

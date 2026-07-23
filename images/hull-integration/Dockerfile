@@ -1,8 +1,6 @@
 FROM ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90
-# Keep EXACTLY the same Dockerfile and Dockerfile-noroot, except USER noroot (shared layers)!
-#
-# Versions carry a 'renovate:' comment so Renovate bumps them. Each matching *_CHECKSUM ARG is
-# kept in sync automatically by the Renovate postUpgradeTask hook (.github/renovate/update-checksum.sh)
+# ARG _VERSIONs carry a 'renovate:' annotation comment so Renovate bumps them. Each matching *_CHECKSUM ARG
+# is kept in sync automatically by the Renovate postUpgradeTask hook (.github/renovate/update-checksum.sh)
 # - do NOT edit the checksums by hand. They are stored here on purpose: the build verifies against
 # them offline and never fetches a checksum live at build time.
 #
@@ -42,3 +40,5 @@ RUN apt-get update \
 COPY --chown=noroot:noroot ./Installer.ps1 /script/Installer.ps1
 COPY --chown=noroot:noroot ./get-custom-scripts /get-custom-scripts
 USER noroot
+# If it becomes necessary to create a root version again, do not change here, but
+# create a derived Dockerfile.root based on this one, with only "USER root".

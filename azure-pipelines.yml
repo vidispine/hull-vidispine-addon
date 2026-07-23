@@ -16,7 +16,7 @@ parameters:
   type: string
   default: "cr.vidinet.net"
 - name: DevNoChart
-  displayName: "Create images with tags dev/dev-noroot, don't create helm chart"
+  displayName: "Create images with tag :dev, don't create helm chart"
   type: boolean
   default: false
 - name: addDockerProvenanceMode
@@ -121,31 +121,14 @@ jobs:
     condition: "and(succeeded(), ne(variables['HULL_INTEGRATION_PROVENANCE_SBOM_ARGS'], ''))"
 
   - task: Bash@3
-    displayName: 'Build and push -noroot image.'
-    inputs:
-      targetType: 'inline'
-      script: |
-        docker buildx build \
-          ${HULL_INTEGRATION_PROVENANCE_SBOM_ARGS} \
-          --tag ${HULL_INTEGRATION_IMAGE_REGISTRY}/hull/hull-integration:${HULL_VSADDON_VERSION}-noroot \
-          --file ./images/hull-integration/Dockerfile \
-          --push \
-          ./images/hull-integration
-    env:
-      HULL_INTEGRATION_IMAGE_REGISTRY: ${{ parameters.DockerRegistry }}
-      HULL_VSADDON_VERSION: $(HULL_VSADDON_VERSION)
-      HULL_INTEGRATION_PROVENANCE_SBOM_ARGS: $(HULL_INTEGRATION_PROVENANCE_SBOM_ARGS)
-  - task: Bash@3
-    displayName: 'Build and push default root image.'
+    displayName: 'Build and push image (noroot by default).'
     inputs:
       targetType: 'inline'
       script: |
         docker buildx build \
           ${HULL_INTEGRATION_PROVENANCE_SBOM_ARGS} \
           --tag ${HULL_INTEGRATION_IMAGE_REGISTRY}/hull/hull-integration:${HULL_VSADDON_VERSION} \
-          --file ./images/hull-integration/Dockerfile.root \
-          --build-arg IMAGE_REGISTRY=${HULL_INTEGRATION_IMAGE_REGISTRY} \
-          --build-arg BASE_TAG=${HULL_VSADDON_VERSION}-noroot \
+          --file ./images/hull-integration/Dockerfile \
           --push \
           ./images/hull-integration
     env:
