@@ -139,7 +139,7 @@ jobs:
       HULL_INTEGRATION_PROVENANCE_SBOM_ARGS: $(HULL_INTEGRATION_PROVENANCE_SBOM_ARGS)
 
   - script: |
-        CHART_RELEASER_VERSION=1.5.0
+        CHART_RELEASER_VERSION=1.8.1
         set -euo pipefail
         echo package chart
         cp -r . $(Agent.TempDirectory)
