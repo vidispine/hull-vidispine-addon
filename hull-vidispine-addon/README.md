@@ -1456,6 +1456,76 @@ Usage:
 
 Returns a path constructed from `systemType`/`FILE` so a particular file for the given system.
 
+# Test Pipeline _azure-pipelines-gated.yml_
+
+*Note: This is not a full documentation, only a note on what I found and how to resolve some issues.*
+
+Both the test pipeline and the release pipeline can use the common template _azure-pipelines-test.yml_.
+
+The test pipeline installs the _Gauge_ test tool and runs tests against various versions of Helm.
+
+1. Download and execute a script, which will select and update a proper Gauge version.
+2. The script installs Gauge.
+3. Gauge is started for each Helm version and runs the tests.
+
+## Troubleshooting
+
+- Gauge download fails, log shows empty URL: Can be a temporary error, try again later!
+- Gauge install with _pip_ fails with messages like "_ERROR: Cannot uninstall ..., RECORD file not found._": 
+  - _pip_ can't remove or overwrite components from OS package manager.
+  - Happened when switching agent to Ubuntu 24.04, from 22.04.
+  - Added option _--ignore-installed_ to _pip install_: Use own components, don't try to mess with OS installs. 
+- Gauge execution in test fails with incompatible packages, such as _protobuf_.
+  - Update the version in file _requirements.txt_ to a compatible one.
+  - Gauge (gencode part) is quite tolerant towards higher _protobuf_ versions, even across major versions.
+
+## Future Options
+
+- Use a Python Virtual Environment, to reduce trouble with package incompatibilities.
+- Use a dependency manager instead of manually editing files like _requirements.txt_.
+- Higher security precautions when downloading and executing external components.
+
+# Release Pipeline _azure-pipelines.yml_
+
+*Note: This is not a full documentation, only a note on what I found and how to resolve some issues.*
+
+Builds and pushes the _cr.vidinet.net/hull/hull-integration_ image and creates a Helm chart with it.
+
+Can optionally also run tests. If so, use a shorter range, initial to latest versions in the major 3.x, 4.x ranges.
+
+## Rootless Image After _1.36.2_
+
+Image versions greater than _1.36.2_ no longer run as _root_ user by default, and have no more separate _-noroot_ image variant.
+
+If user _root_ is still needed, it must be configured in Kubernetes or upon _docker run_. Note that the command _update-ca-certificates_, which typically needs _root_, also works on a writable mounted directory _/etc/ssl/certs_, which is currently the way to do it in Kubernetes. If it can't update due to missing write rights, it ends without updating, but doesn't fail with error.
+
+## Development Test Mode
+
+When checking "_Create images with tag :dev, don't push helm chart_" in the pipeline menu, the image will be built with a _dev_ tag instead of the version. The script still writes the original version out, so it can be seen in the logs.
+
+_:dev_ images are always pushed, including over an image of the same name. A Helm chart is built, but not uploaded.
+
+## Docker Provenance and SBOM (experimental, off by default)
+
+The pipeline can use the Docker `--provenance` and `--sbom` parameters to generate these attestations.
+
+Difference to regular build. Only when one of these options is enabled:
+- Generates an OCI image
+- Manifest with _index_ instead of single _manifest_ as _mediaType_.
+- A dedicated Docker builder, using _docker-container_ instead of the default _docker_ driver.
+  - Changing Docker image storage to _containerd_ could also enable provenance and SBOM.
+- This does **not** affect the manifests of Helm charts, where we currently perform manifest modifications.
+
+Formats and content:
+- Provenance: _SLSA_. Contains image build information.
+- SBOM: _SPDX_. Information about used components, e.g. application, runtime and OS packages.
+
+### SBOM vs. Mend SBOM
+
+Very different from Docker SBOM: We currently generate HTML files with license texts, which we call SBOM, from Mend, and attach them to the Helm charts of our releases, e.g. VidiFlow applications, which typically contain multiple images.
+
+Docker SBOMs are per image and in machine-readable SPDX format. We have no use for them yet, and they might compete with an implementation using Mend.
+
 # Update with Mend Renovate
 
 This repo contains a GitHub workflow (similar to Azure DevOps pipeline) to update the Docker images and versions installed in a _Dockerfile_ build.  
