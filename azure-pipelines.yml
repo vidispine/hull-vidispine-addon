@@ -7,12 +7,28 @@ parameters:
 - name: RunTests
   type: boolean
   default: false
-- name: DockerRegistryEndpoint
+- name: DockerRegistryServiceConnection
   displayName: 'The name of the service connection representing the Docker registry to push to.'
   type: string
   default: "vidinet Docker Registry"
+- name: DockerRegistry
+  displayName: 'The Docker registry to push to. Must match the registry in the Service Connection.'
+  type: string
+  default: "cr.vidinet.net"
 - name: DevNoChart
   displayName: "Create images with tags dev/dev-noroot, don't create helm chart"
+  type: boolean
+  default: false
+- name: addDockerProvenanceMode
+  displayName: "Enable Docker image provenance in given mode"
+  type: string
+  default: "false"
+  values:
+    - "false"
+    - "mode=min"
+    - "mode=max"
+- name: addDockerSBOM
+  displayName: "Enable Docker image SBOM generation"
   type: boolean
   default: false
 
@@ -60,53 +76,82 @@ jobs:
         # 6. containerd side (if you care about its config) - root required
         cat /etc/containerd/config.toml 2>/dev/null || echo "containerd using defaults"
   - script: |
-        DEV_NO_CHART="${{ parameters.DevNoChart }}"
+        export HULL_VSADDON_VERSION=`sed -n 's/^version:\s//p' ./hull-vidispine-addon/Chart.yaml | sed 's/\"//g'`
         if [ "${DEV_NO_CHART,,}" = "true" ]; then
+          echo "-> DevNoChart is true; using 'dev' version tag instead of '${HULL_VSADDON_VERSION}' from Chart.yaml"
           export HULL_VSADDON_VERSION="dev"
-          echo "-> DevNoChart is true; using 'dev' version tag"
         else
-          export HULL_VSADDON_VERSION=`sed -n 's/^version:\s//p' ./hull-vidispine-addon/Chart.yaml | sed 's/\"//g'`
           echo "-> hull-vidispine-addon version is ${HULL_VSADDON_VERSION}"
           sed -i -e "s/<HULL-VIDISPINE-ADDON-VERSION>/$HULL_VSADDON_VERSION/g" ./hull-vidispine-addon/hull-vidispine-addon.yaml
         fi
         echo "##vso[task.setvariable variable=HULL_VSADDON_VERSION;]${HULL_VSADDON_VERSION}"
         echo "-Y set hull-integration version to ${HULL_VSADDON_VERSION}"
+    displayName: 'Set hull/Hull-integration version'
+    env:
+      DEV_NO_CHART: ${{ parameters.DevNoChart }}
+  - script: |
+        PROVENANCE_SBOM_ARGS=""
+        if [ "${ADD_PROVENANCE_MODE,,}" != "false" ]; then
+          PROVENANCE_SBOM_ARGS=" --provenance=${ADD_PROVENANCE_MODE}"
+        fi
+        if [ "${ADD_SBOM,,}" = "true" ]; then
+          if [ "${PROVENANCE_SBOM_ARGS}" == "" ]; then
+            # would default to --provenance=mode=min when any attestations are enabled. Disable explicitly.
+            PROVENANCE_SBOM_ARGS=" --provenance=false"
+          fi
+          PROVENANCE_SBOM_ARGS="${PROVENANCE_SBOM_ARGS} --sbom=true"
+        fi
+        echo "Docker provenance/SBOM args: ${PROVENANCE_SBOM_ARGS}"
+        echo "##vso[task.setvariable variable=HULL_INTEGRATION_PROVENANCE_SBOM_ARGS;]${PROVENANCE_SBOM_ARGS}"
+    displayName: 'Set Docker provenance/SBOM args as configured'
+    env:
+      ADD_PROVENANCE_MODE: ${{ parameters.addDockerProvenanceMode }}
+      ADD_SBOM: ${{ parameters.addDockerSBOM }}
+      
   - task: Docker@2
-    displayName: 'Docker Build noroot'
+    displayName: 'Docker Login'
     inputs:
-      command: build
-      containerRegistry: '${{ parameters.DockerRegistryEndpoint }}'
-      repository: 'hull/hull-integration'
-      Dockerfile: './images/hull-integration/Dockerfile'
-      buildContext: './images/hull-integration'
-      tags: '$(HULL_VSADDON_VERSION)-noroot'
+      command: login
+      containerRegistry: '${{ parameters.DockerRegistryServiceConnection }}'
+  - script: |
+        HULL_INTEGRATION_DOCKER_DRIVER="docker-container"
+        echo "Creating docker builder for provenance and SBOM, driver: $HULL_INTEGRATION_DOCKER_DRIVER ..."
+        docker buildx create --use --driver $HULL_INTEGRATION_DOCKER_DRIVER --name hull-integration-builder-attest
+    displayName: 'Create Docker builder for provenance and SBOM'
+    condition: "and(succeeded(), ne(variables['HULL_INTEGRATION_PROVENANCE_SBOM_ARGS'], ''))"
 
-  - task: Docker@2
-    displayName: 'Docker Push noroot'
+  - task: Bash@3
+    displayName: 'Build and push -noroot image.'
     inputs:
-      command: push
-      containerRegistry: '${{ parameters.DockerRegistryEndpoint }}'
-      repository: 'hull/hull-integration'
-      tags: '$(HULL_VSADDON_VERSION)-noroot'
-
-  - task: Docker@2
-    displayName: 'Docker Build root'
+      targetType: 'inline'
+      script: |
+        docker buildx build \
+          ${HULL_INTEGRATION_PROVENANCE_SBOM_ARGS} \
+          --tag ${HULL_INTEGRATION_IMAGE_REGISTRY}/hull/hull-integration:${HULL_VSADDON_VERSION}-noroot \
+          --file ./images/hull-integration/Dockerfile \
+          --push \
+          ./images/hull-integration
+    env:
+      HULL_INTEGRATION_IMAGE_REGISTRY: ${{ parameters.DockerRegistry }}
+      HULL_VSADDON_VERSION: $(HULL_VSADDON_VERSION)
+      HULL_INTEGRATION_PROVENANCE_SBOM_ARGS: $(HULL_INTEGRATION_PROVENANCE_SBOM_ARGS)
+  - task: Bash@3
+    displayName: 'Build and push default root image.'
     inputs:
-      command: build
-      containerRegistry: '${{ parameters.DockerRegistryEndpoint }}'
-      repository: 'hull/hull-integration'
-      Dockerfile: './images/hull-integration/Dockerfile.root'
-      buildContext: './images/hull-integration'
-      tags: '$(HULL_VSADDON_VERSION)'
-      arguments: '--build-arg BASE_TAG=$(HULL_VSADDON_VERSION)-noroot'
-
-  - task: Docker@2
-    displayName: 'Docker Push root'
-    inputs:
-      command: push
-      containerRegistry: '${{ parameters.DockerRegistryEndpoint }}'
-      repository: 'hull/hull-integration'
-      tags: '$(HULL_VSADDON_VERSION)'
+      targetType: 'inline'
+      script: |
+        docker buildx build \
+          ${HULL_INTEGRATION_PROVENANCE_SBOM_ARGS} \
+          --tag ${HULL_INTEGRATION_IMAGE_REGISTRY}/hull/hull-integration:${HULL_VSADDON_VERSION} \
+          --file ./images/hull-integration/Dockerfile.root \
+          --build-arg IMAGE_REGISTRY=${HULL_INTEGRATION_IMAGE_REGISTRY} \
+          --build-arg BASE_TAG=${HULL_VSADDON_VERSION}-noroot \
+          --push \
+          ./images/hull-integration
+    env:
+      HULL_INTEGRATION_IMAGE_REGISTRY: ${{ parameters.DockerRegistry }}
+      HULL_VSADDON_VERSION: $(HULL_VSADDON_VERSION)
+      HULL_INTEGRATION_PROVENANCE_SBOM_ARGS: $(HULL_INTEGRATION_PROVENANCE_SBOM_ARGS)
 
   - script: |
         CHART_RELEASER_VERSION=1.5.0

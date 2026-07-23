@@ -1,3 +1,5 @@
-ARG BASE_TAG=":missing:"
-FROM cr.vidinet.net/hull/hull-integration:${BASE_TAG}
+# check=skip=InvalidDefaultArgInFrom
+ARG IMAGE_REGISTRY
+ARG BASE_TAG
+FROM ${IMAGE_REGISTRY}/hull/hull-integration:${BASE_TAG}
 USER root
