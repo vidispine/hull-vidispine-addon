@@ -15,8 +15,8 @@ parameters:
   displayName: 'The Docker registry to push to. Must match the registry in the Service Connection.'
   type: string
   default: "cr.vidinet.net"
-- name: DevNoChart
-  displayName: "Create images with tag :dev, don't create helm chart"
+- name: DevNoChartPush
+  displayName: "Create images with tag :dev, don't push helm chart"
   type: boolean
   default: false
 - name: addDockerProvenanceMode
@@ -80,17 +80,17 @@ jobs:
   - script: |
         export HULL_VSADDON_VERSION=`sed -n 's/^version:\s//p' ./hull-vidispine-addon/Chart.yaml | sed 's/\"//g'`
         if [ "${DEV_NO_CHART,,}" = "true" ]; then
-          echo "-> DevNoChart is true; using 'dev' version tag instead of '${HULL_VSADDON_VERSION}' from Chart.yaml"
+          echo "-> DevNoChartPush is true; using 'dev' version tag instead of '${HULL_VSADDON_VERSION}' from Chart.yaml"
           export HULL_VSADDON_VERSION="dev"
         else
           echo "-> hull-vidispine-addon version is ${HULL_VSADDON_VERSION}"
-          sed -i -e "s/<HULL-VIDISPINE-ADDON-VERSION>/$HULL_VSADDON_VERSION/g" ./hull-vidispine-addon/hull-vidispine-addon.yaml
         fi
+        sed -i -e "s/<HULL-VIDISPINE-ADDON-VERSION>/$HULL_VSADDON_VERSION/g" ./hull-vidispine-addon/hull-vidispine-addon.yaml
         echo "##vso[task.setvariable variable=HULL_VSADDON_VERSION;]${HULL_VSADDON_VERSION}"
         echo "-Y set hull-integration version to ${HULL_VSADDON_VERSION}"
     displayName: 'Set hull/Hull-integration version'
     env:
-      DEV_NO_CHART: ${{ parameters.DevNoChart }}
+      DEV_NO_CHART: ${{ parameters.DevNoChartPush }}
   - script: |
         PROVENANCE_SBOM_ARGS=""
         if [ "${ADD_PROVENANCE_MODE,,}" != "false" ]; then
@@ -143,14 +143,23 @@ jobs:
         set -euo pipefail
         echo package chart
         cp -r . $(Agent.TempDirectory)
-        cd $(Agent.TempDirectory)        
+        cd $(Agent.TempDirectory)
         wget https://github.com/helm/chart-releaser/releases/download/v${CHART_RELEASER_VERSION}/chart-releaser_${CHART_RELEASER_VERSION}_linux_amd64.tar.gz
         tar -xvzf chart-releaser_${CHART_RELEASER_VERSION}_linux_amd64.tar.gz -C ./
         ls
         sudo chmod +x ./cr
-        sudo ./cr package ./hull-vidispine-addon 
+        # Always run: validates that the (possibly updated) chart-releaser version
+        # downloads, runs, and produces a valid package. No remote side-effects.
+        helm lint ./hull-vidispine-addon
+        sudo ./cr package ./hull-vidispine-addon
+        ls -la .cr-release-packages/
+    displayName: 'Package chart (always - validates chart-releaser version)'
+  - script: |
+        set -euo pipefail
+        cd $(Agent.TempDirectory)
         sudo ./cr upload --git-repo hull-vidispine-addon --owner vidispine --token $(GITHUBTOKEN) || true
         mkdir .cr-index
         wget https://vidispine.github.io/hull-vidispine-addon/index.yaml -O .cr-index/index.yaml
         sudo ./cr index --git-repo hull-vidispine-addon --owner vidispine --token $(GITHUBTOKEN) --charts-repo https://vidispine.github.io/hull-vidispine-addon --push
-    condition: and(succeeded(), not(${{ parameters.DevNoChart }}))
+    displayName: 'Publish chart to GitHub Releases + gh-pages (release only)'
+    condition: and(succeeded(), not(${{ parameters.DevNoChartPush }}))
