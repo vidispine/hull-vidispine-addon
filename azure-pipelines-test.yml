@@ -17,7 +17,9 @@ steps:
       echo installing gauge
       sudo curl -SsL https://downloads.gauge.org/stable | sh
       cd hull-vidispine-addon/files/test/HULL
-      sudo pip install -r requirements.txt
+      # it may be easier to work with a virtualenv to avoid dependency conflicts; 
+      # for now, local install instead of system replacement.
+      sudo pip install --ignore-installed -r requirements.txt
       gauge
   displayName: 'install gauge'
   condition: and(gt(length('${{join(' ',parameters.HelmVersions) }}'),0),eq('${{ parameters.RunTests }}','true'))
