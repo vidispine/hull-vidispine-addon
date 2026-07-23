@@ -38,7 +38,7 @@
   ],
   "postUpgradeTasks": {
     "description": "After a version bump, refresh the matching ARG *_CHECKSUM in the Dockerfiles so the version and its checksum land in the same PR (build stays offline, no live checksum fetch). Self-hosted only: the command must be allowlisted via allowedCommands (RENOVATE_ALLOWED_COMMANDS in .github/workflows/renovate.yml).",
-    "commands": ["bash .github/renovate/update-checksum.sh {{{depName}}} {{{newVersion}}}"],
+    "commands": ["bash .github/renovate/update-checksum.sh {{{depName}}} {{{newVersion}}} {{{packageFile}}}"],
     "fileFilters": ["**/Dockerfile*"],
     "executionMode": "update"
   },

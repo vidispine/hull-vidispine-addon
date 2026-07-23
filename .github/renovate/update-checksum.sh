@@ -4,30 +4,35 @@
 #
 # After Renovate bumps a tracked version, it runs this script (see renovate.json ->
 # postUpgradeTasks). The script fetches the official release checksum for the new
-# version and writes it into the matching `ARG <NAME>_CHECKSUM=` line of every
-# Dockerfile, so the version bump and its checksum land in the SAME pull request.
+# version and writes it into the matching `ARG <NAME>_CHECKSUM=` line, so the version
+# bump and its checksum land in the SAME pull request.
 #
 # The point: `docker build` then verifies the download against a checksum that is
 # already committed in the repo. It never fetches a checksum live at build time.
 #
+# Which file is touched: exactly the <packageFile> Renovate passes - the single
+# Dockerfile it just bumped. That file must carry the matching `ARG <NAME>_CHECKSUM=`
+# line (mandatory wherever the version ARG lives); a missing one is a hard error.
+# The target file is required, so a manual run must name a Dockerfile too.
+#
 # Invocation (from renovate.json):
-#   bash .github/renovate/update-checksum.sh <depName> <newVersion>
+#   bash .github/renovate/update-checksum.sh <depName> <newVersion> <packageFile>
 # e.g.
-#   bash .github/renovate/update-checksum.sh oras-project/oras 1.3.4
+#   bash .github/renovate/update-checksum.sh oras-project/oras 1.3.4 images/hull-integration/Dockerfile
 #
 # Must be allowlisted for self-hosted Renovate via `allowedCommands`
 # (set as RENOVATE_ALLOWED_COMMANDS in .github/workflows/renovate.yml).
 
 set -euo pipefail
 
-DEP_NAME="${1:?usage: update-checksum.sh <depName> <newVersion>}"
-NEW_VERSION="${2:?usage: update-checksum.sh <depName> <newVersion>}"
+DEP_NAME="${1:?usage: update-checksum.sh <depName> <newVersion> <packageFile>}"
+NEW_VERSION="${2:?usage: update-checksum.sh <depName> <newVersion> <packageFile>}"
+# The single Dockerfile Renovate updated (its {{{packageFile}}}), always required.
+# Manual runs must name the Dockerfile too, so exactly one file is ever touched.
+TARGET_DOCKERFILE="${3:?usage: update-checksum.sh <depName> <newVersion> <packageFile>}"
 
-# All Dockerfiles that carry the *_CHECKSUM ARGs (Dockerfile and variants).
-# May be reduced to single Dockerfile, if we are sure we don't need variants.
-mapfile -t DOCKERFILES < <(find images -type f -name 'Dockerfile*' | sort)
-if [ "${#DOCKERFILES[@]}" -eq 0 ]; then
-  echo "ERROR: no Dockerfiles found under images/" >&2
+if [ ! -f "${TARGET_DOCKERFILE}" ]; then
+  echo "ERROR: target file '${TARGET_DOCKERFILE}' does not exist" >&2
   exit 1
 fi
 
@@ -41,17 +46,17 @@ extract_checksum() {
   awk -v f="$target" '{ sub(/\r$/, ""); n=$2; sub(/^\*/, "", n); if (n == f) { print $1; exit } }'
 }
 
-# Rewrite `ARG <name>=...` to the new value in every Dockerfile.
+# Rewrite the checksum `ARG <arg>=...` to the new value in TARGET_DOCKERFILE. The checksum
+# ARG is mandatory wherever the matching version ARG lives (and Renovate only runs this
+# for a file it just bumped), so a missing checksum ARG is a hard error, not a skip.
 update_arg() {
-  local arg="$1" value="$2" file
-  for file in "${DOCKERFILES[@]}"; do
-    if ! grep -qE "^ARG ${arg}=" "$file"; then
-      echo "ERROR: '${file}' has no 'ARG ${arg}=' line to update" >&2
-      exit 1
-    fi
-    sed -i -E "s|^(ARG ${arg}=).*$|\\1${value}|" "$file"
-    echo "  ${file}: ARG ${arg}=${value}"
-  done
+  local arg="$1" value="$2"
+  if ! grep -qE "^ARG ${arg}=" "$TARGET_DOCKERFILE"; then
+    echo "ERROR: '${TARGET_DOCKERFILE}' has no 'ARG ${arg}=' line to update" >&2
+    exit 1
+  fi
+  sed -i -E "s|^(ARG ${arg}=).*$|\\1${value}|" "$TARGET_DOCKERFILE"
+  echo "  ${TARGET_DOCKERFILE}: ARG ${arg}=${value}"
 }
 
 case "$DEP_NAME" in
