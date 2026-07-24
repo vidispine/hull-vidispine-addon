@@ -55,7 +55,8 @@ jobs:
   dependsOn: RunTests
   steps:
   - script: |
-        export HULL_VSADDON_VERSION=`sed -n 's/^version:\s//p' ./hull-vidispine-addon/Chart.yaml | sed 's/\"//g'`
+        set -euo pipefail
+        export HULL_VSADDON_VERSION="$(sed -nE 's/^version:[[:space:]]*"?([^"[:space:]]+)"?[[:space:]]*$/\1/p' ./hull-vidispine-addon/Chart.yaml)"
         if [ "${DEV_NO_CHART,,}" = "true" ]; then
           echo "-> DevNoChartPush is true; using 'dev' version tag instead of '${HULL_VSADDON_VERSION}' from Chart.yaml"
           export HULL_VSADDON_VERSION="dev"
