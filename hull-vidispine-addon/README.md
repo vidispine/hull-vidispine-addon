@@ -1541,7 +1541,20 @@ Main parts of the _renovate.json_ configuration are the _packageRules_ and _cust
 
 _packageRules_ with a setting _"enabled": false_ are typically used to block undesirable auto-updates, such as _major_ versions.
 
-This Renovate workflow only affects it's own Git repository, no need to access others.
+This Renovate workflow only affects its own Git repository, no need to access others.
+
+## Create GitHub Fork for Renovate Workflow Edits
+
+Default branch (_master_) is required for GitHub workflow runs in these cases:
+- New GitHub workflow: Needs a _.yml_ definition in default branch _.github/workflows/_.
+  - Once it exists in _master_, the branch to run from can be chosen at execution time.
+  - The _schedule:_ is also always used from default branch.
+- _renovate.json_: Is **always** taken from default _master_ branch, **not** another base branch to update!
+  - A Renovate option *RENOVATE_USE_BASE_BRANCH_CONFIG: merge* (as environment variable) exists, but the merge result may be different from a modified working branch _renovate.json_.
+
+Opposed to this, non-default Renovate parts, such as the _update-checksum.sh_ script, are **always** executed from the branch to update (Renovate base branch) - the work branch checkout, if it's not the default!
+
+Therefore, any modifications that may change the _renovate.json_, or other Renovate standard config files, should happen on a repository fork, that includes the default/_master_ branch, so that it can be modified and used within the fork.
 
 ## GitHub Environment and Secrets
 
