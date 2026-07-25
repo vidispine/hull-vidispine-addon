@@ -15,8 +15,12 @@ ARG ORAS_VERSION=1.3.3
 # Sources: https://github.com/oras-project/oras/releases/download/v<version>/oras_<version>_checksums.txt
 #          https://github.com/oras-project/setup-oras/blob/main/src/lib/data/releases.json
 ARG ORAS_CHECKSUM=9ce999f8d2de03fc03968b29d743077a58783e545e5eaa53917ca177352d0e59
-RUN apt-get update \
- && apt-get -y --no-install-recommends upgrade \
+# Ensure no interactive prompts from apt-get, also beyond -y.
+# Do not set ENV DEBIAN_FRONTEND=noninteractive; this would remain in the image and running container!
+ARG BUILD_DEBIAN_FRONTEND=noninteractive
+RUN export DEBIAN_FRONTEND=${BUILD_DEBIAN_FRONTEND} \
+ && apt-get update \
+ && apt-get -y --no-install-recommends dist-upgrade \
  && apt-get -y install --no-install-recommends ca-certificates curl \
  && echo "Downloading and installing PowerShell ${PS_VERSION} (.deb) from the matching GitHub release..." \
  && curl -fsSLO "https://github.com/PowerShell/PowerShell/releases/download/v${PS_VERSION}/powershell_${PS_VERSION}-1.deb_amd64.deb" \
