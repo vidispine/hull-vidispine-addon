@@ -5,17 +5,38 @@
 
 parameters:
 - name: RunTests
+  type: boolean
   default: false
-- name: DockerRegistryEndpoint
+- name: DockerRegistryServiceConnection
   displayName: 'The name of the service connection representing the Docker registry to push to.'
   type: string
   default: "vidinet Docker Registry"
+- name: DockerRegistry
+  displayName: 'The Docker registry to push to. Must match the registry in the Service Connection.'
+  type: string
+  default: "cr.vidinet.net"
+- name: DevNoChartPush
+  displayName: "Create images with tag :dev, don't push helm chart"
+  type: boolean
+  default: false
+- name: addDockerProvenanceMode
+  displayName: "Enable Docker image provenance in given mode"
+  type: string
+  default: "false"
+  values:
+    - "false"
+    - "mode=min"
+    - "mode=max"
+- name: addDockerSBOM
+  displayName: "Enable Docker image SBOM generation"
+  type: boolean
+  default: false
 
 trigger: none
 pr: none
 
 pool:
-    vmImage: 'ubuntu-22.04'
+    vmImage: 'ubuntu-24.04'
 
 jobs:
 - job: RunTests
@@ -25,66 +46,98 @@ jobs:
     parameters:
       RunTests: ${{ parameters.RunTests }}
       HelmVersions:
-      - version: "3.19.2"
-      - version: "4.0.1"
+      - version: "3.19.0"
+      - version: "3.21.3"
+      - version: "4.0.0"
+      - version: "4.2.3"
 
 - job: CreateRelease
   dependsOn: RunTests
   steps:
   - script: |
-        export HULL_VSADDON_VERSION=`sed -n 's/^version:\s//p' ./hull-vidispine-addon/Chart.yaml | sed 's/\"//g'` 
-        echo "-> hull-vidispine-addon version is ${HULL_VSADDON_VERSION}"
+        set -euo pipefail
+        export HULL_VSADDON_VERSION="$(sed -nE 's/^version:[[:space:]]*"?([^"[:space:]]+)"?[[:space:]]*$/\1/p' ./hull-vidispine-addon/Chart.yaml)"
+        if [ "${DEV_NO_CHART,,}" = "true" ]; then
+          echo "-> DevNoChartPush is true; using 'dev' version tag instead of '${HULL_VSADDON_VERSION}' from Chart.yaml"
+          export HULL_VSADDON_VERSION="dev"
+        else
+          echo "-> hull-vidispine-addon version is ${HULL_VSADDON_VERSION}"
+        fi
+        sed -i -e "s/<HULL-VIDISPINE-ADDON-VERSION>/$HULL_VSADDON_VERSION/g" ./hull-vidispine-addon/hull-vidispine-addon.yaml
         echo "##vso[task.setvariable variable=HULL_VSADDON_VERSION;]${HULL_VSADDON_VERSION}"
         echo "-Y set hull-integration version to ${HULL_VSADDON_VERSION}"
-        sed -i -e "s/<HULL-VIDISPINE-ADDON-VERSION>/$HULL_VSADDON_VERSION/g" ./hull-vidispine-addon/hull-vidispine-addon.yaml
-  - task: Docker@0
-    displayName: 'Docker Build'
+    displayName: 'Set hull/Hull-integration version'
+    env:
+      DEV_NO_CHART: ${{ parameters.DevNoChartPush }}
+  - script: |
+        PROVENANCE_SBOM_ARGS=""
+        if [ "${ADD_PROVENANCE_MODE,,}" != "false" ]; then
+          PROVENANCE_SBOM_ARGS=" --provenance=${ADD_PROVENANCE_MODE}"
+        fi
+        if [ "${ADD_SBOM,,}" = "true" ]; then
+          if [ "${PROVENANCE_SBOM_ARGS}" == "" ]; then
+            # would default to --provenance=mode=min when any attestations are enabled. Disable explicitly.
+            PROVENANCE_SBOM_ARGS=" --provenance=false"
+          fi
+          PROVENANCE_SBOM_ARGS="${PROVENANCE_SBOM_ARGS} --sbom=true"
+        fi
+        echo "Docker provenance/SBOM args: ${PROVENANCE_SBOM_ARGS}"
+        echo "##vso[task.setvariable variable=HULL_INTEGRATION_PROVENANCE_SBOM_ARGS;]${PROVENANCE_SBOM_ARGS}"
+    displayName: 'Set Docker provenance/SBOM args as configured'
+    env:
+      ADD_PROVENANCE_MODE: ${{ parameters.addDockerProvenanceMode }}
+      ADD_SBOM: ${{ parameters.addDockerSBOM }}
+      
+  - task: Docker@2
+    displayName: 'Docker Login'
     inputs:
-      containerregistrytype: 'Container Registry'
-      dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
-      dockerFile: './images/hull-integration/Dockerfile'
-      defaultContext: false
-      context: './images/hull-integration'
-      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)'
- 
-  - task: Docker@0
-    displayName: 'Docker Push'
-    inputs:
-      containerregistrytype: 'Container Registry'
-      dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
-      action: 'Push an image'
-      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)'
+      command: login
+      containerRegistry: '${{ parameters.DockerRegistryServiceConnection }}'
+  - script: |
+        HULL_INTEGRATION_DOCKER_DRIVER="docker-container"
+        echo "Creating docker builder for provenance and SBOM, driver: $HULL_INTEGRATION_DOCKER_DRIVER ..."
+        docker buildx create --use --driver $HULL_INTEGRATION_DOCKER_DRIVER --name hull-integration-builder-attest
+    displayName: 'Create Docker builder for provenance and SBOM'
+    condition: "and(succeeded(), ne(variables['HULL_INTEGRATION_PROVENANCE_SBOM_ARGS'], ''))"
 
-  - task: Docker@0
-    displayName: 'Docker Build noroot'
+  - task: Bash@3
+    displayName: 'Build and push image (noroot by default).'
     inputs:
-      containerregistrytype: 'Container Registry'
-      dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
-      dockerFile: './images/hull-integration/Dockerfile-noroot'
-      defaultContext: false
-      context: './images/hull-integration'
-      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)-noroot'
- 
-  - task: Docker@0
-    displayName: 'Docker Push'
-    inputs:
-      containerregistrytype: 'Container Registry'
-      dockerRegistryConnection: '${{ parameters.DockerRegistryEndpoint }}'
-      action: 'Push an image'
-      imageName: 'hull/hull-integration:$(HULL_VSADDON_VERSION)-noroot'
+      targetType: 'inline'
+      script: |
+        docker buildx build \
+          ${HULL_INTEGRATION_PROVENANCE_SBOM_ARGS} \
+          --tag ${HULL_INTEGRATION_IMAGE_REGISTRY}/hull/hull-integration:${HULL_VSADDON_VERSION} \
+          --file ./images/hull-integration/Dockerfile \
+          --push \
+          ./images/hull-integration
+    env:
+      HULL_INTEGRATION_IMAGE_REGISTRY: ${{ parameters.DockerRegistry }}
+      HULL_VSADDON_VERSION: $(HULL_VSADDON_VERSION)
+      HULL_INTEGRATION_PROVENANCE_SBOM_ARGS: $(HULL_INTEGRATION_PROVENANCE_SBOM_ARGS)
 
   - script: |
-        CHART_RELEASER_VERSION=1.5.0
+        CHART_RELEASER_VERSION=1.8.1
         set -euo pipefail
         echo package chart
         cp -r . $(Agent.TempDirectory)
-        cd $(Agent.TempDirectory)        
+        cd $(Agent.TempDirectory)
         wget https://github.com/helm/chart-releaser/releases/download/v${CHART_RELEASER_VERSION}/chart-releaser_${CHART_RELEASER_VERSION}_linux_amd64.tar.gz
         tar -xvzf chart-releaser_${CHART_RELEASER_VERSION}_linux_amd64.tar.gz -C ./
         ls
         sudo chmod +x ./cr
-        sudo ./cr package ./hull-vidispine-addon 
+        # Always run: validates that the (possibly updated) chart-releaser version
+        # downloads, runs, and produces a valid package. No remote side-effects.
+        helm lint ./hull-vidispine-addon
+        sudo ./cr package ./hull-vidispine-addon
+        ls -la .cr-release-packages/
+    displayName: 'Package chart (always - validates chart-releaser version)'
+  - script: |
+        set -euo pipefail
+        cd $(Agent.TempDirectory)
         sudo ./cr upload --git-repo hull-vidispine-addon --owner vidispine --token $(GITHUBTOKEN) || true
         mkdir .cr-index
         wget https://vidispine.github.io/hull-vidispine-addon/index.yaml -O .cr-index/index.yaml
-        sudo ./cr index --git-repo hull-vidispine-addon --owner vidispine --token $(GITHUBTOKEN) --charts-repo https://vidispine.github.io/hull-vidispine-addon --push 
+        sudo ./cr index --git-repo hull-vidispine-addon --owner vidispine --token $(GITHUBTOKEN) --charts-repo https://vidispine.github.io/hull-vidispine-addon --push
+    displayName: 'Publish chart to GitHub Releases + gh-pages (release only)'
+    condition: and(succeeded(), not(${{ parameters.DevNoChartPush }}))

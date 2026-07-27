@@ -35,7 +35,8 @@ on:
 permissions:
   contents: write
   pull-requests: write
-
+  statuses: write
+  
 jobs:
   renovate:
     runs-on: ubuntu-latest
@@ -56,6 +57,7 @@ jobs:
       #     private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Run Renovate
+        id: renovate
         uses: renovatebot/github-action@v46.1.19
         with:
           # Built-in, auto-expiring token (no PAT, no secret to manage). Good for testing.
@@ -73,6 +75,10 @@ jobs:
           # Manual-run options (empty/ignored on scheduled runs).
           RENOVATE_DRY_RUN: ${{ inputs.dry_run && 'full' || '' }}
           LOG_LEVEL: ${{ inputs.log_level || 'info' }}
+          RENOVATE_REPORT_TYPE: 'file'
+          RENOVATE_REPORT_PATH: '/tmp/renovate-report.json'
+          # config breakage -> hard exit.
+          RENOVATE_CONFIG_VALIDATION_ERROR: 'true'
           # Which branch Renovate reads its config from AND targets update PRs against. The
           # workflow_dispatch "Use workflow from" selector only picks which YAML runs - it does
           # NOT change this. Blank -> repo default branch (normal operation); set a feature
@@ -109,3 +115,78 @@ jobs:
           # both Docker images and Helm charts pulled from this registry.
           RENOVATE_HOST_RULES: >-
             [{"matchHost":"cr.vidinet.net","username":"${{ secrets.VIDINET_REGISTRY_USERNAME }}","password":"${{ secrets.VIDINET_REGISTRY_PASSWORD }}"}]
+
+      # Keep the JSON report as a downloadable run artifact (like an Azure DevOps pipeline
+      # artifact) so it can be inspected after the run. Uploaded before the check step and
+      # with if: always() so it survives even when the check below fails or Renovate errored.
+      # if-no-files-found: ignore -> no failure when Renovate crashed before writing a report.
+      - name: Upload Renovate report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: renovate-report
+          path: /tmp/renovate-report.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+      # Renovate almost always exits 0, even when parts of a run silently fail (a failed
+      # postUpgradeTask/artifact update, a branch it couldn't push). This step reads the
+      # structured JSON report (RENOVATE_REPORT_TYPE=file above) and turns real problems
+      # into a red job. GitHub has no "warning"/partially-succeeded status like Azure DevOps:
+      # a run is only green or red, so soft issues are emitted as yellow ::warning::
+      # annotations (run stays green) and only the three hard signals below fail the job.
+      - name: Check Renovate report
+        if: always()
+        env:
+          REPORT: /tmp/renovate-report.json
+          # Branch results that mean Renovate could not do its job. 'error' is the real
+          # failure result; add '*-limit-reached' here only if you want throttling to be red.
+          FAILURE_RESULTS: '["error"]'
+        run: |
+          set -uo pipefail                # not -e: collect all issues first, then decide
+          repo="$GITHUB_REPOSITORY"
+          issues=0
+
+          # 1) Renovate process itself failed. The action step already goes red on a
+          #    non-zero exit; surface it explicitly so this step is one source of truth.
+          if [ "${{ steps.renovate.outcome }}" = "failure" ]; then
+            echo "::error::Renovate exited non-zero for ${repo}."
+            issues=$((issues+1))
+          fi
+
+          if [ ! -f "$REPORT" ]; then
+            echo "::error::No report at ${REPORT} - Renovate crashed before reporting."
+            exit 1
+          fi
+
+          # 2) PR-creation / branch failures: branches whose result is in FAILURE_RESULTS.
+          failed=$(jq -r --arg repo "$repo" --argjson fails "$FAILURE_RESULTS" '
+            (.repositories[$repo].branches // [])
+            | map(select(.result as $r | $fails | index($r)))
+            | .[] | "\(.branchName // .prTitle // "?") -> \(.result)"
+          ' "$REPORT")
+          if [ -n "$failed" ]; then
+            echo "::error::Renovate could not create/update branch(es) for ${repo}:"
+            echo "$failed" | while IFS= read -r line; do echo "::error::  $line"; done
+            issues=$((issues+1))
+          fi
+
+          # 3) Artifact / postUpgradeTask failures (e.g. update-checksum.sh), read
+          #    structurally from the report instead of log-scraping - no regex false positives.
+          artifacts=$(jq --arg repo "$repo" '
+            [ (.repositories[$repo] // {}) | .. | objects
+              | select(has("artifactErrors")) | .artifactErrors[] ] | length
+          ' "$REPORT")
+          if [ "$artifacts" -gt 0 ]; then
+            echo "::error::${artifacts} artifact/postUpgradeTask error(s) for ${repo} (e.g. update-checksum.sh)."
+            issues=$((issues+1))
+          fi
+
+          # 4) Everything else worth seeing but not failing -> yellow annotations (stays green).
+          jq -r --arg repo "$repo" '
+            def lvl: if type=="number" then . else ({"warn":40,"error":50,"fatal":60}[.] // 0) end;
+            [ (.problems // [])[], ((.repositories[$repo] // {}).problems // [])[] ]
+            | .[] | select((.level|lvl) == 40) | "::warning::" + (.msg // "warning")
+          ' "$REPORT" | tee -a "$GITHUB_STEP_SUMMARY"
+
+          [ "$issues" -eq 0 ] || exit 1

@@ -34,14 +34,17 @@
       "matchDepNames": ["oras-project/oras"],
       "matchUpdateTypes": ["major", "minor"],
       "enabled": false
+    },
+    {
+      "description": "Run the checksum-refresh hook ONLY for deps that pin a matching ARG *_CHECKSUM (PowerShell, ORAS). After a version bump it refreshes the checksum so version+checksum land in the same PR (build stays offline, no live checksum fetch). Scoped here on purpose: other deps like 'ubuntu' are digest-only (no newVersion) and have no checksum handler, so running the hook for them would invoke the script with an empty version and abort the run. Self-hosted only: the command must be allowlisted via allowedCommands (RENOVATE_ALLOWED_COMMANDS in .github/workflows/renovate.yml).",
+      "matchDepNames": ["PowerShell/PowerShell", "oras-project/oras"],
+      "postUpgradeTasks": {
+        "commands": ["bash .github/renovate/update-checksum.sh {{{depName}}} {{{newVersion}}} {{{packageFile}}}"],
+        "fileFilters": ["**/Dockerfile*"],
+        "executionMode": "update"
+      }
     }
   ],
-  "postUpgradeTasks": {
-    "description": "After a version bump, refresh the matching ARG *_CHECKSUM in the Dockerfiles so the version and its checksum land in the same PR (build stays offline, no live checksum fetch). Self-hosted only: the command must be allowlisted via allowedCommands (RENOVATE_ALLOWED_COMMANDS in .github/workflows/renovate.yml).",
-    "commands": ["bash .github/renovate/update-checksum.sh {{{depName}}} {{{newVersion}}}"],
-    "fileFilters": ["**/Dockerfile*"],
-    "executionMode": "update"
-  },
   "customManagers": [
     {
       "customType": "regex",

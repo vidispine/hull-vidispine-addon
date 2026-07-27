@@ -1,8 +1,6 @@
 FROM ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90
-# Keep EXACTLY the same Dockerfile and Dockerfile-noroot, except USER noroot (shared layers)!
-#
-# Versions carry a 'renovate:' comment so Renovate bumps them. Each matching *_CHECKSUM ARG is
-# kept in sync automatically by the Renovate postUpgradeTask hook (.github/renovate/update-checksum.sh)
+# ARG _VERSIONs carry a 'renovate:' annotation comment so Renovate bumps them. Each matching *_CHECKSUM ARG
+# is kept in sync automatically by the Renovate postUpgradeTask hook (.github/renovate/update-checksum.sh)
 # - do NOT edit the checksums by hand. They are stored here on purpose: the build verifies against
 # them offline and never fetches a checksum live at build time.
 #
@@ -17,8 +15,12 @@ ARG ORAS_VERSION=1.3.3
 # Sources: https://github.com/oras-project/oras/releases/download/v<version>/oras_<version>_checksums.txt
 #          https://github.com/oras-project/setup-oras/blob/main/src/lib/data/releases.json
 ARG ORAS_CHECKSUM=9ce999f8d2de03fc03968b29d743077a58783e545e5eaa53917ca177352d0e59
-RUN apt-get update \
- && apt-get -y --no-install-recommends upgrade \
+# Ensure no interactive prompts from apt-get, also beyond -y.
+# Do not set ENV DEBIAN_FRONTEND=noninteractive; this would remain in the image and running container!
+ARG BUILD_DEBIAN_FRONTEND=noninteractive
+RUN export DEBIAN_FRONTEND=${BUILD_DEBIAN_FRONTEND} \
+ && apt-get update \
+ && apt-get -y --no-install-recommends dist-upgrade \
  && apt-get -y install --no-install-recommends ca-certificates curl \
  && echo "Downloading and installing PowerShell ${PS_VERSION} (.deb) from the matching GitHub release..." \
  && curl -fsSLO "https://github.com/PowerShell/PowerShell/releases/download/v${PS_VERSION}/powershell_${PS_VERSION}-1.deb_amd64.deb" \
@@ -41,3 +43,6 @@ RUN apt-get update \
  && useradd --create-home --shell /bin/bash -u 1001 -g noroot noroot
 COPY --chown=noroot:noroot ./Installer.ps1 /script/Installer.ps1
 COPY --chown=noroot:noroot ./get-custom-scripts /get-custom-scripts
+USER noroot
+# If it becomes necessary to create a root version again, do not change here, but
+# create a derived Dockerfile.root based on this one, with only "USER root".
