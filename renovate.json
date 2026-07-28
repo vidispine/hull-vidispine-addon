@@ -9,9 +9,9 @@
       "pinDigests": true
     },
     {
-      "description": "Disable GitHub Actions updates. Temporarily, not possible with GITHUB_TOKEN only.",
+      "description": "GitHub Actions updates in workflow file(s) in .github/workflows/*. Requires Workflows: write permission; set false if you don't want that!",
       "matchManagers": ["github-actions"],
-      "enabled": false
+      "enabled": true
     },
     {
       "description": "Block any major version updates. Remove or empty array to allow major updates.",
