@@ -49,7 +49,7 @@ jobs:
       # the secret AppID and private key must be in the environment.
       - name: Generate GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@v3.2.0
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
@@ -69,7 +69,7 @@ jobs:
           permission-metadata: read         # implicit on every installation; listed for clarity
       - name: Run Renovate
         id: renovate
-        uses: renovatebot/github-action@v46.1.19
+        uses: renovatebot/github-action@22e0a16091fc706b04affe6ae53d5e3358ac4023 # v46.1.19
         with:
           token: ${{ steps.app-token.outputs.token }}
         env:
@@ -130,7 +130,7 @@ jobs:
       # if-no-files-found: ignore -> no failure when Renovate crashed before writing a report.
       - name: Upload Renovate report
         if: always()
-        uses: actions/upload-artifact@v7.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: renovate-report
           path: /tmp/renovate-report.json
