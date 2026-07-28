@@ -31,7 +31,7 @@ hull:
             images:
               dbTools:
                 # renovate: datasource=docker depName=cr.vidinet.net/vpms/dbtools
-                tag: 4.0.0
+                tag: 4.0.1
           endpoints:
             10_vidicore:
               auth:
