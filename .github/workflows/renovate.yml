@@ -51,7 +51,7 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v3.2.0
         with:
-          app-id: ${{ secrets.APP_ID }}
+          client-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           # Least privilege: only permissions requested here, must be set for GitHub app.
           # HTTP 422 error, if the app doesn't hold the requested permission.
