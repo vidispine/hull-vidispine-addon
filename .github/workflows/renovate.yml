@@ -32,38 +32,46 @@ on:
         options: [auto, always, never]
         default: auto
 
-permissions:
-  contents: write
-  pull-requests: write
-  statuses: write
-  
+# Empty block required.
+# When using GITHUB_TOKEN instead of App, scope permission here!
+# Restrictions apply on possible permission here.
+permissions: {}
+
 jobs:
   renovate:
     runs-on: ubuntu-latest
     environment: renovate-vidispine-content-wf
     steps:
-      # --- PRODUCTION option: short-lived (~1h) GitHub App token that also triggers CI. ---
-      # 1. Create a GitHub App (Settings > Developer settings > GitHub Apps) with repo
-      #    permissions: Contents = Read/write, Pull requests = Read/write, Workflows = Read/write.
-      # 2. Install it on this repo. Save the App ID and a generated private key as the
-      #    secrets APP_ID and APP_PRIVATE_KEY.
-      # 3. Uncomment this step and set the Renovate step's token to
-      #    ${{ steps.app-token.outputs.token }} instead of GITHUB_TOKEN.
-      # - name: Generate GitHub App token
-      #   id: app-token
-      #   uses: actions/create-github-app-token@v2
-      #   with:
-      #     app-id: ${{ secrets.APP_ID }}
-      #     private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
+      # IMPORTANT: Keep version comments after action digests here, required by Renovate!
+      #
+      # Using GitHub App instead of GITHUB_TOKEN, to get all necessary permissions.
+      # The GitHub App must be installed in GitHub, and 
+      # the secret AppID and private key must be in the environment.
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3.2.0
+        with:
+          client-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          # Least privilege: only permissions requested here, must be set for GitHub app.
+          # HTTP 422 error, if the app doesn't hold the requested permission.
+          permission-contents: write        # push renovate/* branches + commits
+          permission-pull-requests: write   # open/update/close update PRs
+          permission-issues: write          # maintain the Dependency Dashboard issue
+          # NOTE: "Checks: write" in the GitHub app, and 'permission-checks: write' here, may 
+          # be necessary if automerge is enabled in the future.
+          permission-statuses: write        # write Renovate's own renovate/* commit statuses
+          permission-workflows: write       # REQUIRED to commit changes to .github/workflows/*
+                                            # (the github-actions manager bumps action versions).
+                                            # This does NOT affect whether CI is triggered.
+          permission-administration: read   # read branch protection / required checks
+          permission-vulnerability-alerts: read  # "Dependabot alerts" - drives vulnerabilityAlerts
+          permission-metadata: read         # implicit on every installation; listed for clarity
       - name: Run Renovate
         id: renovate
         uses: renovatebot/github-action@v46.1.19
         with:
-          # Built-in, auto-expiring token (no PAT, no secret to manage). Good for testing.
-          # Note: PRs opened with GITHUB_TOKEN do NOT trigger other workflows (CI).
-          # For production, swap to the GitHub App token: ${{ steps.app-token.outputs.token }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
         env:
           # Only look at this repository.
           RENOVATE_REPOSITORIES: ${{ github.repository }}
@@ -122,7 +130,7 @@ jobs:
       # if-no-files-found: ignore -> no failure when Renovate crashed before writing a report.
       - name: Upload Renovate report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.0
         with:
           name: renovate-report
           path: /tmp/renovate-report.json
