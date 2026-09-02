@@ -32,6 +32,12 @@ hull:
               dbTools:
                 # renovate: datasource=docker depName=cr.vidinet.net/vpms/dbtools
                 tag: 4.0.2
+              webtools:
+                # renovate: datasource=docker depName=cr.vidinet.net/vpms/webtools
+                tag: 1.4.1
+              kubectl-tools:
+                # renovate: datasource=docker depName=cr.vidinet.net/vpms/kubectl-tools
+                tag: 1.37.0
           endpoints:
             10_vidicore:
               auth:
