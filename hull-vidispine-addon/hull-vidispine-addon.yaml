@@ -31,7 +31,7 @@ hull:
             images:
               dbTools:
                 # renovate: datasource=docker depName=cr.vidinet.net/vpms/dbtools
-                tag: 4.0.3
+                tag: 4.0.6
               webTools:
                 # renovate: datasource=docker depName=cr.vidinet.net/vpms/webtools
                 tag: 1.4.1
