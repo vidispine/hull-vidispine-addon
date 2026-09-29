@@ -67,17 +67,30 @@ foreach($chartInfo in $entity._helm_charts_)
     }
     else
     {
-      if (($discoverJson.referrers | Measure-Object ).Count -gt 1)
+      $referrers = @($discoverJson.referrers)
+      $referrer = $referrers[0]
+      if ($referrers.Count -gt 1)
       {
-        $errorMessage = "~~~ SBOM: Referrers field for $($rootArtifact) has more than one element! Only considering first element ..."
-        $this.WriteError($errorMessage)
-        return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
+        # A chart version that was scanned more than once carries one SBOM per scan. That is
+        # not an error: use the newest, by its creation annotation, and carry on. This branch
+        # used to return statusCode 500 while its message claimed to use the first element,
+        # which failed the whole license job for every chart after it.
+        # ConvertFrom-Json already turns the RFC 3339 annotation into a DateTime; sorting its
+        # string form would compare locale-formatted dates. A referrer without the annotation
+        # sorts last.
+        $referrer = $referrers | Sort-Object -Property {
+          $created = $_.annotations.'org.opencontainers.image.created'
+          if ($created -is [datetime]) { $created }
+          elseif ($created) { [datetime]::Parse($created, [Globalization.CultureInfo]::InvariantCulture) }
+          else { [datetime]::MinValue }
+        } -Descending | Select-Object -First 1
+        $this.WriteLog("~~~ SBOM: Referrers field for $($rootArtifact) has $($referrers.Count) elements, using the newest: $($referrer.digest) created $($referrer.annotations.'org.opencontainers.image.created')")
       }
 
       # Download Artifacts
       New-Item -ItemType Directory -Path $downloadDirectory
-      $pullCommand = "oras pull -o $downloadDirectory $rootArtifact@$($discoverJson.referrers[0].digest)"
-      $pull = (oras pull -o $downloadDirectory $rootArtifact@$($discoverJson.referrers[0].digest)) -join "`n"
+      $pullCommand = "oras pull -o $downloadDirectory $rootArtifact@$($referrer.digest)"
+      $pull = (oras pull -o $downloadDirectory $rootArtifact@$($referrer.digest)) -join "`n"
       $pullExitCode = $LASTEXITCODE
       $this.WriteLog("~~~ SBOM: oras pull Exit Code: $($pullExitCode)")
 
