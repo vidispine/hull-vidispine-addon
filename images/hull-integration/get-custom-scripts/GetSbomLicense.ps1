@@ -76,12 +76,13 @@ foreach($chartInfo in $entity._helm_charts_)
         # used to return statusCode 500 while its message claimed to use the first element,
         # which failed the whole license job for every chart after it.
         # ConvertFrom-Json already turns the RFC 3339 annotation into a DateTime; sorting its
-        # string form would compare locale-formatted dates. A referrer without the annotation
-        # sorts last.
+        # string form would compare locale-formatted dates. A referrer without the annotation,
+        # or with one that is not a valid date, sorts last.
         $referrer = $referrers | Sort-Object -Property {
           $created = $_.annotations.'org.opencontainers.image.created'
-          if ($created -is [datetime]) { $created }
-          elseif ($created) { [datetime]::Parse($created, [Globalization.CultureInfo]::InvariantCulture) }
+          $parsed = [datetime]::MinValue
+          if ($created -is [datetime]) { $created.ToUniversalTime() }
+          elseif ($created -and [datetime]::TryParse([string]$created, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AdjustToUniversal, [ref]$parsed)) { $parsed }
           else { [datetime]::MinValue }
         } -Descending | Select-Object -First 1
         $this.WriteLog("~~~ SBOM: Referrers field for $($rootArtifact) has $($referrers.Count) elements, using the newest: $($referrer.digest) created $($referrer.annotations.'org.opencontainers.image.created')")
