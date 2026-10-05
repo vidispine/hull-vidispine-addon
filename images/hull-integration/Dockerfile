@@ -1,14 +1,14 @@
-FROM ubuntu:24.04@sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a2ab987517
+FROM ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
 # ARG _VERSIONs carry a 'renovate:' annotation comment so Renovate bumps them. Each matching *_CHECKSUM ARG
 # is kept in sync automatically by the Renovate postUpgradeTask hook (.github/renovate/update-checksum.sh)
 # - do NOT edit the checksums by hand. They are stored here on purpose: the build verifies against
 # them offline and never fetches a checksum live at build time.
 #
 # renovate: datasource=github-releases depName=PowerShell/PowerShell
-ARG PS_VERSION=7.6.5
+ARG PS_VERSION=7.6.6
 # Checksum of powershell_${PS_VERSION}-1.deb_amd64.deb (from the release hashes.sha256).
 # Source: https://github.com/PowerShell/PowerShell/releases/download/v<version>/hashes.sha256
-ARG PS_CHECKSUM=dd683d29a5c95ed43e426f4fe1679469d8b89e78ea955455f6238a0b0e6f1a24
+ARG PS_CHECKSUM=9585f38ab5a026c3fc0995486e26e12050777960fef47a22dca98b577c5d27a7
 # renovate: datasource=github-releases depName=oras-project/oras
 ARG ORAS_VERSION=1.3.4
 # Checksum of oras_${ORAS_VERSION}_linux_amd64.tar.gz (from the release checksums.txt).
