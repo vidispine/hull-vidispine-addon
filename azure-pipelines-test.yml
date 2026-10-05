@@ -14,24 +14,51 @@ parameters:
 steps:
 - script: |
       set -euo pipefail
-      echo installing gauge
-      sudo curl -SsL https://downloads.gauge.org/stable | sh
+      echo installing gauge v${GAUGE_VERSION}
+      # Download a pinned release asset directly instead of using the
+      # downloads.gauge.org installer: that script resolves the zip URL through
+      # the unauthenticated GitHub API (60 requests/hour per IP, shared across
+      # hosted agents), and when rate limited it gets an empty URL and runs a
+      # bare 'curl -L -o gauge.zip'. Release asset downloads are not API calls.
+      url="https://github.com/getgauge/gauge/releases/download/v${GAUGE_VERSION}/gauge-${GAUGE_VERSION}-linux.x86_64.zip"
+      tmp="$(mktemp -d)"
+      installed=false
+      for attempt in 1 2 3; do
+        if curl -SsfL --retry 3 "${url}" -o "${tmp}/gauge.zip" \
+           && unzip -oq "${tmp}/gauge.zip" -d "${tmp}" \
+           && sudo install -m 0755 "${tmp}/gauge" /usr/local/bin/gauge \
+           && command -v gauge > /dev/null; then
+          installed=true
+          break
+        fi
+        echo "attempt ${attempt}/3 to install gauge failed"
+        if [ "${attempt}" -lt 3 ]; then sleep 15; fi
+      done
+      if [ "${installed}" != true ]; then
+        echo "##vso[task.logissue type=error]gauge v${GAUGE_VERSION} could not be installed from ${url} after 3 attempts"
+        exit 1
+      fi
+      rm -rf "${tmp}"
+      gauge version
       cd hull-vidispine-addon/files/test/HULL
       # it may be easier to work with a virtualenv to avoid dependency conflicts; 
       # for now, local install instead of system replacement.
       sudo pip install --ignore-installed -r requirements.txt
       gauge
   displayName: 'install gauge'
+  env:
+    GAUGE_VERSION: 1.6.38
   condition: and(gt(length('${{join(' ',parameters.HelmVersions) }}'),0),eq('${{ parameters.RunTests }}','true'))
 
 - ${{ each version in parameters.HelmVersions }}: # Each Helm Version
   
   - script: |
       set -euo pipefail
-      echo installing helm
-      wget https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
-      sudo chmod +x ./get-helm-3
-      sudo ./get-helm-3 --version v${{ version.version }}
+      echo installing helm v${{ version.version }}
+      helmmajor=$(echo "${{ version.version }}" | cut -d. -f1)
+      wget https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-${helmmajor}
+      sudo chmod +x ./get-helm-${helmmajor}
+      sudo ./get-helm-${helmmajor} --version v${{ version.version }}
       helm version
     displayName: 'install helm v${{ version.version }}'
     condition: and(gt(length('${{join(' ',parameters.HelmVersions) }}'),0),eq('${{ parameters.RunTests }}','true'))

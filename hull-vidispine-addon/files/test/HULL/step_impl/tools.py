@@ -158,10 +158,14 @@ def fail_to_render_the_templates_for_values_file_to_TEST_EXECUTION_FOLDER_becaus
 @step("Fail to render the templates for test case <case> and chart <chart> and values file <values_file> to test execution folder because error contains <expected_error>")
 def fail_to_render_the_templates_for_test_case_and_chart_and_values_file(case, chart, values_file, expected_error):
     result = render_chart(case, chart, values_file)
-    if result.returncode != 0 and expected_error in str(result.stdout):
+    # Match against the decoded output, not str() of the bytes: the bytes repr escapes
+    # quotes depending on the output's content (Helm 4 prefixes a 'level=WARN msg="..."'
+    # line), so expected errors containing ' would only match on some Helm versions.
+    stdout = result.stdout.decode("utf-8", errors="replace") if isinstance(result.stdout, bytes) else str(result.stdout)
+    if result.returncode != 0 and expected_error in stdout:
         assert True
     else:
-        assert False, "With ExitCode " + str(result.returncode) + ", expected error " + expected_error + " not found in STDOUT: " + str(result.stdout)
+        assert False, "With ExitCode " + str(result.returncode) + ", expected error " + expected_error + " not found in STDOUT: " + stdout
 
 @step("Render the templates for values file <values_file> to test execution folder")
 def render_the_templates_for_values_file_to_TEST_EXECUTION_FOLDER(values_file):
