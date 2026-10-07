@@ -445,7 +445,7 @@ hull:
                 tag: <HULL-VIDISPINE-ADDON-VERSION>
               args: _HT![
                 {{ if (or (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates (index . "$").Values.hull.config.general.data.installation.config.certificateSecrets) }}
-                echo Updating Certificates (requires writable mount or root, no stop on failure);
+                echo Updating Certificates - needs root or a writable certificate store and does not stop the installation on failure;
                 update-ca-certificates;
                 {{ end }}
                 echo Run hull-install Script;
@@ -473,7 +473,7 @@ hull:
                 tag: <HULL-VIDISPINE-ADDON-VERSION>
               args: _HT![
                 {{ if (or (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates (index . "$").Values.hull.config.general.data.installation.config.certificateSecrets) }}
-                echo Updating Certificates (requires writable mount or root, no stop on failure);
+                echo Updating Certificates - needs root or a writable certificate store and does not stop the installation on failure;
                 update-ca-certificates;
                 {{ end }}
                 echo Run hull-configure Script;
