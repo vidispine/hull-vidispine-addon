@@ -19,6 +19,8 @@ Test creation of objects and features.
 ## Installation Job
 * Render
 * Set test object to "release-name-hull-test-hull-install"
+* Test Object has key "spec§template§spec§containers§0§args" with array value that has "1" items
+* Test Object has key "spec§template§spec§containers§0§args§0" with value "echo Run hull-install Script; pwsh /script/Installer.ps1 -ConfigFilePath /script/installation.yaml -Stage pre-install;"
 * Test Object has key "spec§template§spec§containers§0§volumeMounts" with array value that has "2" items
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§0§name" with value "installation"
 
@@ -30,6 +32,9 @@ Test creation of objects and features.
 * Render
 
 * Set test object to "release-name-hull-test-hull-install"
+
+* Test Object has key "spec§template§spec§containers§0§args" with array value that has "1" items
+* Test Object has key "spec§template§spec§containers§0§args§0" with value matching regex "^echo Updating Certificates[^;]*; update-ca-certificates; +echo Run hull-install Script; pwsh /script/Installer[.]ps1 -ConfigFilePath /script/installation[.]yaml -Stage pre-install;$"
 
 * Test Object has key "spec§template§spec§containers§0§volumeMounts" with array value that has "5" items
 * Test Object has key "spec§template§spec§containers§0§volumeMounts§0§name" with value "certs"
