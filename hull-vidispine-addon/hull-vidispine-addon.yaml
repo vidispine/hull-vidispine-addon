@@ -37,7 +37,7 @@ hull:
                 tag: 1.4.5
               kubectlTools:
                 # renovate: datasource=docker depName=cr.vidinet.net/vpms/kubectl-tools
-                tag: 1.37.4
+                tag: 1.36.9
           endpoints:
             10_vidicore:
               auth:
