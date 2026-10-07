@@ -117,7 +117,7 @@ Describes configuration options. <br>Has exclusively the following sub-fields: <
 | `debug.retriesForEntityRestCall` | Sets number of retries for each individual GET, PUT, POST and DELETE call before considering the operation failed. | `5` | `2`
 | `debug.debugInstallerScript` | If enabled, the Installer.ps1 script is not being run embedded in the container but is mounted and run from the hull-install ConfigMap. Normally to not clutter the configuration the script is embedded into the container and cannot be debugged easily without creating new container images. To easily debug `Installer.ps1` script, copy the current script from the `/images/hull-integration/Installer.ps1` file to the ConfigMap `Installer.ps1` inline placeholder. Now when making changes to the ConfigMap entry this will affect the Job that is executed. | `false` | `true`
 | `legacy` | Setttings for legacy compatibility.
-| `legacy.defaultServiceAccountIsHook` |  In older versions of the `hull-vidispine-addon`, the `default` ServiceAccount that is being created by HULL was annotated as a Helm hook by the `hull-vidispine-addon`and used for all pods in the Helm chart. This behavior was problematic because the Hook lifecycle was only appropriate for the `hull-vidispine-addon` jobs but not the remaining pods. Furthermore it opposed granular RBAC settings for the `hull-install` Jobs vs. continuously running regular pods. So by now there are different Helm hook ServiceAccounts created for the `hull-install` and `hull-configure` job and the `default` ServiceAccount is not annotated as a Helm hook anymore.<br><br> This setting should **NEVER** be set to `true` for new Helm charts, only for a transition phase it may be useful to set it to `true` to avoid immediate migration issues. | `false` | `true`
+| `legacy.defaultServiceAccountIsHook` |  In older versions of the `hull-vidispine-addon`, the `default` ServiceAccount that is being created by HULL was annotated as a Helm hook by the `hull-vidispine-addon`and used for all pods in the Helm chart. This behavior was problematic because the Hook lifecycle was only appropriate for the `hull-vidispine-addon` jobs but not the remaining pods. Furthermore it opposed granular RBAC settings for the `hull-install` Jobs vs. continuously running regular pods. So by now there are different Helm hook ServiceAccounts created for the `hull-install` and `hull-configure` job and the `default` ServiceAccount is not annotated as a Helm hook anymore.<br><br> This setting should **NEVER** be set to `true` for new Helm charts, only for a transition phase it may be useful to set it to `true` to avoid immediate migration issues.<br><br>Since HULL `1.37.0` the `default` ServiceAccount is only rendered when `hull.config.general.createDefaultRbacTriplet` is `true` (or `hull.objects.serviceaccount.default.enabled` is set explicitly). With this setting `true` and the `default` ServiceAccount not rendered, HULL fails the rendering with an error naming `hull.objects.serviceaccount.default.annotations`, instead of silently dropping the hook annotations. Set `createDefaultRbacTriplet: true` alongside this setting while it is still needed. | `false` | `true`
 ### EndpointSpec
 Describes an endpoint which is communicated with. <br>Has exclusively the following sub-fields: <br><br>`endpoint`<br>`auth`<br>`extraHeaders`<br>`stage`<br>`subresources`
 
@@ -1455,3 +1455,202 @@ _FORCE_SUBFOLDER_: If true, a subfolder must be present in the path to be return
 Usage:
 
 Returns a path constructed from `systemType`/`FILE` so a particular file for the given system.
+
+# Test Pipeline _azure-pipelines-gated.yml_
+
+*Note: This is not a full documentation, only a note on what I found and how to resolve some issues.*
+
+Both the test pipeline and the release pipeline can use the common template _azure-pipelines-test.yml_.
+
+The test pipeline installs the _Gauge_ test tool and runs tests against various versions of Helm.
+
+1. Download and execute a script, which will select and update a proper Gauge version.
+2. The script installs Gauge.
+3. Gauge is started for each Helm version and runs the tests.
+
+## Troubleshooting
+
+- Gauge download fails, log shows empty URL: Can be a temporary error, try again later!
+- Gauge install with _pip_ fails with messages like "_ERROR: Cannot uninstall ..., RECORD file not found._": 
+  - _pip_ can't remove or overwrite components from OS package manager.
+  - Happened when switching agent to Ubuntu 24.04, from 22.04.
+  - Added option _--ignore-installed_ to _pip install_: Use own components, don't try to mess with OS installs. 
+- Gauge execution in test fails with incompatible packages, such as _protobuf_.
+  - Update the version in file _requirements.txt_ to a compatible one.
+  - Gauge (gencode part) is quite tolerant towards higher _protobuf_ versions, even across major versions.
+
+## Future Options
+
+- Use a Python Virtual Environment, to reduce trouble with package incompatibilities.
+- Use a dependency manager instead of manually editing files like _requirements.txt_.
+- Higher security precautions when downloading and executing external components.
+
+# Release Pipeline _azure-pipelines.yml_
+
+*Note: This is not a full documentation, only a note on what I found and how to resolve some issues.*
+
+Builds and pushes the _cr.vidinet.net/hull/hull-integration_ image and creates a Helm chart with it.
+
+Can optionally also run tests. If so, use a shorter range, initial to latest versions in the major 3.x, 4.x ranges.
+
+## Rootless Image After _1.36.2_
+
+Image versions greater than _1.36.2_ no longer run as _root_ user by default, and have no more separate _-noroot_ image variant.
+
+If user _root_ is still needed, it must be configured in Kubernetes or upon _docker run_. Note that the command _update-ca-certificates_, which typically needs _root_, also works on a writable mounted directory _/etc/ssl/certs_, which is currently the way to do it in Kubernetes. If it can't update due to missing write rights, it ends without updating, but doesn't fail with error.
+
+## Development Test Mode
+
+When checking "_Create images with tag :dev, don't push helm chart_" in the pipeline menu, the image will be built with a _dev_ tag instead of the version. The script still writes the original version out, so it can be seen in the logs.
+
+_:dev_ images are always pushed, including over an image of the same name. A Helm chart is built, but not uploaded.
+
+## Docker Provenance and SBOM (experimental, off by default)
+
+The pipeline can use the Docker `--provenance` and `--sbom` parameters to generate these attestations.
+
+Difference to regular build. Only when one of these options is enabled:
+- Generates an OCI image
+- Manifest with _index_ instead of single _manifest_ as _mediaType_.
+- A dedicated Docker builder, using _docker-container_ instead of the default _docker_ driver.
+  - Changing Docker image storage to _containerd_ could also enable provenance and SBOM.
+- This does **not** affect the manifests of Helm charts, where we currently perform manifest modifications.
+
+Formats and content:
+- Provenance: _SLSA_. Contains image build information.
+- SBOM: _SPDX_. Information about used components, e.g. application, runtime and OS packages.
+
+### SBOM vs. Mend SBOM
+
+Very different from Docker SBOM: We currently generate HTML files with license texts, which we call SBOM, from Mend, and attach them to the Helm charts of our releases, e.g. VidiFlow applications, which typically contain multiple images.
+
+Docker SBOMs are per image and in machine-readable SPDX format. We have no use for them yet, and they might compete with an implementation using Mend.
+
+# Update with Mend Renovate
+
+This repo contains a GitHub workflow (similar to Azure DevOps pipeline) to update the Docker images and versions installed in a _Dockerfile_ build.  
+Renovate currently has all managers enabled by default, so any match might trigger an update. Only major version updates are blocked.
+
+Files:
+- _.github\workflows\renovate.yml_ - The GitHub workflow.
+- _renovate.json_ - The Renovate configuration.
+
+A _schedule:_ entry with a crontab specifies automated runs. Currently: 3AM UTC, Monday to Friday.
+
+Main parts of the _renovate.json_ configuration are the _packageRules_ and _customManagers_.
+
+_packageRules_ with a setting _"enabled": false_ are typically used to block undesirable auto-updates, such as _major_ versions.
+
+This Renovate workflow only affects its own Git repository, no need to access others.
+
+## Create GitHub Fork for Renovate Workflow Edits
+
+Default branch (_master_) is required for GitHub workflow runs in these cases:
+- New GitHub workflow: Needs a _.yml_ definition in default branch _.github/workflows/_.
+  - Once it exists in _master_, the branch to run from can be chosen at execution time.
+  - The _schedule:_ is also always used from default branch.
+- _renovate.json_: Is **always** taken from default _master_ branch, **not** another base branch to update!
+  - A Renovate option *RENOVATE_USE_BASE_BRANCH_CONFIG: merge* (as environment variable) exists, but the merge result may be different from a modified working branch _renovate.json_.
+
+Opposed to this, non-default Renovate parts, such as the _update-checksum.sh_ script, are **always** executed from the branch to update (Renovate base branch) - the work branch checkout, if it's not the default!
+
+Therefore, any modifications that may change the _renovate.json_, or other Renovate standard config files, should happen on a repository fork, that includes the default/_master_ branch, so that it can be modified and used within the fork.
+
+## GitHub Environment and Secrets
+
+The workflow needs a GitHub environment _renovate-vidispine-content-wf_, specified in _.github\workflows\renovate.yml_, where secret and environment variable values can be configured.
+
+Secrets:
+- *GITHUB_TOKEN*: Automatically created, access to GitHub repository.
+- *VIDINET_REGISTRY_USERNAME*: User for _cr.vidinet.net_ (still needs user+pw credentials)
+- *VIDINET_REGISTRY_PASSWORD*: Password for _cr.vidinet.net_ (still needs user+pw credentials)
+
+As of now, only simple read access is needed for the _cr.vidinet.net_ registry.
+
+## Renovate and CI Checks, Automerge
+
+The current configuration only runs without CI checks (like gated builds) and creates pull requests for manual approval and merge. 
+
+To enable starting CI checks or automerge, enable an app token, as already pre-implemented in comments in the _renovate.yml_!
+
+## Default Settings
+
+The setting _"extends": ["config:recommended"]_ adds a default configuration, delivered with the currently running Renovate. Further settings extend this.
+
+See also: https://docs.renovatebot.com/presets-config/
+
+## Ignored Test Folders
+
+File paths under any _files/test/_ directory structure are marked as ignored through the _ignorePaths_ setting. They require manual updates (Dockerfile and Python code).
+
+## Docker Images
+
+Controlled by annotation comments with "_renovate:_"; example from _hull-vidispine-addon.yaml_:
+```yaml
+  images:
+    dbTools:
+      # renovate: datasource=docker depName=cr.vidinet.net/vpms/dbtools
+      tag: 4.0.0
+```
+Note that this definition is different from most other Docker image settings in YAML files. It is an image-tag values definition, which is later inserted into other YAML via template variables. 
+
+The _depName_ in the annotation must contain the whole image name _cr.vidinet.net/vpms/dbtools_. _cr.vidinet.net_ is the registry, _vpms/dbtools_ the repository. The Renovate _customManager_ of type _regex_ captures the annotation variables via regex in _matchStrings_.
+
+Currently only affecting file _hull-vidispine-addon.yaml_.
+
+Example for later usage in *hull-vidispine-addon/templates/_library.tpl*:
+```yaml
+{{ $dbToolsDefaultVersion := $parent.Values.hull.config.general.data.installation.config.images.dbTools.tag }}
+# [...]
+  copy-custom-scripts:
+    image:
+      repository: {{ dig "images" "dbTools" "repository" "vpms/dbtools" $parent.Values.hull.config.specific }}
+      tag: {{ (dig "images" "dbTools" "tag" (dig "tags" "dbTools" $dbToolsDefaultVersion $parent.Values.hull.config.specific) $parent.Values.hull.config.specific) | toString | quote }}
+    args:
+      # [...]
+```
+
+
+## Dockerfile Configurations
+
+Affects base image versions and components installed in Dockerfiles. Example in _Dockerfile_:
+```dockerfile
+FROM ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90
+# renovate: datasource=github-releases depName=PowerShell/PowerShell
+ARG PS_VERSION=7.6.3
+# Kept in sync with PS_VERSION by the postUpgradeTask checksum hook (see below).
+ARG PS_CHECKSUM=f03200f25c511583c648aecb8d8ce75789db2cf668b39803ee639476d716a3dd
+```
+
+The file filter in _customManagers_ applies to files starting with _Dockerfile_.
+
+### Checksum hook (PowerShell + ORAS)
+
+Downloaded components are verified against a checksum that is **stored in the Dockerfile** (`ARG PS_CHECKSUM`, `ARG ORAS_CHECKSUM`), not fetched live at build time. To keep those checksums in sync with the versions automatically, Renovate runs a [postUpgradeTask](https://docs.renovatebot.com/configuration-options/#postupgradetasks) after each bump:
+
+- _renovate.json_ → `postUpgradeTasks` calls `bash .github/renovate/update-checksum.sh {{{depName}}} {{{newVersion}}}` (`executionMode: update`, once per dependency) and adds the changed _Dockerfile*_ to the same PR (`fileFilters`).
+- [.github/renovate/update-checksum.sh](../.github/renovate/update-checksum.sh) fetches the official release checksum file for the new version and rewrites the matching `ARG <NAME>_CHECKSUM=` line in every Dockerfile.
+- So a single Renovate PR contains **both** the version bump and its new checksum. The build stays offline (no live checksum fetch).
+
+**Self-hosted-only!**: `postUpgradeTasks` commands must match the `allowedCommands` allowlist, set as `RENOVATE_ALLOWED_COMMANDS` in [renovate.yml](../.github/workflows/renovate.yml). Renovate via `renovatebot/github-action` is self-hosted, so this is available; the Mend-hosted app disables it.
+
+### ORAS
+
+Tracked via a "_# renovate:_" annotation over *ARG ORAS_VERSION=* (datasource `github-releases`, depName `oras-project/oras`), resolved by the same _customManagers_ entry as PowerShell. The `ARG ORAS_CHECKSUM` is refreshed automatically by the checksum hook described above. Major updates are blocked by the global _packageRules_ rule.
+
+### Base Image _ubuntu_
+
+No annotation comment. Always stays on given version like _24.04_, but the _@sha256:_ digest is updated to the latest version. Note that the digest is decisive for what image is installed, if present, not the version tag like _24.04_!
+
+### PowerShell Core
+
+Annotation comment "_# renovate:_" over *ARG PS_VERSION=*, resolved in _renovate.json_ _customManagers_. 
+
+Uses a GitHub release instead of one from Microsoft. The `.deb` is verified against the stored `ARG PS_CHECKSUM`, which the checksum hook (see above) keeps in sync with `PS_VERSION` on every bump - so verification no longer depends on a live checksum download at build time.
+
+Version range specified by **Regex** in _renovate.json_ _packageRules_. Stays within the _major-minor_ version range. Typically with an even minor number, marking LTS versions like _7.6_.
+
+## Other Updates
+
+When all Renovate managers are enabled by default, updates can happen in other places.
+This includes the Renovate workflow file itself, _renovate.yml_, where GitHub Actions may receive version updates.
