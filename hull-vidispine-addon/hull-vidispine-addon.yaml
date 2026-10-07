@@ -30,7 +30,14 @@ hull:
               sourcesFolders: _HT/hull.vidispine.addon.sources.folder.configmap.count
             images:
               dbTools:
-                tag: 3.1.1-1-noroot
+                # renovate: datasource=docker depName=cr.vidinet.net/vpms/dbtools
+                tag: 4.0.8
+              webTools:
+                # renovate: datasource=docker depName=cr.vidinet.net/vpms/webtools
+                tag: 1.4.5
+              kubectlTools:
+                # renovate: datasource=docker depName=cr.vidinet.net/vpms/kubectl-tools
+                tag: 1.36.9
           endpoints:
             10_vidicore:
               auth:
@@ -435,10 +442,10 @@ hull:
             installation:
               image:
                 repository: hull/hull-integration
-                tag: <HULL-VIDISPINE-ADDON-VERSION>-noroot
+                tag: <HULL-VIDISPINE-ADDON-VERSION>
               args: _HT![
                 {{ if (or (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates (index . "$").Values.hull.config.general.data.installation.config.certificateSecrets) }}
-                echo Updating Certificates;
+                echo Updating Certificates - needs root or a writable certificate store and does not stop the installation on failure;
                 update-ca-certificates;
                 {{ end }}
                 echo Run hull-install Script;
@@ -463,10 +470,10 @@ hull:
             installation:
               image:
                 repository: hull/hull-integration
-                tag: <HULL-VIDISPINE-ADDON-VERSION>-noroot
+                tag: <HULL-VIDISPINE-ADDON-VERSION>
               args: _HT![
                 {{ if (or (index . "$").Values.hull.config.general.data.installation.config.customCaCertificates (index . "$").Values.hull.config.general.data.installation.config.certificateSecrets) }}
-                echo Updating Certificates;
+                echo Updating Certificates - needs root or a writable certificate store and does not stop the installation on failure;
                 update-ca-certificates;
                 {{ end }}
                 echo Run hull-configure Script;

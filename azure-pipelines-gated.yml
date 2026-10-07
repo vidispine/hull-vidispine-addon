@@ -4,17 +4,19 @@
 # https://aka.ms/yaml
 parameters:
 - name: RunTests
+  type: boolean
   default: true
 
 trigger: none
 pr:
   branches:
     include:
+    - master
     - main
     - release-*
 
 pool:
-    vmImage: 'ubuntu-22.04'
+    vmImage: 'ubuntu-24.04'
 jobs:
 - job: RunTests
   steps:
@@ -25,8 +27,10 @@ jobs:
       - version: "3.19.0"
       - version: "3.19.1"
       - version: "3.19.2"
+      - version: "3.21.3"
       - version: "4.0.0"
       - version: "4.0.1"
+      - version: "4.2.3"
       
 
 
