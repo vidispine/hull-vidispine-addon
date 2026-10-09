@@ -34,7 +34,7 @@ hull:
                 tag: 4.0.8
               webTools:
                 # renovate: datasource=docker depName=cr.vidinet.net/vpms/webtools
-                tag: 1.4.5
+                tag: 1.4.6
               kubectlTools:
                 # renovate: datasource=docker depName=cr.vidinet.net/vpms/kubectl-tools
                 tag: 1.36.9
