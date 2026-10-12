@@ -250,12 +250,10 @@ hull:
                             version: _HT!{{ (index . "$").Chart.Version }}
                           }
                         ]
-                      # Left empty: GetSbomLicense.ps1 then logs in with the OCI_REGISTRY_*
-                      # variables of the hull-install Job's auth Secret, built from the same
-                      # registry objects. Written here, the registry password ended up in
-                      # installation.yaml - a ConfigMap since 1.35, readable with the view role.
-                      # Set server, username and password to use another registry.
-                      _oci_endpoint_: {}
+                      # No registry credentials here: GetSbomLicense.ps1 logs in with the
+                      # OCI_REGISTRY_* variables of the hull-install Job's auth Secret. The entity
+                      # is part of installation.yaml, a ConfigMap since 1.35 that the view role
+                      # can read.
                       getCustomScriptFromFile: "get-custom-scripts/GetSbomLicense.ps1"
                       config: {}
                 70_mappedgroups:
