@@ -5,10 +5,10 @@ FROM ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884
 # them offline and never fetches a checksum live at build time.
 #
 # renovate: datasource=github-releases depName=PowerShell/PowerShell
-ARG PS_VERSION=7.6.6
+ARG PS_VERSION=7.6.7
 # Checksum of powershell_${PS_VERSION}-1.deb_amd64.deb (from the release hashes.sha256).
 # Source: https://github.com/PowerShell/PowerShell/releases/download/v<version>/hashes.sha256
-ARG PS_CHECKSUM=9585f38ab5a026c3fc0995486e26e12050777960fef47a22dca98b577c5d27a7
+ARG PS_CHECKSUM=868c575f0822b2deed054c1c3c464a9d4b841f67e153369147fb6ace3545c8b2
 # renovate: datasource=github-releases depName=oras-project/oras
 ARG ORAS_VERSION=1.3.4
 # Checksum of oras_${ORAS_VERSION}_linux_amd64.tar.gz (from the release checksums.txt).
