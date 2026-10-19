@@ -301,6 +301,11 @@ Class Installer
   hidden [PSCustomObject] $_successes
   hidden [System.Net.CookieCollection] $_sessionCookies
   hidden [System.Collections.Generic.List[string]] $_secrets = [System.Collections.Generic.List[string]]::new()
+  # kubelet rotates a container's log file at its size limit (10Mi by default), and `kubectl logs`
+  # and the log collector read only the current file - so a single huge line, such as a
+  # ProductComponent's base64 license document (~24 MB), pushes everything logged before it out of
+  # view. Lines longer than this are cut, after redaction.
+  static [int] $MaxLogLineLength = 10000
 
   # Load the config
   [void] LoadConfiguration($ConfigFilePath, $Stage)
@@ -314,14 +319,14 @@ Class Installer
 
   hidden [void] WriteLog($message)
   {
-    "$(get-date -format "yyyy-MM-dd HH:mm:ss"): $($this.Redact($message))" | Write-Host
+    "$(get-date -format "yyyy-MM-dd HH:mm:ss"): $($this.LimitLineLength($this.Redact($message)))" | Write-Host
   }
 
   # Override the built-in cmdlet with a custom version
   hidden [void] WriteError($message)
   {
     [Console]::ForegroundColor = 'red'
-    [Console]::Error.WriteLine("$(get-date -format "yyyy-MM-dd HH:mm:ss"): $($this.Redact($message))")
+    [Console]::Error.WriteLine("$(get-date -format "yyyy-MM-dd HH:mm:ss"): $($this.LimitLineLength($this.Redact($message)))")
     [Console]::ResetColor()
   }
 
@@ -375,6 +380,26 @@ Class Installer
     $text = $text -replace '(?<=://[^/\s:@''"]+:)[^/\s@''"]+(?=@)', '***'
     $text = $text -replace '(?i)("(password|passwd|secret|clientSecret|client_secret|access_token|refresh_token|id_token|token|apiKey|api_key)"\s*:\s*")[^"]*(")', '$1***$3'
     return $text
+  }
+
+  # Applied after Redact: cutting first could split a secret so that Redact no longer finds it.
+  [string] LimitLineLength($message)
+  {
+    $text = "$($message)"
+    $max = [Installer]::MaxLogLineLength
+    if ($text.Length -le $max)
+    {
+      return $text
+    }
+    $lines = $text -split "`n"
+    for ($i = 0; $i -lt $lines.Length; $i++)
+    {
+      if ($lines[$i].Length -gt $max)
+      {
+        $lines[$i] = $lines[$i].Substring(0, $max) + " ... [$($lines[$i].Length - $max) characters left out]"
+      }
+    }
+    return $lines -join "`n"
   }
 
   hidden [string] HeaderValueForLog([string] $name, $value)
