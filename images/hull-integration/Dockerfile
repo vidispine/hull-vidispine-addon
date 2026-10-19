@@ -10,11 +10,11 @@ ARG PS_VERSION=7.6.7
 # Source: https://github.com/PowerShell/PowerShell/releases/download/v<version>/hashes.sha256
 ARG PS_CHECKSUM=868c575f0822b2deed054c1c3c464a9d4b841f67e153369147fb6ace3545c8b2
 # renovate: datasource=github-releases depName=oras-project/oras
-ARG ORAS_VERSION=1.3.4
+ARG ORAS_VERSION=1.3.5
 # Checksum of oras_${ORAS_VERSION}_linux_amd64.tar.gz (from the release checksums.txt).
 # Sources: https://github.com/oras-project/oras/releases/download/v<version>/oras_<version>_checksums.txt
 #          https://github.com/oras-project/setup-oras/blob/main/src/lib/data/releases.json
-ARG ORAS_CHECKSUM=f27adb935022d94df8dc77719c322dda592c78a0d57a6f7dcdd8d900b248c454
+ARG ORAS_CHECKSUM=f48a73ea6d026a862c3919fc773da9a8c86fc259c2c737d5baed3b8b9614ad22
 # Ensure no interactive prompts from apt-get, also beyond -y.
 # Do not set ENV DEBIAN_FRONTEND=noninteractive; this would remain in the image and running container!
 ARG BUILD_DEBIAN_FRONTEND=noninteractive
