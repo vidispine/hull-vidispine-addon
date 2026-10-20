@@ -20,15 +20,16 @@ Import-Module powershell-yaml
 
 function CreateKubernetesEvent([PSCustomObject] $k8s, [string] $eventType, [string] $objectName, [string] $objectType, [string] $objectApiVersion, [string] $objectUid, [string] $objectResourceVersion, [string] $message)
 {
-  $now = Get-Date
-  $eventName = "$($objectName).$($now.ToString("yyMMddhhmmssffffff"))"
+  # UTC with the 24-hour clock: the timestamps carry a Z, and "hh" (12-hour) stamped 15:04 as 03:04.
+  $now = (Get-Date).ToUniversalTime()
+  $eventName = "$($objectName).$($now.ToString("yyMMddHHmmssffffff"))"
   $message = $installer.Redact($message)
   $trimmedMessage = $message[0..1023] -join ""
   $k8sEvent = @{ "apiVersion" = "v1";
     "action"                  = "$($eventType)";
     "count"                   = 1;
-    "eventTime"               = "$($now.ToString("yyyy-MM-ddThh:mm:ss.ffffffZ"))";
-    "firstTimestamp"          = "$($now.ToString("yyyy-MM-ddThh:mm:ss.ffffffZ"))";
+    "eventTime"               = "$($now.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ"))";
+    "firstTimestamp"          = "$($now.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ"))";
     "involvedObject"          = @{
       "name"            = "$($objectName)";
       "kind"            = "$($objectType)";
@@ -38,7 +39,7 @@ function CreateKubernetesEvent([PSCustomObject] $k8s, [string] $eventType, [stri
       "resourceVersion" = "$($objectResourceVersion)"
     };
     "kind"                    = "Event";
-    "lastTimestamp"           = "$($now.ToString("yyyy-MM-ddThh:mm:ss.ffffffZ"))";
+    "lastTimestamp"           = "$($now.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ"))";
     "message"                 = "$($trimmedMessage)";
     "metadata"                = @{
       "namespace" = "$($k8s.NAMESPACE)";
