@@ -3,6 +3,13 @@ $licenseDirectory = "/oci_license"
 $downloadDirectory = "$($licenseDirectory)/download"
 $docDirectory = "$($licenseDirectory)/extracted"
 $errorMessage = ""
+# hull.config.general.data.installation.ignoreMissingLicense (default false): a license that cannot be
+# retrieved fails the installation, so that no chart version is rolled out without one unnoticed. Test
+# systems that run builds produced without a license set it to true; such a license is then skipped
+# with a log line instead.
+$ignoreMissingLicense = "$($this._config.ignoreMissingLicense)" -eq "true"
+$failNote = "Failing, so that no chart version is installed without its license (on a test system, hull.config.general.data.installation.ignoreMissingLicense: true skips it)."
+$skipNote = "Continuing without the license, since hull.config.general.data.installation.ignoreMissingLicense is true."
 
 # Log in to OCI with the hull-install Job's OCI_REGISTRY_* variables (its auth Secret, built from
 # the chart's registry objects). Not from the entity: the entity is part of installation.yaml, a
@@ -10,6 +17,12 @@ $errorMessage = ""
 if (-not ($env:OCI_REGISTRY_SERVER -and $env:OCI_REGISTRY_USERNAME -and $env:OCI_REGISTRY_PASSWORD))
 {
   $errorMessage = "~~~ SBOM: OCI_REGISTRY_SERVER, OCI_REGISTRY_USERNAME and OCI_REGISTRY_PASSWORD are not all set! Cannot log in to OCI registry, cannot retrieve license information. Provide them in the hull-install Job's environment (the auth Secret sets them when the chart has a registry object)."
+  if ($ignoreMissingLicense)
+  {
+    $this.WriteLog("$($errorMessage) $($skipNote)")
+    return @{ "statusCode" = 200 } | ConvertTo-Json
+  }
+  $errorMessage = "$($errorMessage) $($failNote)"
   $this.WriteError($errorMessage)
   return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
 }
@@ -45,14 +58,26 @@ foreach($chartInfo in $entity._helm_charts_)
     
     if (-not [bool]$discoverJson.PSObject.Properties['referrers'])
     {
-      $errorMessage = "~~~ SBOM: Referrers field for $($rootArtifact) does not exist! Skipping license upload ..."
+      $errorMessage = "~~~ SBOM: No license found for $($rootArtifact): the discover result has no referrers field."
+      if ($ignoreMissingLicense)
+      {
+        $this.WriteLog("$($errorMessage) $($skipNote)")
+        continue
+      }
+      $errorMessage = "$($errorMessage) $($failNote)"
       $this.WriteError($errorMessage)
       return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
     }
 
     if (($discoverJson.referrers | Measure-Object).Count -eq 0)
     {
-      $errorMessage = "~~~ SBOM: Referrers field for $($rootArtifact) has zero elements! Skipping license upload ..."
+      $errorMessage = "~~~ SBOM: No license found for $($rootArtifact): no 'mend/sbom' artifact refers to it."
+      if ($ignoreMissingLicense)
+      {
+        $this.WriteLog("$($errorMessage) $($skipNote)")
+        continue
+      }
+      $errorMessage = "$($errorMessage) $($failNote)"
       $this.WriteError($errorMessage)
       return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json                                
     }
@@ -95,6 +120,13 @@ foreach($chartInfo in $entity._helm_charts_)
       else
       {
         $errorMessage = "~~~ SBOM: $($pullCommand) failed!"
+        if ($ignoreMissingLicense)
+        {
+          $this.WriteLog("$($errorMessage) $($skipNote)")
+          Remove-Item -Recurse -Force -Path $downloadDirectory -ErrorAction SilentlyContinue
+          continue
+        }
+        $errorMessage = "$($errorMessage) $($failNote)"
         $this.WriteError($errorMessage)
         return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
       }
@@ -103,6 +135,12 @@ foreach($chartInfo in $entity._helm_charts_)
   else
   {
     $errorMessage = "~~~ SBOM: $($discoverCommand) failed!"
+    if ($ignoreMissingLicense)
+    {
+      $this.WriteLog("$($errorMessage) $($skipNote)")
+      continue
+    }
+    $errorMessage = "$($errorMessage) $($failNote)"
     $this.WriteError($errorMessage)
     return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
   }
