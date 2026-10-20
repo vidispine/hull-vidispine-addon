@@ -1,4 +1,4 @@
-FROM ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
+FROM ubuntu:24.04@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac
 # ARG _VERSIONs carry a 'renovate:' annotation comment so Renovate bumps them. Each matching *_CHECKSUM ARG
 # is kept in sync automatically by the Renovate postUpgradeTask hook (.github/renovate/update-checksum.sh)
 # - do NOT edit the checksums by hand. They are stored here on purpose: the build verifies against
@@ -10,11 +10,11 @@ ARG PS_VERSION=7.6.7
 # Source: https://github.com/PowerShell/PowerShell/releases/download/v<version>/hashes.sha256
 ARG PS_CHECKSUM=868c575f0822b2deed054c1c3c464a9d4b841f67e153369147fb6ace3545c8b2
 # renovate: datasource=github-releases depName=oras-project/oras
-ARG ORAS_VERSION=1.3.4
+ARG ORAS_VERSION=1.3.5
 # Checksum of oras_${ORAS_VERSION}_linux_amd64.tar.gz (from the release checksums.txt).
 # Sources: https://github.com/oras-project/oras/releases/download/v<version>/oras_<version>_checksums.txt
 #          https://github.com/oras-project/setup-oras/blob/main/src/lib/data/releases.json
-ARG ORAS_CHECKSUM=f27adb935022d94df8dc77719c322dda592c78a0d57a6f7dcdd8d900b248c454
+ARG ORAS_CHECKSUM=f48a73ea6d026a862c3919fc773da9a8c86fc259c2c737d5baed3b8b9614ad22
 # Ensure no interactive prompts from apt-get, also beyond -y.
 # Do not set ENV DEBIAN_FRONTEND=noninteractive; this would remain in the image and running container!
 ARG BUILD_DEBIAN_FRONTEND=noninteractive
