@@ -3,28 +3,32 @@ $licenseDirectory = "/oci_license"
 $downloadDirectory = "$($licenseDirectory)/download"
 $docDirectory = "$($licenseDirectory)/extracted"
 $errorMessage = ""
-$oci_server = $entity._oci_endpoint_.server
-$oci_username = $entity._oci_endpoint_.username
-$oci_password = $entity._oci_endpoint_.password
+# hull.config.general.data.installation.config.licenses.ignoreMissing (default false): a license that
+# cannot be retrieved fails the installation, so that no chart version is rolled out without one
+# unnoticed. Test systems that run builds produced without a license set it to true; such a license
+# is then skipped with a log line instead.
+$ignoreMissingLicense = "$($this._config.config.licenses.ignoreMissing)" -eq "true"
+$failNote = "Failing, so that no chart version is installed without its license (on a test system, hull.config.general.data.installation.config.licenses.ignoreMissing: true skips it)."
+$skipNote = "Continuing without the license, since hull.config.general.data.installation.config.licenses.ignoreMissing is true."
 
-# Log in to OCI
-if ([String]::IsNullOrWhitespace($oci_server))
+# Log in to OCI with the hull-install Job's OCI_REGISTRY_* variables (its auth Secret, built from
+# the chart's registry objects). Not from the entity: the entity is part of installation.yaml, a
+# ConfigMap since 1.35 that the view role can read.
+if (-not ($env:OCI_REGISTRY_SERVER -and $env:OCI_REGISTRY_USERNAME -and $env:OCI_REGISTRY_PASSWORD))
 {
-  $infoMessage = "~~~ SBOM: Did not find OCI registry server name in configuration, checking for environment variables..."  
-  $this.WriteLog($infoMessage)
-  if ($env:OCI_REGISTRY_SERVER -and $env:OCI_REGISTRY_USERNAME -and $env:OCI_REGISTRY_PASSWORD)  {
-    $oci_server = $env:OCI_REGISTRY_SERVER
-    $oci_username = $env:OCI_REGISTRY_USERNAME
-    $oci_password = $env:OCI_REGISTRY_PASSWORD
-    $this.WriteLog("~~~ SBOM: Found OCI registry server information in environment variables, using it for login")
-  }
-  else
+  $errorMessage = "~~~ SBOM: OCI_REGISTRY_SERVER, OCI_REGISTRY_USERNAME and OCI_REGISTRY_PASSWORD are not all set! Cannot log in to OCI registry, cannot retrieve license information. Provide them in the hull-install Job's environment (the auth Secret sets them when the chart has a registry object)."
+  if ($ignoreMissingLicense)
   {
-    $errorMessage = "~~~ SBOM: Did not find OCI registry server name in configuration or environment variables! Cannot log in to OCI registry, cannot retrieve license information. Please provide OCI registry credentials either via configuration or environment variables!"
-    $this.WriteError($errorMessage)
-    return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
+    $this.WriteLog("$($errorMessage) $($skipNote)")
+    return @{ "statusCode" = 200 } | ConvertTo-Json
   }
+  $errorMessage = "$($errorMessage) $($failNote)"
+  $this.WriteError($errorMessage)
+  return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
 }
+$oci_server = $env:OCI_REGISTRY_SERVER
+$oci_username = $env:OCI_REGISTRY_USERNAME
+$oci_password = $env:OCI_REGISTRY_PASSWORD
 # `oras login` takes a bare registry HOST and rejects a reference that includes a repository path
 # (e.g. an ECR endpoint with a version prefix like "<acct>.dkr.ecr.<region>.amazonaws.com/26.1" ->
 # "invalid reference: invalid registry"). Log in to the host only; $oci_server (which may carry the
@@ -54,14 +58,26 @@ foreach($chartInfo in $entity._helm_charts_)
     
     if (-not [bool]$discoverJson.PSObject.Properties['referrers'])
     {
-      $errorMessage = "~~~ SBOM: Referrers field for $($rootArtifact) does not exist! Skipping license upload ..."
+      $errorMessage = "~~~ SBOM: No license found for $($rootArtifact): the discover result has no referrers field."
+      if ($ignoreMissingLicense)
+      {
+        $this.WriteLog("$($errorMessage) $($skipNote)")
+        continue
+      }
+      $errorMessage = "$($errorMessage) $($failNote)"
       $this.WriteError($errorMessage)
       return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
     }
 
     if (($discoverJson.referrers | Measure-Object).Count -eq 0)
     {
-      $errorMessage = "~~~ SBOM: Referrers field for $($rootArtifact) has zero elements! Skipping license upload ..."
+      $errorMessage = "~~~ SBOM: No license found for $($rootArtifact): no 'mend/sbom' artifact refers to it."
+      if ($ignoreMissingLicense)
+      {
+        $this.WriteLog("$($errorMessage) $($skipNote)")
+        continue
+      }
+      $errorMessage = "$($errorMessage) $($failNote)"
       $this.WriteError($errorMessage)
       return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json                                
     }
@@ -104,6 +120,13 @@ foreach($chartInfo in $entity._helm_charts_)
       else
       {
         $errorMessage = "~~~ SBOM: $($pullCommand) failed!"
+        if ($ignoreMissingLicense)
+        {
+          $this.WriteLog("$($errorMessage) $($skipNote)")
+          Remove-Item -Recurse -Force -Path $downloadDirectory -ErrorAction SilentlyContinue
+          continue
+        }
+        $errorMessage = "$($errorMessage) $($failNote)"
         $this.WriteError($errorMessage)
         return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
       }
@@ -112,6 +135,12 @@ foreach($chartInfo in $entity._helm_charts_)
   else
   {
     $errorMessage = "~~~ SBOM: $($discoverCommand) failed!"
+    if ($ignoreMissingLicense)
+    {
+      $this.WriteLog("$($errorMessage) $($skipNote)")
+      continue
+    }
+    $errorMessage = "$($errorMessage) $($failNote)"
     $this.WriteError($errorMessage)
     return @{ "statusCode" = 500; "errorMessage" = $errorMessage } | ConvertTo-Json
   }

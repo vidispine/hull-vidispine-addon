@@ -20,14 +20,16 @@ Import-Module powershell-yaml
 
 function CreateKubernetesEvent([PSCustomObject] $k8s, [string] $eventType, [string] $objectName, [string] $objectType, [string] $objectApiVersion, [string] $objectUid, [string] $objectResourceVersion, [string] $message)
 {
-  $now = Get-Date
-  $eventName = "$($objectName).$($now.ToString("yyMMddhhmmssffffff"))"
+  # UTC with the 24-hour clock: the timestamps carry a Z, and "hh" (12-hour) stamped 15:04 as 03:04.
+  $now = (Get-Date).ToUniversalTime()
+  $eventName = "$($objectName).$($now.ToString("yyMMddHHmmssffffff"))"
+  $message = $installer.Redact($message)
   $trimmedMessage = $message[0..1023] -join ""
   $k8sEvent = @{ "apiVersion" = "v1";
     "action"                  = "$($eventType)";
     "count"                   = 1;
-    "eventTime"               = "$($now.ToString("yyyy-MM-ddThh:mm:ss.ffffffZ"))";
-    "firstTimestamp"          = "$($now.ToString("yyyy-MM-ddThh:mm:ss.ffffffZ"))";
+    "eventTime"               = "$($now.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ"))";
+    "firstTimestamp"          = "$($now.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ"))";
     "involvedObject"          = @{
       "name"            = "$($objectName)";
       "kind"            = "$($objectType)";
@@ -37,7 +39,7 @@ function CreateKubernetesEvent([PSCustomObject] $k8s, [string] $eventType, [stri
       "resourceVersion" = "$($objectResourceVersion)"
     };
     "kind"                    = "Event";
-    "lastTimestamp"           = "$($now.ToString("yyyy-MM-ddThh:mm:ss.ffffffZ"))";
+    "lastTimestamp"           = "$($now.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ"))";
     "message"                 = "$($trimmedMessage)";
     "metadata"                = @{
       "namespace" = "$($k8s.NAMESPACE)";
@@ -299,10 +301,17 @@ Class Installer
   hidden [PSCustomObject] $_errors
   hidden [PSCustomObject] $_successes
   hidden [System.Net.CookieCollection] $_sessionCookies
+  hidden [System.Collections.Generic.List[string]] $_secrets = [System.Collections.Generic.List[string]]::new()
+  # kubelet rotates a container's log file at its size limit (10Mi by default), and `kubectl logs`
+  # and the log collector read only the current file - so a single huge line, such as a
+  # ProductComponent's base64 license document (~24 MB), pushes everything logged before it out of
+  # view. Lines longer than this are cut, after redaction.
+  static [int] $MaxLogLineLength = 10000
 
   # Load the config
   [void] LoadConfiguration($ConfigFilePath, $Stage)
   {
+    $this.RegisterSecretsFromEnvironment()
     # Load File
     $this._config = (Get-Content $ConfigFilePath | Out-String | ConvertFrom-Yaml -Ordered)
     $this._stage = $Stage
@@ -311,15 +320,97 @@ Class Installer
 
   hidden [void] WriteLog($message)
   {
-    "$(get-date -format "yyyy-MM-dd HH:mm:ss"): $($message)" | Write-Host
+    "$(get-date -format "yyyy-MM-dd HH:mm:ss"): $($this.LimitLineLength($this.Redact($message)))" | Write-Host
   }
 
   # Override the built-in cmdlet with a custom version
   hidden [void] WriteError($message)
   {
     [Console]::ForegroundColor = 'red'
-    [Console]::Error.WriteLine("$(get-date -format "yyyy-MM-dd HH:mm:ss"): $($message)")
+    [Console]::Error.WriteLine("$(get-date -format "yyyy-MM-dd HH:mm:ss"): $($this.LimitLineLength($this.Redact($message)))")
     [Console]::ResetColor()
+  }
+
+  # Secrets never reach the log or an Event. Everything the installer and the chart scripts
+  # write goes through WriteLog/WriteError, and the Job's log ends up in the cluster's log
+  # store. Masked are the values of the credential environment variables (the auth Secret
+  # the Job reads with envFrom), the tokens, session cookies and basic auth passwords
+  # obtained at runtime, each also URL- and JSON-escaped as it appears in connection
+  # strings and request bodies; besides, any password in a URL and the values of the
+  # usual secret fields in JSON.
+  static [bool] IsSensitiveName([string] $name)
+  {
+    return ($name -match '(?i)(PASSWORD|PASSWD|SECRET|TOKEN|CREDENTIAL|API[-_]?KEY|PRIVATE|COOKIE|AUTHORIZATION|CONNECTIONSTRING)') -and
+      ($name -notmatch '(?i)(_ID|CLIENTID|USERNAME|_USER|SECRETNAME|TOKENFIELD)$')
+  }
+
+  hidden [void] RegisterSecret([string] $value)
+  {
+    if ([string]::IsNullOrEmpty($value) -or $value.Length -lt 4)
+    {
+      return
+    }
+    foreach ($form in @($value, [uri]::EscapeDataString($value), (ConvertTo-Json -InputObject $value -Compress).Trim('"')))
+    {
+      if (-not $this._secrets.Contains($form))
+      {
+        $this._secrets.Add($form)
+      }
+    }
+  }
+
+  hidden [void] RegisterSecretsFromEnvironment()
+  {
+    foreach ($variable in [System.Environment]::GetEnvironmentVariables().GetEnumerator())
+    {
+      if ([Installer]::IsSensitiveName([string] $variable.Key))
+      {
+        $this.RegisterSecret([string] $variable.Value)
+      }
+    }
+  }
+
+  [string] Redact($message)
+  {
+    $text = "$($message)"
+    # longest first, so a value that contains another one is masked as a whole
+    foreach ($secret in ($this._secrets | Sort-Object -Property Length -Descending))
+    {
+      $text = $text.Replace($secret, "***")
+    }
+    $text = $text -replace '(?<=://[^/\s:@''"]+:)[^/\s@''"]+(?=@)', '***'
+    $text = $text -replace '(?i)("(password|passwd|secret|clientSecret|client_secret|access_token|refresh_token|id_token|token|apiKey|api_key)"\s*:\s*")[^"]*(")', '$1***$3'
+    return $text
+  }
+
+  # Applied after Redact: cutting first could split a secret so that Redact no longer finds it.
+  [string] LimitLineLength($message)
+  {
+    $text = "$($message)"
+    $max = [Installer]::MaxLogLineLength
+    if ($text.Length -le $max)
+    {
+      return $text
+    }
+    $lines = $text -split "`n"
+    for ($i = 0; $i -lt $lines.Length; $i++)
+    {
+      if ($lines[$i].Length -gt $max)
+      {
+        $lines[$i] = $lines[$i].Substring(0, $max) + " ... [$($lines[$i].Length - $max) characters left out]"
+      }
+    }
+    return $lines -join "`n"
+  }
+
+  hidden [string] HeaderValueForLog([string] $name, $value)
+  {
+    if ([Installer]::IsSensitiveName($name))
+    {
+      $this.RegisterSecret([string] $value)
+      return "***"
+    }
+    return "$($value)"
   }
 
   [string] GetAbsoluteFilePath([string] $path, [bool] $forceSubfolder)
@@ -414,7 +505,7 @@ Class Installer
         $webSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
         if ($null -ne $this._sessionCookies)
         {
-          $this.WriteLog("***** using WebSession cookie: $($this._sessionCookies[0])")
+          $this.WriteLog("***** using WebSession cookie '$($this._sessionCookies[0].Name)'")
           $cookie = New-Object System.Net.Cookie($this._sessionCookies[0].Name, $this._sessionCookies[0].Value, '/')
           $webSession.Cookies.Add($url, $cookie)
           # $this._webSession.Cookies.SetCookies($url, $this._webSession.Cookies.GetCookies($this._webSessionLoginUri))
@@ -489,6 +580,7 @@ Class Installer
     {
       $username = [environment]::GetEnvironmentVariable($auth.basic.env.username,"Process")
       $password = [environment]::GetEnvironmentVariable($auth.basic.env.password,"Process")
+      $this.RegisterSecret($password)
       $this.WriteLog("++++ Getting basic auth credentials from environment variables: username=$(if ($username -ne [String]::Empty) {$username} else {"<empty>"}) password=$(if ($password -ne [String]::Empty) {"***"} else {"<empty>"}))")
       if ([String]::IsNullOrWhitespace($username))
       {
@@ -514,11 +606,11 @@ Class Installer
       {
         if ($headers.ContainsKey($header))
         {
-          $this.WriteLog("++++ OVerwriting Header '$($header)' with value '$($endpointExtraHeaders[$header])' from Endpoint Headers.")
+          $this.WriteLog("++++ OVerwriting Header '$($header)' with value '$($this.HeaderValueForLog($header, $endpointExtraHeaders[$header]))' from Endpoint Headers.")
         }
         else
         {
-          $this.WriteLog("++++ Adding Header '$($header)' with value '$($endpointExtraHeaders[$header])' from Endpoint Headers.")
+          $this.WriteLog("++++ Adding Header '$($header)' with value '$($this.HeaderValueForLog($header, $endpointExtraHeaders[$header]))' from Endpoint Headers.")
         }
         $headers[$header] = $endpointExtraHeaders[$header]
       }
@@ -530,11 +622,11 @@ Class Installer
       {
         if ($headers.ContainsKey($header))
         {
-          $this.WriteLog("++++ OVerwriting Header '$($header)' with value '$($entity.extraHeaders[$header])' from Entity Headers.")
+          $this.WriteLog("++++ OVerwriting Header '$($header)' with value '$($this.HeaderValueForLog($header, $entity.extraHeaders[$header]))' from Entity Headers.")
         }
         else
         {
-          $this.WriteLog("++++ Adding Header '$($header)' with value '$($entity.extraHeaders[$header])' from Entity Headers.")
+          $this.WriteLog("++++ Adding Header '$($header)' with value '$($this.HeaderValueForLog($header, $entity.extraHeaders[$header]))' from Entity Headers.")
         }
 
         $headers[$header] = $entity.extraHeaders[$header]
@@ -599,7 +691,7 @@ Class Installer
     $this.WriteLog("++++ and headers: ")
     foreach ($key in $request.request.headers.Keys)
     {
-      $this.WriteLog("++++   Key: $key Value: $($request.request.headers[$key])")
+      $this.WriteLog("++++   Key: $key Value: $($this.HeaderValueForLog($key, $request.request.headers[$key]))")
     }
     $this.WriteLog("++++ to Uri: $($endpointUri)")
 
@@ -620,7 +712,11 @@ Class Installer
       if ($accessType.Equals("session"))
       {
         $this._sessionCookies = $session.Cookies.GetCookies($endpointUri)
-        $this.WriteLog("++++ Created session $($session) and stored cookie: $($session.Cookies.GetCookies($endpointUri))")
+        foreach ($cookie in $this._sessionCookies)
+        {
+          $this.RegisterSecret($cookie.Value)
+        }
+        $this.WriteLog("++++ Created session and stored cookie(s): $(($this._sessionCookies | ForEach-Object { $_.Name }) -join ', ')")
       }
       if ($accessType.Equals("token"))
       {
@@ -633,7 +729,8 @@ Class Installer
           $token = ($response | ConvertFrom-Json).($request.response.tokenField)
         }
 
-        $this.WriteLog("++++ Got access token: $token")
+        $this.RegisterSecret($token)
+        $this.WriteLog("++++ Got access token ($("$token".Length) characters)")
         return $token
       }
 
