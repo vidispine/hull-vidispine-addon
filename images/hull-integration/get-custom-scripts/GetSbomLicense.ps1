@@ -3,13 +3,13 @@ $licenseDirectory = "/oci_license"
 $downloadDirectory = "$($licenseDirectory)/download"
 $docDirectory = "$($licenseDirectory)/extracted"
 $errorMessage = ""
-# hull.config.general.data.installation.ignoreMissingLicense (default false): a license that cannot be
-# retrieved fails the installation, so that no chart version is rolled out without one unnoticed. Test
-# systems that run builds produced without a license set it to true; such a license is then skipped
-# with a log line instead.
-$ignoreMissingLicense = "$($this._config.ignoreMissingLicense)" -eq "true"
-$failNote = "Failing, so that no chart version is installed without its license (on a test system, hull.config.general.data.installation.ignoreMissingLicense: true skips it)."
-$skipNote = "Continuing without the license, since hull.config.general.data.installation.ignoreMissingLicense is true."
+# hull.config.general.data.installation.config.licenses.ignoreMissing (default false): a license that
+# cannot be retrieved fails the installation, so that no chart version is rolled out without one
+# unnoticed. Test systems that run builds produced without a license set it to true; such a license
+# is then skipped with a log line instead.
+$ignoreMissingLicense = "$($this._config.config.licenses.ignoreMissing)" -eq "true"
+$failNote = "Failing, so that no chart version is installed without its license (on a test system, hull.config.general.data.installation.config.licenses.ignoreMissing: true skips it)."
+$skipNote = "Continuing without the license, since hull.config.general.data.installation.config.licenses.ignoreMissing is true."
 
 # Log in to OCI with the hull-install Job's OCI_REGISTRY_* variables (its auth Secret, built from
 # the chart's registry objects). Not from the entity: the entity is part of installation.yaml, a
