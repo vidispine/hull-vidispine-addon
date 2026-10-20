@@ -97,6 +97,7 @@ To mimic this tree structure the configuration is built around this three-part w
 | ------------------------------- | ----------------------------------------------------------------| -----------------------------| -----------------------------------------|
 | `config` | Additional configuration options.<br><br>Key: <br>One of the allowed options defined in <br>`<configSpec>`<br><br>Value: <br>The configuration options value | `customCaCertificates`<br>`preScript`<br>`postScript`<br>`productUris`<br>`debug`
 | `endpoints` | Dictionary of endpoints to communicate with.<br><br>Key: <br>Key for entry in dictionary `endpoints`<br><br>Value: <br>The endpoint definition in form of a `<endpointSpec>` | `10_vidicore:`<br>`20_authservice:`<br>`30_configportal:`
+| `ignoreMissingLicense` | If `false`, the `hull-install` job fails when the license of the chart cannot be retrieved for the `license` entity of `60_productcomponents` (no `OCI_REGISTRY_*` credentials, no `mend/sbom` artifact attached to the chart, or a failing `oras discover` or `oras pull`), so that no chart version is installed without its license.<br><br>Set it to `true` on test systems that run builds produced without a license: the license is then skipped with a log message and the installation continues. | `false` | `true`
 
 ### ConfigSpec
 Describes configuration options. <br>Has exclusively the following sub-fields: <br><br>`customCaCertificates`<br>`certificateSecrets`<br>`preScript`<br>`postScript`<br>`productUris`<br>`debug`

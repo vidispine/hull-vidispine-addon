@@ -9,6 +9,9 @@ hull:
               basic:
                 adminUserSecretName: "_HT/hull.vidispine.addon.library.secret.name.vidispine.admin.user"
         installation:
+          # true: a chart license that GetSbomLicense.ps1 cannot retrieve is skipped with a log line
+          # instead of failing the installation - for test systems that run builds produced without one.
+          ignoreMissingLicense: false
           config:
             customCaCertificates: {}
             certificateSecrets: {}
