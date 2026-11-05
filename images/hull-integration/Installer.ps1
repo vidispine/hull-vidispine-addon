@@ -1025,8 +1025,15 @@ Class Installer
             }
             else
             {
+              # A script shipped with the hull-integration image (get-custom-scripts/...) is found in
+              # the working directory as before. Otherwise the path is one of the chart's installation
+              # sources and resolves like the path of updateConfigValues or readConfigFromFile.
               $currentPath = (Get-Item -Path ".\" -Verbose).FullName
               $scriptPath = Join-Path $currentPath $entity.getCustomScriptFromFile
+              if (!(Test-Path $scriptPath))
+              {
+                $scriptPath = $this.GetAbsoluteFilePath($entity.getCustomScriptFromFile, $false)
+              }
               $this.WriteLog("***** Using getCustomScriptFromFile $($scriptPath)")
               $scriptblock = Get-Command $scriptPath | Select-Object -ExpandProperty ScriptBlock
             }
