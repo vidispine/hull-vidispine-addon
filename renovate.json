@@ -20,6 +20,16 @@
       "enabled": false
     },
     {
+      "description": "Minimum Release Age for new versions. Prevent supply chain attacks by delaying updates.",
+      "minimumReleaseAge": "2 days"
+    },
+    {
+      "description": "No minimumReleaseAge for our own images - they have their own delays.",
+      "matchDatasources": ["docker"],
+      "matchDepNames": ["cr.vidinet.net/**"],
+      "minimumReleaseAge": null
+    },
+    {
       "description": "Kubernetes-bound versions (e.g. kubectl-tools): Block major-minor updates, allow only patch (e.g. within 1.36.x, not 1.36.x to 1.37.x).",
       "matchDepNames": ["cr.vidinet.net/vpms/kubectl-tools"],
       "matchUpdateTypes": ["major", "minor"],
