@@ -50,6 +50,8 @@ jobs:
   renovate:
     runs-on: ubuntu-latest
     environment: renovate-vidispine-content-wf
+    outputs:
+      app-slug: ${{ steps.app-token.outputs.app-slug }}
     steps:
       # IMPORTANT: Keep version comments after action digests here, required by Renovate!
       #
@@ -92,11 +94,9 @@ jobs:
             FORCE='{"groupName":"all dependencies","separateMajorMinor":false}'
           fi
           echo "RENOVATE_FORCE=$FORCE" >> "$GITHUB_ENV"
+          # Renovate turns on GitHub's own auto-merge (platformAutomerge, default): GitHub merges
+          # as soon as the required checks pass. The approval comes from the "approve" job.
           echo "RENOVATE_AUTOMERGE=$AUTO_MERGE" >> "$GITHUB_ENV"
-          # GitHub's own auto-merge waits for the approval despite the app's bypass, so Renovate
-          # merges itself (via API, with the bypass) when automerging.
-          if [ "$AUTO_MERGE" = "true" ]; then PLATFORM_AUTOMERGE=false; else PLATFORM_AUTOMERGE=true; fi
-          echo "RENOVATE_PLATFORM_AUTOMERGE=$PLATFORM_AUTOMERGE" >> "$GITHUB_ENV"
       - name: Run Renovate
         id: renovate
         uses: renovatebot/github-action@266fef21329c44765ad42f9dea1f01f5d2d91084 # v46.3.13
@@ -229,3 +229,36 @@ jobs:
           ' "$REPORT" | tee -a "$GITHUB_STEP_SUMMARY"
 
           [ "$issues" -eq 0 ] || exit 1
+
+  # Approves the open Renovate PRs, so GitHub's auto-merge merges them once the required checks
+  # (Gated test) pass. GitHub's auto-merge ignores ruleset bypass, hence a real approval. The
+  # approver is github-actions[bot] (GITHUB_TOKEN): the PR author cannot approve its own PR.
+  # Needs Settings -> Actions -> General -> "Allow GitHub Actions to create and approve pull
+  # requests". Only PRs that touch nothing but the files Renovate normally updates.
+  approve:
+    needs: renovate
+    if: ${{ (github.event_name == 'schedule' || inputs.auto_merge) && !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      AUTHOR: app/${{ needs.renovate.outputs.app-slug }}
+      BASE: ${{ inputs.base_branch || github.event.repository.default_branch }}
+      ALLOWED: '^((.*/)?Dockerfile[^/]*|hull-vidispine-addon/hull-vidispine-addon\.yaml|\.github/workflows/[^/]+\.ya?ml)$'
+    steps:
+      - name: Approve Renovate PRs
+        run: |
+          set -euo pipefail
+          gh pr list --author "$AUTHOR" --base "$BASE" --state open \
+            --json number,reviewDecision,files \
+            --jq '.[] | select(.reviewDecision != "APPROVED") | "\(.number) \([.files[].path] | join(" "))"' |
+          while read -r pr files; do
+            outside=$(tr ' ' '\n' <<< "$files" | grep -Ev "$ALLOWED" || true)
+            if [ -n "$outside" ]; then
+              echo "::warning::PR #$pr not approved, it changes other files: $outside"
+              continue
+            fi
+            gh pr review "$pr" --approve --body "Automatic approval of a Renovate version update."
+          done
