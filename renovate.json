@@ -20,6 +20,12 @@
       "enabled": false
     },
     {
+      "description": "Kubernetes-bound versions (e.g. kubectl-tools): Block major-minor updates, allow only patch (e.g. within 1.36.x, not 1.36.x to 1.37.x).",
+      "matchDepNames": ["cr.vidinet.net/vpms/kubectl-tools"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
+    },
+    {
       "description": "Base image 'ubuntu': block tag version changes so it never moves off 24.04 to a non-LTS (24.10) or the next LTS (26.04) - only digest updates are allowed. Bump the tag by hand when adopting the next LTS.",
       "matchDepNames": ["ubuntu"],
       "matchUpdateTypes": ["major", "minor"],
