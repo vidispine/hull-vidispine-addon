@@ -31,6 +31,13 @@ jobs:
       - version: "4.0.0"
       - version: "4.0.1"
       - version: "4.2.3"
+
+  # Build the image without pushing, so Dockerfile changes (e.g. Renovate updates, which are
+  # auto-merged) are validated before the merge. The real build + push is in azure-pipelines.yml.
+  - script: |
+      set -euo pipefail
+      docker buildx build --file ./images/hull-integration/Dockerfile ./images/hull-integration
+    displayName: Build hull-integration image (no push)
       
 
 

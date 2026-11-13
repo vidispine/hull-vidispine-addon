@@ -1469,6 +1469,7 @@ The test pipeline installs the _Gauge_ test tool and runs tests against various 
 1. Download and execute a script, which will select and update a proper Gauge version.
 2. The script installs Gauge.
 3. Gauge is started for each Helm version and runs the tests.
+4. Test build an image from the _images/hull-integration/Dockerfile_.
 
 ## Troubleshooting
 
@@ -1531,15 +1532,16 @@ Docker SBOMs are per image and in machine-readable SPDX format. We have no use f
 # Update with Mend Renovate
 
 This repo contains a GitHub workflow (similar to Azure DevOps pipeline) to update the Docker images and versions installed in a _Dockerfile_ build.  
-Renovate currently has all managers enabled by default, so any match might trigger an update. Only major version updates are blocked.
+Renovate currently has all managers enabled by default, so any match might trigger an update. Only _major_ version updates are globally blocked; individual configurations may block _minor_ and limit updates to _patch_ versions.
 
 Files:
 - _.github\workflows\renovate.yml_ - The GitHub workflow.
 - _renovate.json_ - The Renovate configuration.
+- _hull-vidispine-addon.yaml_ - contains versions of tool images with annotation comments for Renovate.
 
-A _schedule:_ entry with a crontab specifies automated runs. Currently: 3AM UTC, Monday to Friday.
+A _schedule:_ entry with a crontab specifies automated runs. Currently: 2:37AM UTC, Monday to Friday.
 
-Main parts of the _renovate.json_ configuration are the _packageRules_ and _customManagers_.
+Main parts of the _renovate.json_ configuration are the _packageRules_ and _customManagers_. Some configuration values are set or created programmatically in the workflow file _renovate.yml_ (like pipeline in Azure DevOps), then submitted to Renovate as _env:_ variables.
 
 _packageRules_ with a setting _"enabled": false_ are typically used to block undesirable auto-updates, such as _major_ versions.
 
@@ -1571,9 +1573,25 @@ As of now, only simple read access is needed for the _cr.vidinet.net_ registry.
 
 ## Renovate and CI Checks, Automerge
 
-The current configuration only runs without CI checks (like gated builds) and creates pull requests for manual approval and merge. 
+- Scheduled runs: one pull request per base branch, auto-merged after the CI checks, without manual review if it only touches the usual update files. Base branches: *SCHEDULED_BASE_BRANCHES* in _renovate.yml_.
+- Manual runs: The default configuration creates pull requests for manual approval and merge. It only targets the default branch, if not configured otherwise. 
 
-To enable starting CI checks or automerge, enable an app token, as already pre-implemented in comments in the _renovate.yml_!
+CI checks or automerge require an app token, as it is created in _renovate.yml_!
+
+## Allowed File Changes
+
+Only PRs that change nothing but these files are approved and merged automatically (_ALLOWED_ in the _approve_ job of _renovate.yml_). Renovate scans all files that aren't excluded, so other changes are possible; they need a manual review. If needed, add files that can receive legitimate updates, and remove files that no longer do.
+
+Currently (relative paths):
+- _.github/workflows/renovate.yml_ - Versions of GitHub actions in the workflow.
+- _images/hull-integration/Dockerfile_ - Ubuntu base image, PowerShell and ORAS versions.
+- _hull-vidispine-addon/hull-vidispine-addon.yaml_ - Versions of tool images (currently only our own, _cr.vidinet.net_).
+
+Automatic approval for automerge only if every commit is authored by the Renovate app's bot account and signed by GitHub, and the approval is bound to the checked _head_ commit. A later push removes it (Rule "Dismiss stale approvals on push" must be set in the GitHub ruleset). 
+
+## Ignored Test Folders
+
+File paths under any _files/test/_ directory structure are marked as ignored through the _ignorePaths_ setting. They require manual updates (Dockerfile and Python code).
 
 ## Default Settings
 
@@ -1581,9 +1599,11 @@ The setting _"extends": ["config:recommended"]_ adds a default configuration, de
 
 See also: https://docs.renovatebot.com/presets-config/
 
-## Ignored Test Folders
+## Default _minimumReleaseAge_
 
-File paths under any _files/test/_ directory structure are marked as ignored through the _ignorePaths_ setting. They require manual updates (Dockerfile and Python code).
+To prevent supply chain attacks, the Renovate setting _minimumReleaseAge_ has a default value like _2 days_. There will be no updates to new versions, which have been published less than 2 days ago.
+
+Our own Docker images, from _cr.vidinet.net_, have no _minimumReleaseAge_. These are themselved updated by Renovate with a time buffer and do not need an additional time buffer here.
 
 ## Docker Images
 
@@ -1656,3 +1676,19 @@ Version range specified by **Regex** in _renovate.json_ _packageRules_. Stays wi
 
 When all Renovate managers are enabled by default, updates can happen in other places.
 This includes the Renovate workflow file itself, _renovate.yml_, where GitHub Actions may receive version updates.
+
+### Update Version Ranges
+
+Most parts receive updates in the _minor.patch_ range: _12.34.5_ to _12.35.0_, but not to _13.0.0_.
+
+#### _patch_ Versions Only
+
+Update range is limited to _patch_ versions in some cases (e.g. _1.36.4_ to _1.36.5_, but not to _1.37.1_):
+- Dependencies with Kubernetes _major.minor_ version part, such as the _vpms/kubectl-tools_ image.
+- Dependencies where _minor_ version updates may contain breaking changes: _ORAS_.
+
+Limiting updates to _patch_ requires _separateMinorPatch: true_; otherwise no _patch_ update is made once a newer _minor_ exists. Not needed for a regex range (PowerShell) or digest-only updates (Ubuntu).
+
+#### Digest Only
+
+Currently the Ubuntu base image in _Dockerfile_; the version number, like _24.04_ is never updated by Renovate, but it receives updated digests of new image versions.

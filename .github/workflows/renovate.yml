@@ -14,12 +14,21 @@ on:
         type: choice
         options: [info, debug]
         default: info
-      base_branch:
-        description: "Base branch to scan + target PRs against (blank = default branch). Set a feature branch to test config/hook changes that only live on that branch."
+      base_branches:
+        description: "Base branches to update, comma-separated (e.g. '**default**, release-1.36'). '**default**' = default branch. Empty = SCHEDULED_BASE_BRANCHES (in workflow file)."
         type: string
-        default: ""
+        default: "**default**"
       add_unique_branch_prefix:
         description: "Add a unique section to every Renovate branch name (renovate/<dep> -> renovate/<unique>/<dep>). Useful for testing, so each run creates new branches instead of skipping existing ones."
+        type: boolean
+        default: false
+      pr_mode:
+        description: "Pull requests grouping mode for Renovate. Separate PRs for each dependency (Renovate default), or one single PR for all."
+        type: choice
+        options: [separate, single]
+        default: single
+      auto_merge:
+        description: "Enable auto-merge for Renovate PRs"
         type: boolean
         default: false
       pr_hourly_limit:
@@ -32,6 +41,11 @@ on:
         options: [auto, always, never]
         default: auto
 
+env:
+  # Base branches of scheduled runs (and of manual runs with empty base_branches), comma-separated.
+  # '**default**' = the repo's default branch.
+  SCHEDULED_BASE_BRANCHES: "**default**, release-1.37, release-1.36"
+
 # Empty block required.
 # When using GITHUB_TOKEN instead of App, scope permission here!
 # Restrictions apply on possible permission here.
@@ -41,6 +55,9 @@ jobs:
   renovate:
     runs-on: ubuntu-latest
     environment: renovate-vidispine-content-wf
+    outputs:
+      app-slug: ${{ steps.app-token.outputs.app-slug }}
+      base-branches: ${{ steps.options.outputs.base-branches }}
     steps:
       # IMPORTANT: Keep version comments after action digests here, required by Renovate!
       #
@@ -67,12 +84,57 @@ jobs:
           permission-administration: read   # read branch protection / required checks
           permission-vulnerability-alerts: read  # "Dependabot alerts" - drives vulnerabilityAlerts
           permission-metadata: read         # implicit on every installation; listed for clarity
+      # Run options that are not plain values. Scheduled runs have no inputs: they get single PR
+      # and automerge. Written to GITHUB_ENV, so do NOT also set these keys in the env of
+      # "Run Renovate" - step env would override them.
+      - name: Compose run options
+        id: options
+        env:
+          PR_MODE: ${{ inputs.pr_mode || 'single' }}
+          AUTO_MERGE: ${{ github.event_name == 'schedule' || inputs.auto_merge }}
+          BASE_INPUT: ${{ inputs.base_branches || env.SCHEDULED_BASE_BRANCHES }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          # Base branches Renovate updates and targets PRs against. The workflow_dispatch "Use
+          # workflow from" selector only picks which YAML runs - it does NOT change this.
+          # Comma-separated input -> JSON array, '**default**' resolved to the real name (needed
+          # for the branch prefix below and the "approve" job).
+          BASES=$(tr ',' '\n' <<< "$BASE_INPUT" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' \
+            | grep -v '^$' | while read -r b; do
+                if [ "$b" = '**default**' ]; then echo "$DEFAULT_BRANCH"; else echo "$b"; fi
+              done | jq -Rnc '[inputs] | unique')
+          echo "RENOVATE_BASE_BRANCHES=$BASES" >> "$GITHUB_ENV"
+          echo "base-branches=$BASES" >> "$GITHUB_OUTPUT"
+          # Namespace every Renovate branch AND PR by its base branch, so a run for one base
+          # branch never sees - or is blocked by - another branch's PRs (Renovate detects
+          # "already handled" updates by head-branch name): renovate/master-<dep>, PR title
+          # "... [master]". With several base branches Renovate does this itself (branch
+          # prefix "<base>-", title " (<base>)"), so set it only for a single base branch.
+          if [ "$(jq length <<< "$BASES")" -eq 1 ]; then
+            BASE=$(jq -r '.[0]' <<< "$BASES")
+            echo "RENOVATE_ADDITIONAL_BRANCH_PREFIX=$BASE-" >> "$GITHUB_ENV"
+            echo "RENOVATE_COMMIT_MESSAGE_SUFFIX=[$BASE]" >> "$GITHUB_ENV"
+          fi
+          # Top-level keys only, never packageRules: "force" REPLACES the whole packageRules array
+          # of renovate.json. No separateMajorMinor=false: it would merge major into the same
+          # update as minor/patch, so a blocked major would also drop the minor/patch update.
+          FORCE='{}'
+          if [ "$PR_MODE" = "single" ]; then
+            FORCE='{"groupName":"all dependencies"}'
+          fi
+          echo "RENOVATE_FORCE=$FORCE" >> "$GITHUB_ENV"
+          # Renovate turns on GitHub's own auto-merge (platformAutomerge, default): GitHub merges
+          # as soon as the required checks pass. The approval comes from the "approve" job.
+          echo "RENOVATE_AUTOMERGE=$AUTO_MERGE" >> "$GITHUB_ENV"
       - name: Run Renovate
         id: renovate
         uses: renovatebot/github-action@266fef21329c44765ad42f9dea1f01f5d2d91084 # v46.3.13
         with:
           token: ${{ steps.app-token.outputs.token }}
         env:
+          # RENOVATE_FORCE, _AUTOMERGE, _BASE_BRANCHES, _ADDITIONAL_BRANCH_PREFIX and
+          # _COMMIT_MESSAGE_SUFFIX come from the "Compose run options" step.
           # Only look at this repository.
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           RENOVATE_PR_HOURLY_LIMIT: ${{ inputs.pr_hourly_limit || 10 }}
@@ -87,11 +149,6 @@ jobs:
           RENOVATE_REPORT_PATH: '/tmp/renovate-report.json'
           # config breakage -> hard exit.
           RENOVATE_CONFIG_VALIDATION_ERROR: 'true'
-          # Which branch Renovate reads its config from AND targets update PRs against. The
-          # workflow_dispatch "Use workflow from" selector only picks which YAML runs - it does
-          # NOT change this. Blank -> repo default branch (normal operation); set a feature
-          # branch to test config/hook changes that only exist on that branch.
-          RENOVATE_BASE_BRANCHES: ${{ inputs.base_branch != '' && format('["{0}"]', inputs.base_branch) || format('["{0}"]', github.event.repository.default_branch) }}
           # Only set a branch prefix with timestamp 'renovate-yyyyymmddhhmmss' if the input is true. Otherwise, leave it blank to use Renovate's default 'renovate/<dep>'.
           RENOVATE_BRANCH_PREFIX: ${{ inputs.add_unique_branch_prefix && format('renovate/{0}/', github.run_id) || 'renovate/' }}
           # Defeat Renovate's memory of CLOSED/MERGED PRs. Renovate does NOT read git history -
@@ -101,24 +158,9 @@ jobs:
           # every run, so a reverted version comes back and repeat testing works; 'never' fully
           # respects closed PRs. Scheduled runs get the default 'auto'.
           RENOVATE_RECREATE_WHEN: ${{ inputs.recreate_when || 'auto' }}
-
-          # Namespace every Renovate branch AND PR by its target (base) branch, always -
-          # for the default branch too, not just test branches. This keeps each base
-          # branch's updates fully separate so they can't cross-contaminate:
-          #  * ADDITIONAL_BRANCH_PREFIX folds the base branch into the head-branch name
-          #    (renovate/master-<dep> vs renovate/<test-branch>-<dep>). Renovate detects
-          #    "already handled" updates by head-branch name, so a run targeting one base
-          #    branch never sees - and is never skipped/blocked by - another branch's PRs.
-          #    Testing against a feature branch therefore leaves the master namespace
-          #    untouched; delete the test branch + its renovate/<test-branch>-* branches
-          #    to clean up afterwards.
-          #  * COMMIT_MESSAGE_SUFFIX tags the PR title with the base branch (e.g. "[master]")
-          #    so PRs are also distinguishable by name, on top of the branch separation.
-          # NOTE: enabling this renames master's head branches from renovate/<dep> to
-          # renovate/master-<dep>; on the first run any pre-existing renovate/<dep> PRs are
-          # recreated once under the new names.
-          RENOVATE_ADDITIONAL_BRANCH_PREFIX: ${{ inputs.base_branch != '' && format('{0}-', inputs.base_branch) || format('{0}-', github.event.repository.default_branch) }}
-          RENOVATE_COMMIT_MESSAGE_SUFFIX: ${{ inputs.base_branch != '' && format('[{0}]', inputs.base_branch) || format('[{0}]', github.event.repository.default_branch) }}
+          # Commit via the GitHub API: commits are GitHub-signed ("Verified") and authored by the
+          # app's bot account. The "approve" job relies on that to accept only Renovate's commits.
+          RENOVATE_PLATFORM_COMMIT: enabled
           # Credentials for cr.vidinet.net. A single host rule (no hostType) covers
           # both Docker images and Helm charts pulled from this registry.
           RENOVATE_HOST_RULES: >-
@@ -198,3 +240,81 @@ jobs:
           ' "$REPORT" | tee -a "$GITHUB_STEP_SUMMARY"
 
           [ "$issues" -eq 0 ] || exit 1
+
+  # Approves the open Renovate PRs, so GitHub's auto-merge merges them once the required checks
+  # (Gated test) pass. GitHub's auto-merge ignores ruleset bypass, hence a real approval. The
+  # approver is github-actions[bot] (GITHUB_TOKEN): the PR author cannot approve its own PR.
+  # Needs Settings -> Actions -> General -> "Allow GitHub Actions to create and approve pull
+  # requests". Approved only if the PR:
+  #  * touches nothing but the files Renovate normally updates, and
+  #  * contains only commits of the Renovate app: author is the app's bot account and the
+  #    commit is GitHub-signed (RENOVATE_PLATFORM_COMMIT). A pushed commit with a faked author
+  #    email is not signed by GitHub, a commit via the web UI has another author.
+  # The approval is bound to the checked head commit (commit_id). With "Dismiss stale approvals
+  # on push" in the ruleset, any later push removes it -> the PR needs a manual review.
+  approve:
+    needs: renovate
+    if: ${{ (github.event_name == 'schedule' || inputs.auto_merge) && !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      AUTHOR: app/${{ needs.renovate.outputs.app-slug }}
+      BOT: ${{ needs.renovate.outputs.app-slug }}[bot]
+      BASES: ${{ needs.renovate.outputs.base-branches }}
+      ALLOWED: '^(images/hull-integration/Dockerfile|hull-vidispine-addon/hull-vidispine-addon\.yaml|\.github/workflows/renovate\.yml)$'
+    steps:
+      - name: Approve Renovate PRs
+        run: |
+          set -euo pipefail
+          jq -r '.[]' <<< "$BASES" | while read -r base; do
+            gh pr list --author "$AUTHOR" --base "$base" --state open \
+              --json number,headRefOid,reviewDecision,files,changedFiles \
+              --jq '.[] | select(.reviewDecision != "APPROVED") | tojson' |
+            while IFS= read -r item; do
+              pr=$(jq -r '.number' <<< "$item")
+              head=$(jq -r '.headRefOid' <<< "$item")
+
+              # Check if the file list is complete: gh returns at most 100 files per PR.
+              if [ "$(jq '.files | length' <<< "$item")" -ne "$(jq '.changedFiles' <<< "$item")" ]; then
+                echo "::warning::PR #$pr ($base) not approved, too many files to check."
+                continue
+              fi
+
+              # Check if files are allowed for automerged changes:
+              outside=$(jq -r --arg allowed "$ALLOWED" '.files[].path | select(test("\\A(?:" + $allowed + ")\\z") | not) | tojson' <<< "$item")
+              if [ -n "$outside" ]; then
+                echo "::warning::PR #$pr ($base) not approved, it changes other files: $outside"
+                continue
+              fi
+
+              # Check if all commits are by the bot AND committed + signed by GitHub itself. "verified"
+              # alone also accepts a user's own GPG/SSH key: it matches the COMMITTER, while the
+              # author email can be faked to the bot's. Commits via the GitHub API (platform commit)
+              # have committer "web-flow" (GitHub). A user's web UI commit has committer web-flow too,
+              # but the user as author, not the bot.
+              commits=$(gh api "repos/$GH_REPO/pulls/$pr/commits" --paginate --jq '.[]' | jq -s .)
+              foreign=$(jq -r --arg bot "$BOT" '.[]
+                | select(.author.login != $bot
+                    or .committer.login != "web-flow"
+                    or .commit.verification.verified != true) | .sha' <<< "$commits")
+              last=$(jq -r '.[-1].sha' <<< "$commits")
+              if [ -n "$foreign" ]; then
+                echo "::warning::PR #$pr ($base) not approved, commits not from $BOT or not signed: $foreign"
+                continue
+              fi
+
+              # Check if last commit is still the head of the PR branch:
+              if [ "$last" != "$head" ]; then
+                echo "::warning::PR #$pr ($base) not approved, branch changed during the check."
+                continue
+              fi
+
+              # Approve the PR via the GitHub API: only if all previous checks passed (loop iteration not interrupted by "continue").
+              gh api "repos/$GH_REPO/pulls/$pr/reviews" -f event=APPROVE -f commit_id="$head" \
+                -f body="Automatic approval of a Renovate version update (commit $head)." > /dev/null
+              echo "PR #$pr ($base) approved at $head."
+            done
+          done
