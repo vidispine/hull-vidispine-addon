@@ -282,10 +282,16 @@ jobs:
                 continue
               fi
 
-              # Check if all commits are by the bot and GitHub-signed (verified):
+              # Check if all commits are by the bot AND committed + signed by GitHub itself. "verified"
+              # alone also accepts a user's own GPG/SSH key: it matches the COMMITTER, while the
+              # author email can be faked to the bot's. Commits via the GitHub API (platform commit)
+              # have committer "web-flow" (GitHub). A user's web UI commit has committer web-flow too,
+              # but the user as author, not the bot.
               commits=$(gh api "repos/$GH_REPO/pulls/$pr/commits" --paginate --jq '.[]' | jq -s .)
               foreign=$(jq -r --arg bot "$BOT" '.[]
-                | select(.author.login != $bot or (.commit.verification.verified | not)) | .sha' <<< "$commits")
+                | select(.author.login != $bot
+                    or .committer.login != "web-flow"
+                    or .commit.verification.verified != true) | .sha' <<< "$commits")
               last=$(jq -r '.[-1].sha' <<< "$commits")
               if [ -n "$foreign" ]; then
                 echo "::warning::PR #$pr ($base) not approved, commits not from $BOT or not signed: $foreign"
