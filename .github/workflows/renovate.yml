@@ -88,10 +88,11 @@ jobs:
         run: |
           set -euo pipefail
           # Top-level keys only, never packageRules: "force" REPLACES the whole packageRules array
-          # of renovate.json. separateMajorMinor=false avoids a second "major-" group.
+          # of renovate.json. No separateMajorMinor=false: it would merge major into the same
+          # update as minor/patch, so a blocked major would also drop the minor/patch update.
           FORCE='{}'
           if [ "$PR_MODE" = "single" ]; then
-            FORCE='{"groupName":"all dependencies","separateMajorMinor":false}'
+            FORCE='{"groupName":"all dependencies"}'
           fi
           echo "RENOVATE_FORCE=$FORCE" >> "$GITHUB_ENV"
           # Renovate turns on GitHub's own auto-merge (platformAutomerge, default): GitHub merges
