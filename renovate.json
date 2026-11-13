@@ -2,6 +2,7 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
   "ignorePaths": ["**/files/test/**"],
+  "minimumReleaseAge": "2 days",
   "packageRules": [
     {
       "description": "Base image 'ubuntu': stay on the 24.04 LTS tag but pin it by digest, and let Renovate keep that digest current (tracks the latest 24.04 rebuild for reproducible-yet-updated builds).",
@@ -17,6 +18,23 @@
     {
       "description": "Block any major version updates. Remove or empty array to allow major updates.",
       "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": "No minimumReleaseAge for our own images - they have their own delays.",
+      "matchDatasources": ["docker"],
+      "matchDepNames": ["cr.vidinet.net/**"],
+      "minimumReleaseAge": null
+    },
+    {
+      "description": "Deps whose minor updates are blocked below (kubectl-tools, ORAS): offer the patch update (1.36.x) as its own update next to the minor one (1.37.x). Without this, Renovate only offers the newest non-major version (1.37.x), the block rule disables it, and no patch update is left. In single-PR mode such a patch lands in a separate 'patch-' group PR.",
+      "matchDepNames": ["cr.vidinet.net/vpms/kubectl-tools", "oras-project/oras"],
+      "separateMinorPatch": true
+    },
+    {
+      "description": "Kubernetes-bound versions (e.g. kubectl-tools): Block major-minor updates, allow only patch (e.g. within 1.36.x, not 1.36.x to 1.37.x).",
+      "matchDepNames": ["cr.vidinet.net/vpms/kubectl-tools"],
+      "matchUpdateTypes": ["major", "minor"],
       "enabled": false
     },
     {
