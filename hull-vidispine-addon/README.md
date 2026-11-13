@@ -1469,6 +1469,7 @@ The test pipeline installs the _Gauge_ test tool and runs tests against various 
 1. Download and execute a script, which will select and update a proper Gauge version.
 2. The script installs Gauge.
 3. Gauge is started for each Helm version and runs the tests.
+4. Test build an image from the _images/hull-integration/Dockerfile_.
 
 ## Troubleshooting
 
@@ -1577,15 +1578,26 @@ As of now, only simple read access is needed for the _cr.vidinet.net_ registry.
 
 CI checks or automerge require an app token, as it is created in _renovate.yml_!
 
+## Allowed File Changes
+
+Only PRs that change nothing but these files are approved and merged automatically (_ALLOWED_ in the _approve_ job of _renovate.yml_). Renovate scans all files that aren't excluded, so other changes are possible; they need a manual review. If needed, add files that can receive legitimate updates, and remove files that no longer do.
+
+Currently (relative paths):
+- _.github/workflows/renovate.yml_ - Versions of GitHub actions in the workflow.
+- _images/hull-integration/Dockerfile_ - Ubuntu base image, PowerShell and ORAS versions.
+- _hull-vidispine-addon/hull-vidispine-addon.yaml_ - Versions of tool images (currently only our own, _cr.vidinet.net_).
+
+Automatic approval for automerge only if every commit is authored by the Renovate app's bot account and signed by GitHub, and the approval is bound to the checked _head_ commit. A later push removes it (Rule "Dismiss stale approvals on push" must be set in the GitHub ruleset). 
+
+## Ignored Test Folders
+
+File paths under any _files/test/_ directory structure are marked as ignored through the _ignorePaths_ setting. They require manual updates (Dockerfile and Python code).
+
 ## Default Settings
 
 The setting _"extends": ["config:recommended"]_ adds a default configuration, delivered with the currently running Renovate. Further settings extend this.
 
 See also: https://docs.renovatebot.com/presets-config/
-
-## Ignored Test Folders
-
-File paths under any _files/test/_ directory structure are marked as ignored through the _ignorePaths_ setting. They require manual updates (Dockerfile and Python code).
 
 ## Default _minimumReleaseAge_
 

@@ -158,6 +158,9 @@ jobs:
           # every run, so a reverted version comes back and repeat testing works; 'never' fully
           # respects closed PRs. Scheduled runs get the default 'auto'.
           RENOVATE_RECREATE_WHEN: ${{ inputs.recreate_when || 'auto' }}
+          # Commit via the GitHub API: commits are GitHub-signed ("Verified") and authored by the
+          # app's bot account. The "approve" job relies on that to accept only Renovate's commits.
+          RENOVATE_PLATFORM_COMMIT: enabled
           # Credentials for cr.vidinet.net. A single host rule (no hostType) covers
           # both Docker images and Helm charts pulled from this registry.
           RENOVATE_HOST_RULES: >-
@@ -242,7 +245,13 @@ jobs:
   # (Gated test) pass. GitHub's auto-merge ignores ruleset bypass, hence a real approval. The
   # approver is github-actions[bot] (GITHUB_TOKEN): the PR author cannot approve its own PR.
   # Needs Settings -> Actions -> General -> "Allow GitHub Actions to create and approve pull
-  # requests". Only PRs that touch nothing but the files Renovate normally updates.
+  # requests". Approved only if the PR:
+  #  * touches nothing but the files Renovate normally updates, and
+  #  * contains only commits of the Renovate app: author is the app's bot account and the
+  #    commit is GitHub-signed (RENOVATE_PLATFORM_COMMIT). A pushed commit with a faked author
+  #    email is not signed by GitHub, a commit via the web UI has another author.
+  # The approval is bound to the checked head commit (commit_id). With "Dismiss stale approvals
+  # on push" in the ruleset, any later push removes it -> the PR needs a manual review.
   approve:
     needs: renovate
     if: ${{ (github.event_name == 'schedule' || inputs.auto_merge) && !inputs.dry_run }}
@@ -253,22 +262,45 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
       AUTHOR: app/${{ needs.renovate.outputs.app-slug }}
+      BOT: ${{ needs.renovate.outputs.app-slug }}[bot]
       BASES: ${{ needs.renovate.outputs.base-branches }}
-      ALLOWED: '^((.*/)?Dockerfile[^/]*|hull-vidispine-addon/hull-vidispine-addon\.yaml|\.github/workflows/[^/]+\.ya?ml)$'
+      ALLOWED: '^(images/hull-integration/Dockerfile|hull-vidispine-addon/hull-vidispine-addon\.yaml|\.github/workflows/renovate\.yml)$'
     steps:
       - name: Approve Renovate PRs
         run: |
           set -euo pipefail
           jq -r '.[]' <<< "$BASES" | while read -r base; do
             gh pr list --author "$AUTHOR" --base "$base" --state open \
-              --json number,reviewDecision,files \
-              --jq '.[] | select(.reviewDecision != "APPROVED") | "\(.number) \([.files[].path] | join(" "))"' |
-            while read -r pr files; do
+              --json number,headRefOid,reviewDecision,files \
+              --jq '.[] | select(.reviewDecision != "APPROVED") | "\(.number) \(.headRefOid) \([.files[].path] | join(" "))"' |
+            while read -r pr head files; do
+
+              # Check if files are allowed for automerged changes:
               outside=$(tr ' ' '\n' <<< "$files" | grep -Ev "$ALLOWED" || true)
               if [ -n "$outside" ]; then
                 echo "::warning::PR #$pr ($base) not approved, it changes other files: $outside"
                 continue
               fi
-              gh pr review "$pr" --approve --body "Automatic approval of a Renovate version update."
+
+              # Check if all commits are by the bot and GitHub-signed (verified):
+              commits=$(gh api "repos/$GH_REPO/pulls/$pr/commits" --paginate --jq '.[]' | jq -s .)
+              foreign=$(jq -r --arg bot "$BOT" '.[]
+                | select(.author.login != $bot or (.commit.verification.verified | not)) | .sha' <<< "$commits")
+              last=$(jq -r '.[-1].sha' <<< "$commits")
+              if [ -n "$foreign" ]; then
+                echo "::warning::PR #$pr ($base) not approved, commits not from $BOT or not signed: $foreign"
+                continue
+              fi
+
+              # Check if last commit is still the head of the PR branch:
+              if [ "$last" != "$head" ]; then
+                echo "::warning::PR #$pr ($base) not approved, branch changed during the check."
+                continue
+              fi
+
+              # Approve the PR via the GitHub API: only if all previous checks passed (loop iteration not interrupted by "continue").
+              gh api "repos/$GH_REPO/pulls/$pr/reviews" -f event=APPROVE -f commit_id="$head" \
+                -f body="Automatic approval of a Renovate version update (commit $head)." > /dev/null
+              echo "PR #$pr ($base) approved at $head."
             done
           done
