@@ -271,12 +271,20 @@ jobs:
           set -euo pipefail
           jq -r '.[]' <<< "$BASES" | while read -r base; do
             gh pr list --author "$AUTHOR" --base "$base" --state open \
-              --json number,headRefOid,reviewDecision,files \
-              --jq '.[] | select(.reviewDecision != "APPROVED") | "\(.number) \(.headRefOid) \([.files[].path] | join(" "))"' |
-            while read -r pr head files; do
+              --json number,headRefOid,reviewDecision,files,changedFiles \
+              --jq '.[] | select(.reviewDecision != "APPROVED") | tojson' |
+            while IFS= read -r item; do
+              pr=$(jq -r '.number' <<< "$item")
+              head=$(jq -r '.headRefOid' <<< "$item")
+
+              # Check if the file list is complete: gh returns at most 100 files per PR.
+              if [ "$(jq '.files | length' <<< "$item")" -ne "$(jq '.changedFiles' <<< "$item")" ]; then
+                echo "::warning::PR #$pr ($base) not approved, too many files to check."
+                continue
+              fi
 
               # Check if files are allowed for automerged changes:
-              outside=$(tr ' ' '\n' <<< "$files" | grep -Ev "$ALLOWED" || true)
+              outside=$(jq -r --arg allowed "$ALLOWED" '.files[].path | select(test("\\A(?:" + $allowed + ")\\z") | not) | tojson' <<< "$item")
               if [ -n "$outside" ]; then
                 echo "::warning::PR #$pr ($base) not approved, it changes other files: $outside"
                 continue
