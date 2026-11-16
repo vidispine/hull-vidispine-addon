@@ -269,10 +269,15 @@ jobs:
       - name: Approve Renovate PRs
         run: |
           set -euo pipefail
-          jq -r '.[]' <<< "$BASES" | while read -r base; do
-            gh pr list --author "$AUTHOR" --base "$base" --state open \
+          exitcode=0
+          bases=$(jq -r '.[]' <<< "$BASES")
+          # Loop gets $bases for "base", fed at loop end "done <<<". Preserve variable changes from loop iterations.
+          while read -r base; do
+            prs=$(gh pr list --author "$AUTHOR" --base "$base" --state open \
               --json number,headRefOid,reviewDecision,files,changedFiles \
-              --jq '.[] | select(.reviewDecision != "APPROVED") | tojson' |
+              --jq '.[] | select(.reviewDecision != "APPROVED") | tojson')
+            [ -n "$prs" ] || continue
+            # Loop gets $prs for "item", fed at loop end "done <<<". Preserve variable changes from loop iterations.
             while IFS= read -r item; do
               pr=$(jq -r '.number' <<< "$item")
               head=$(jq -r '.headRefOid' <<< "$item")
@@ -313,8 +318,15 @@ jobs:
               fi
 
               # Approve the PR via the GitHub API: only if all previous checks passed (loop iteration not interrupted by "continue").
-              gh api "repos/$GH_REPO/pulls/$pr/reviews" -f event=APPROVE -f commit_id="$head" \
-                -f body="Automatic approval of a Renovate version update (commit $head)." > /dev/null
-              echo "PR #$pr ($base) approved at $head."
-            done
-          done
+              # On error, GitHub's reason is in the response (stdout). Continue, fail the job at the end.
+              if response=$(gh api "repos/$GH_REPO/pulls/$pr/reviews" -f event=APPROVE -f commit_id="$head" \
+                  -f body="Automatic approval of a Renovate version update (commit $head)."); then
+                echo "PR #$pr ($base) approved at $head."
+              else
+                echo "::error::PR #$pr ($base) approval failed: $response"
+                exitcode=$((exitcode + 1))
+              fi
+            done <<< "$prs"
+          done <<< "$bases"
+          echo "$exitcode approvals failed."
+          exit $(( exitcode > 255 ? 255 : exitcode ))
