@@ -243,9 +243,9 @@ jobs:
 
   # Approves the open Renovate PRs, so GitHub's auto-merge merges them once the required checks
   # (Gated test) pass. GitHub's auto-merge ignores ruleset bypass, hence a real approval. The
-  # approver is github-actions[bot] (GITHUB_TOKEN): the PR author cannot approve its own PR.
-  # Needs Settings -> Actions -> General -> "Allow GitHub Actions to create and approve pull
-  # requests". Approved only if the PR:
+  # approver is a separate GitHub App (only "Pull requests: write"): the PR author cannot approve
+  # its own PR, and approving via GITHUB_TOKEN would need an org-wide setting that lets any
+  # workflow self-approve. Approved only if the PR:
   #  * touches nothing but the files Renovate normally updates, and
   #  * contains only commits of the Renovate app: author is the app's bot account and the
   #    commit is GitHub-signed (RENOVATE_PLATFORM_COMMIT). A pushed commit with a faked author
@@ -256,17 +256,25 @@ jobs:
     needs: renovate
     if: ${{ (github.event_name == 'schedule' || inputs.auto_merge) && !inputs.dry_run }}
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
+    environment: renovate-vidispine-content-wf   # holds the approver app's secrets
+    permissions: {}   # GITHUB_TOKEN unused: the approver app approves (Renovate's app can't approve its own PRs)
     env:
-      GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
       AUTHOR: app/${{ needs.renovate.outputs.app-slug }}
       BOT: ${{ needs.renovate.outputs.app-slug }}[bot]
       BASES: ${{ needs.renovate.outputs.base-branches }}
       ALLOWED: '^(images/hull-integration/Dockerfile|hull-vidispine-addon/hull-vidispine-addon\.yaml|\.github/workflows/renovate\.yml)$'
     steps:
+      - name: Generate GitHub Approver App token
+        id: approver-app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.APPROVER_APP_ID }}
+          private-key: ${{ secrets.APPROVER_APP_PRIVATE_KEY }}
+          permission-pull-requests: write   # only permission: read PRs, files, commits; approve
       - name: Approve Renovate PRs
+        env:
+          GH_TOKEN: ${{ steps.approver-app-token.outputs.token }}
         run: |
           set -euo pipefail
           exitcode=0
