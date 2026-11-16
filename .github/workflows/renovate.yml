@@ -270,6 +270,7 @@ jobs:
         run: |
           set -euo pipefail
           exitcode=0
+          warnings=0
           bases=$(jq -r '.[]' <<< "$BASES")
           # Loop gets $bases for "base", fed at loop end "done <<<". Preserve variable changes from loop iterations.
           while read -r base; do
@@ -284,14 +285,16 @@ jobs:
 
               # Check if the file list is complete: gh returns at most 100 files per PR.
               if [ "$(jq '.files | length' <<< "$item")" -ne "$(jq '.changedFiles' <<< "$item")" ]; then
-                echo "::warning::PR #$pr ($base) not approved, too many files to check."
+                echo "::error::PR #$pr ($base) not approved, too many files to check."
+                exitcode=$((exitcode + 1))
                 continue
               fi
 
               # Check if files are allowed for automerged changes:
               outside=$(jq -r --arg allowed "$ALLOWED" '.files[].path | select(test("\\A(?:" + $allowed + ")\\z") | not) | tojson' <<< "$item")
               if [ -n "$outside" ]; then
-                echo "::warning::PR #$pr ($base) not approved, it changes other files: $outside"
+                echo "::error::PR #$pr ($base) not approved, it changes files not allowed for auto-update: $outside. If intended developer change, check manually!"
+                exitcode=$((exitcode + 1))
                 continue
               fi
 
@@ -308,12 +311,14 @@ jobs:
               last=$(jq -r '.[-1].sha' <<< "$commits")
               if [ -n "$foreign" ]; then
                 echo "::warning::PR #$pr ($base) not approved, commits not from $BOT or not signed: $foreign"
+                warnings=$((warnings + 1))
                 continue
               fi
 
               # Check if last commit is still the head of the PR branch:
               if [ "$last" != "$head" ]; then
                 echo "::warning::PR #$pr ($base) not approved, branch changed during the check."
+                warnings=$((warnings + 1))
                 continue
               fi
 
@@ -328,5 +333,5 @@ jobs:
               fi
             done <<< "$prs"
           done <<< "$bases"
-          echo "$exitcode approvals failed."
+          echo "$exitcode approvals failed with error, $warnings with warning."
           exit $(( exitcode > 255 ? 255 : exitcode ))
