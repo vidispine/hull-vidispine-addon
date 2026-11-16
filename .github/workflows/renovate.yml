@@ -277,7 +277,8 @@ jobs:
           GH_TOKEN: ${{ steps.approver-app-token.outputs.token }}
         run: |
           set -euo pipefail
-          exitcode=0
+          approvals=0
+          errors=0
           warnings=0
           bases=$(jq -r '.[]' <<< "$BASES")
           # Loop gets $bases for "base", fed at loop end "done <<<". Preserve variable changes from loop iterations.
@@ -294,7 +295,7 @@ jobs:
               # Check if the file list is complete: gh returns at most 100 files per PR.
               if [ "$(jq '.files | length' <<< "$item")" -ne "$(jq '.changedFiles' <<< "$item")" ]; then
                 echo "::error::PR #$pr ($base) not approved, too many files to check."
-                exitcode=$((exitcode + 1))
+                errors=$((errors + 1))
                 continue
               fi
 
@@ -302,7 +303,7 @@ jobs:
               outside=$(jq -r --arg allowed "$ALLOWED" '.files[].path | select(test("\\A(?:" + $allowed + ")\\z") | not) | tojson' <<< "$item")
               if [ -n "$outside" ]; then
                 echo "::error::PR #$pr ($base) not approved, it changes files not allowed for auto-update: $outside. If intended developer change, check manually!"
-                exitcode=$((exitcode + 1))
+                errors=$((errors + 1))
                 continue
               fi
 
@@ -335,11 +336,12 @@ jobs:
               if response=$(gh api "repos/$GH_REPO/pulls/$pr/reviews" -f event=APPROVE -f commit_id="$head" \
                   -f body="Automatic approval of a Renovate version update (commit $head)."); then
                 echo "PR #$pr ($base) approved at $head."
+                approvals=$((approvals + 1))
               else
                 echo "::error::PR #$pr ($base) approval failed: $response"
-                exitcode=$((exitcode + 1))
+                errors=$((errors + 1))
               fi
             done <<< "$prs"
           done <<< "$bases"
-          echo "$exitcode approvals failed with error, $warnings with warning."
-          exit $(( exitcode > 255 ? 255 : exitcode ))
+          echo "$approvals approved, $errors approvals failed with error, $warnings with warning."
+          exit $(( errors > 255 ? 255 : errors ))
