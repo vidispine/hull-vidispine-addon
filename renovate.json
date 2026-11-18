@@ -5,8 +5,9 @@
   "minimumReleaseAge": "2 days",
   "packageRules": [
     {
-      "description": "Base image 'ubuntu': stay on the 24.04 LTS tag but pin it by digest, and let Renovate keep that digest current (tracks the latest 24.04 rebuild for reproducible-yet-updated builds).",
+      "description": "Base image 'ubuntu': stay on the noble (24.04) LTS tag with date and optional incremental number, pin it by digest, expecting exactly one digest per tag.",
       "matchDepNames": ["ubuntu"],
+      "versioning": "ubuntu",
       "pinDigests": true
     },
     {
@@ -32,9 +33,9 @@
       "allowedVersions": "/^{{major}}\\.{{minor}}\\./"
     },
     {
-      "description": "Base image 'ubuntu': block tag version changes so it never moves off 24.04 to a non-LTS (24.10) or the next LTS (26.04) - only digest updates are allowed. Bump the tag by hand when adopting the next LTS.",
+      "description": "Base image 'ubuntu': only \"noble-<date>[.n]\" tag updates (patch, new tag + digest). Block codename or major/minor, switch codename (representing major.minor) by hand. No: digest-only updates: treat dated tags as immutable.",
       "matchDepNames": ["ubuntu"],
-      "matchUpdateTypes": ["major", "minor"],
+      "matchUpdateTypes": ["major", "minor", "digest"],
       "enabled": false
     },
     {

@@ -1637,7 +1637,7 @@ Example for later usage in *hull-vidispine-addon/templates/_library.tpl*:
 
 Affects base image versions and components installed in Dockerfiles. Example in _Dockerfile_:
 ```dockerfile
-FROM ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90
+FROM ubuntu:noble-20261110@sha256:73b999393d07f2bf65a40373778a44dc9a6d54ad7718d29247d8ff9413c4d6a8
 # renovate: datasource=github-releases depName=PowerShell/PowerShell
 ARG PS_VERSION=7.6.3
 # Kept in sync with PS_VERSION by the postUpgradeTask checksum hook (see below).
@@ -1687,8 +1687,9 @@ Update range is limited to _patch_ versions in some cases (e.g. _1.36.4_ to _1.3
 - Dependencies with Kubernetes _major.minor_ version part, such as the _vpms/kubectl-tools_ image.
 - Dependencies where _minor_ version updates may contain breaking changes: _ORAS_.
 
-Limiting updates to _patch_ requires _separateMinorPatch: true_; otherwise no _patch_ update is made once a newer _minor_ exists. Not needed for a regex range (PowerShell) or digest-only updates (Ubuntu).
+Limiting updates to _patch_ requires _separateMinorPatch: true_; otherwise no _patch_ update is made once a newer _minor_ exists. Not needed for a regex range (PowerShell) or digest-only updates (no longer used).
 
-#### Digest Only
+#### Update Except Digest-Only
 
-Currently the Ubuntu base image in _Dockerfile_; the version number, like _24.04_ is never updated by Renovate, but it receives updated digests of new image versions.
+A digest-only update is excluded. This treats a tag as immutable and binds it to a digest. The digest can only be changed, when a new tag is set. The tag update range can be configured as desired (_patch, minor, major_). This helps prevent supply chain attacks, where a malicious image is pushed over a legitimate tag:
+- Used for Ubuntu base image in _Dockerfile_: In a tag like `noble-20261110.1`, a change of date and incremental suffix `.1` is treated as a _patch_ version update. `noble` stands for _major.minor=24.04_. 
