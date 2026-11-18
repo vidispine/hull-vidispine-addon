@@ -31,13 +31,13 @@ hull:
             images:
               dbTools:
                 # renovate: datasource=docker depName=cr.vidinet.net/vpms/dbtools
-                tag: 4.0.9
+                tag: 4.0.10
               webTools:
                 # renovate: datasource=docker depName=cr.vidinet.net/vpms/webtools
-                tag: 1.4.7
+                tag: 1.4.8
               kubectlTools:
                 # renovate: datasource=docker depName=cr.vidinet.net/vpms/kubectl-tools
-                tag: 1.36.10
+                tag: 1.36.11
           endpoints:
             10_vidicore:
               auth:
