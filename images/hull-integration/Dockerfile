@@ -1,4 +1,4 @@
-FROM ubuntu:noble-20261110@sha256:73b999393d07f2bf65a40373778a44dc9a6d54ad7718d29247d8ff9413c4d6a8
+FROM ubuntu:noble-20261110.1@sha256:882e1e56091c9ffbc70c026ff5935fe85d3c91ad155917865ba2ffa23ede1560
 # ARG _VERSIONs carry a 'renovate:' annotation comment so Renovate bumps them. Each matching *_CHECKSUM ARG
 # is kept in sync automatically by the Renovate postUpgradeTask hook (.github/renovate/update-checksum.sh)
 # - do NOT edit the checksums by hand. They are stored here on purpose: the build verifies against
