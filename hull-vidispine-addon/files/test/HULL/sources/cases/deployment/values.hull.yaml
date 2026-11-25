@@ -1,0 +1,135 @@
+################################ 
+### Values for the JVM heap option hull.vidispine.addon.library.java.heap
+################################
+
+###################################################
+### CONFIG
+hull: 
+  config:
+    specific:
+      java:
+        computed:
+          defaultHeap: 6Gi
+          nativeReserve: 1536Mi
+        legacy:
+          maxRamPercentage: 70
+          defaultHeap: 6Gi
+        explicit:
+          heap: 3g
+          defaultHeap: 6Gi
+        halfOfLimit:
+          defaultHeap: 2Gi
+          nativeReserve: 2Gi
+          maxHeapPercentage: 50
+          minHeapPercentage: 50
+  objects:
+    deployment:
+      limit_8000mi:
+        pod:
+          initContainers:
+            init:
+              image:
+                registry: ""
+                repository: my/image/repo
+              env:
+                JAVA_OPTS:
+                  value: _HT!{{ include "hull.vidispine.addon.library.java.heap" (dict "PARENT_CONTEXT" (index . "$") "OBJECT_TYPE" (index . "OBJECT_TYPE") "OBJECT_INSTANCE_KEY" (index . "OBJECT_INSTANCE_KEY") "CONTAINER" "init" "INIT_CONTAINER" true "SETTINGS" (index . "$").Values.hull.config.specific.java.computed) }}
+          containers:
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
+              env:
+                JAVA_OPTS:
+                  value: |
+                    _HT!
+                      -XX:+CrashOnOutOfMemoryError {{ include "hull.vidispine.addon.library.java.heap" (dict "PARENT_CONTEXT" (index . "$") "OBJECT_TYPE" (index . "OBJECT_TYPE") "OBJECT_INSTANCE_KEY" (index . "OBJECT_INSTANCE_KEY") "CONTAINER" "main" "SETTINGS" (index . "$").Values.hull.config.specific.java.computed) }}
+                      -Dcom.example.site=VX
+              resources:
+                limits:
+                  memory: 8000Mi
+                requests:
+                  memory: 4Gi
+      limit_2gi:
+        pod:
+          containers:
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
+              env:
+                JAVA_OPTS:
+                  value: _HT!{{ include "hull.vidispine.addon.library.java.heap" (dict "PARENT_CONTEXT" (index . "$") "OBJECT_TYPE" (index . "OBJECT_TYPE") "OBJECT_INSTANCE_KEY" (index . "OBJECT_INSTANCE_KEY") "CONTAINER" "main" "SETTINGS" (index . "$").Values.hull.config.specific.java.computed) }}
+              resources:
+                limits:
+                  memory: 2Gi
+      no_limit:
+        pod:
+          containers:
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
+              env:
+                JAVA_OPTS:
+                  value: _HT!{{ include "hull.vidispine.addon.library.java.heap" (dict "PARENT_CONTEXT" (index . "$") "OBJECT_TYPE" (index . "OBJECT_TYPE") "OBJECT_INSTANCE_KEY" (index . "OBJECT_INSTANCE_KEY") "CONTAINER" "main" "SETTINGS" (index . "$").Values.hull.config.specific.java.computed) }}
+              resources:
+                requests:
+                  memory: 4Gi
+      legacy_percentage:
+        pod:
+          containers:
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
+              env:
+                JAVA_OPTS:
+                  value: _HT!{{ include "hull.vidispine.addon.library.java.heap" (dict "PARENT_CONTEXT" (index . "$") "OBJECT_TYPE" (index . "OBJECT_TYPE") "OBJECT_INSTANCE_KEY" (index . "OBJECT_INSTANCE_KEY") "CONTAINER" "main" "SETTINGS" (index . "$").Values.hull.config.specific.java.legacy) }}
+              resources:
+                limits:
+                  memory: 8Gi
+      explicit_heap:
+        pod:
+          containers:
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
+              env:
+                JAVA_OPTS:
+                  value: _HT!{{ include "hull.vidispine.addon.library.java.heap" (dict "PARENT_CONTEXT" (index . "$") "OBJECT_TYPE" (index . "OBJECT_TYPE") "OBJECT_INSTANCE_KEY" (index . "OBJECT_INSTANCE_KEY") "CONTAINER" "main" "SETTINGS" (index . "$").Values.hull.config.specific.java.explicit) }}
+              resources:
+                limits:
+                  memory: 8Gi
+      half_of_limit:
+        pod:
+          containers:
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
+              env:
+                JAVA_OPTS:
+                  value: _HT!{{ include "hull.vidispine.addon.library.java.heap" (dict "PARENT_CONTEXT" (index . "$") "OBJECT_TYPE" (index . "OBJECT_TYPE") "OBJECT_INSTANCE_KEY" (index . "OBJECT_INSTANCE_KEY") "CONTAINER" "main" "SETTINGS" (index . "$").Values.hull.config.specific.java.halfOfLimit) }}
+              resources:
+                limits:
+                  memory: 4600Mi
+      heap_from_environment:
+        pod:
+          containers:
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
+              env:
+                JAVA_OPTS:
+                  value: |
+                    _HT!
+                      -XX:+CrashOnOutOfMemoryError {{ include "hull.vidispine.addon.library.java.heap" (dict "PARENT_CONTEXT" (index . "$") "OBJECT_TYPE" (index . "OBJECT_TYPE") "OBJECT_INSTANCE_KEY" (index . "OBJECT_INSTANCE_KEY") "CONTAINER" "main" "SETTINGS" (index . "$").Values.hull.config.specific.java.computed) }}
+                      -Dcom.example.site=VX
+                JDK_JAVA_OPTIONS:
+                  value: -Xmx4800m
+              resources:
+                limits:
+                  memory: 6Gi

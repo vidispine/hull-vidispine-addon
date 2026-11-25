@@ -1,0 +1,19 @@
+################################ 
+### The memory limit must be a Kubernetes quantity
+################################
+hull: 
+  objects:
+    deployment:
+      main:
+        pod:
+          containers:
+            main:
+              image:
+                registry: ""
+                repository: my/image/repo
+              env:
+                JAVA_OPTS:
+                  value: _HT!{{ include "hull.vidispine.addon.library.java.heap" (dict "PARENT_CONTEXT" (index . "$") "OBJECT_TYPE" (index . "OBJECT_TYPE") "OBJECT_INSTANCE_KEY" (index . "OBJECT_INSTANCE_KEY") "CONTAINER" "main" "SETTINGS" (dict "defaultHeap" "2Gi")) }}
+              resources:
+                limits:
+                  memory: 8gb

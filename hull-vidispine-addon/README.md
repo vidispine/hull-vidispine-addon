@@ -1458,6 +1458,96 @@ Usage:
 
 Returns a path constructed from `systemType`/`FILE` so a particular file for the given system.
 
+### hull.vidispine.addon.library.java.heap
+
+Parameters:
+
+_PARENT_CONTEXT_: The Helm charts global context
+
+_OBJECT_TYPE_: The object type of the workload, e.g. `statefulset`. In a `_HT!` transformation below `hull.objects` it is available as `(index . "OBJECT_TYPE")`
+
+_OBJECT_INSTANCE_KEY_: The instance key of the workload. In a `_HT!` transformation below `hull.objects` it is available as `(index . "OBJECT_INSTANCE_KEY")`
+
+_CONTAINER_: The key of the container that runs the JVM
+
+_INIT_CONTAINER_: If true, _CONTAINER_ is a key below `pod.initContainers` instead of `pod.containers`
+
+_SETTINGS_: A dictionary with the heap settings, typically taken from `hull.config.specific`:
+
+- `heap`: a fixed maximum heap
+- `maxRamPercentage`: a percentage of the memory the JVM sees, the way heaps were sized before this function
+- `defaultHeap`: the heap when the container has no memory limit
+- `nativeReserve`: memory kept free for everything outside the heap, such as metaspace, threads, code cache, direct buffers and malloc (default `1Gi`)
+- `maxHeapPercentage`: upper bound of the heap in percent of the memory limit (default `75`)
+- `minHeapPercentage`: lower bound of the heap in percent of the memory limit (default `50`)
+
+Usage:
+
+Returns the option that sets the maximum heap of a JVM, to be used in `JAVA_OPTS` or a similar variable. The first rule that applies wins:
+
+1. The container's `env` already sets the heap in `JDK_JAVA_OPTIONS` or `JAVA_TOOL_OPTIONS`, with `-Xmx`, `-XX:MaxHeapSize=`, `-XX:MaxRAMPercentage=` or `-XX:MaxRAM=`: the result is empty, so that setting stays in effect. The JVM reads both variables before the command line, so an `-Xmx` from this function would override them.
+2. `heap` is set: `-Xmx` with that size.
+3. `maxRamPercentage` is set: `-XX:MaxRAMPercentage=<value>`. The JVM then sizes the heap from the container's memory limit or, without one, from the memory of the node.
+4. The container has `resources.limits.memory`: `-Xmx` with the limit minus `nativeReserve`, but at most `maxHeapPercentage` and at least `minHeapPercentage` of the limit.
+5. Otherwise: `-Xmx` with `defaultHeap`.
+
+Put the call on a line together with another option. An empty result on a line of its own leaves a line break in the variable.
+
+A percentage alone does not work well: without a memory limit the JVM sizes its heap from the whole node, and with a limit it ignores that the memory outside the heap does not grow with the limit. JDKs before 17.0.20 additionally don't see the container's limit on cgroup v2 nodes with kernel 7.0. An explicit `-Xmx` behaves the same with every JDK.
+
+The result is in whole MiB (`-Xmx<n>m`), rounded down. The memory limit is read as a Kubernetes quantity (`8Gi`, `8000Mi`, `8G`, `8589934592`). `heap`, `defaultHeap` and `nativeReserve` also accept JVM sizes such as `4g` or `512m`, read the way the JVM reads them (`4g` is 4 GiB).
+
+Rendering fails when `heap` is not below the container's memory limit, when there is neither a limit nor a `defaultHeap`, when a size can't be read, and when the memory limit is itself a HULL transformation (it is read before the transformations below the container are resolved). The limit is read from the container's own `resources` only. A limit that comes from `_HULL_OBJECT_TYPE_DEFAULT_`, from `sources` or from a LimitRange in the namespace is not seen.
+
+Example:
+
+```yaml
+hull:
+  config:
+    specific:
+      components:
+        vidicore:
+          custom:
+            java:
+              defaultHeap: 6Gi
+              nativeReserve: 1536Mi
+  objects:
+    statefulset:
+      vidicore:
+        pod:
+          containers:
+            vidicore:
+              env:
+                JAVA_OPTS:
+                  value: |
+                    _HT!
+                      -XX:+CrashOnOutOfMemoryError {{ include "hull.vidispine.addon.library.java.heap" (dict "PARENT_CONTEXT" (index . "$") "OBJECT_TYPE" (index . "OBJECT_TYPE") "OBJECT_INSTANCE_KEY" (index . "OBJECT_INSTANCE_KEY") "CONTAINER" "vidicore" "SETTINGS" (index . "$").Values.hull.config.specific.components.vidicore.custom.java) }}
+```
+
+For `resources.limits.memory` of the `vidicore` container this gives:
+
+- `8000Mi` --> `-XX:+CrashOnOutOfMemoryError -Xmx6000m` (8000 - 1536 = 6464, capped at 75 % of the limit)
+- `2Gi` --> `-XX:+CrashOnOutOfMemoryError -Xmx1024m` (2048 - 1536 = 512, raised to 50 % of the limit)
+- no limit --> `-XX:+CrashOnOutOfMemoryError -Xmx6144m` (`defaultHeap`)
+
+
+
+### hull.vidispine.addon.library.memory.mebibytes
+
+Parameters:
+
+_QUANTITY_: A memory size
+
+_JAVA_SIZES_: If true, JVM sizes such as `4g` or `512m` are accepted too
+
+_LABEL_: The name of the setting, used in the error message
+
+Usage:
+
+Returns the size in whole MiB, rounded down. Kubernetes quantities with binary (`Ki` to `Ei`) or decimal (`k` to `E`) suffixes, with an exponent or as plain bytes are understood. Rendering fails for anything else. That includes `512m`, which Kubernetes would read as 0.512 bytes, unless _JAVA_SIZES_ is true.
+
+
+
 # Test Pipeline _azure-pipelines-gated.yml_
 
 *Note: This is not a full documentation, only a note on what I found and how to resolve some issues.*

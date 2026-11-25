@@ -1068,3 +1068,100 @@ etcssl:
 {{- define "hull.vidispine.addon.library.systemtype.path" -}}
 {{- include "hull.vidispine.addon.library.reference.path" (merge (dict "REFERENCE" "hull.config.specific.systemType" "TO_LOWER" true) .) -}}
 {{- end -}}
+
+
+
+{{- define "hull.vidispine.addon.library.memory.mebibytes" -}}
+{{- $quantity := (index . "QUANTITY") | toString | trim -}}
+{{- $label := default "memory size" (index . "LABEL") -}}
+{{- $bytes := 0.0 -}}
+{{- if (and (default false (index . "JAVA_SIZES")) (regexMatch `^[0-9]+[kKmMgGtT]?$` $quantity)) -}}
+{{- $unit := regexFind `[kKmMgGtT]$` $quantity -}}
+{{- $factors := dict "" 1.0 "k" 1024.0 "m" 1048576.0 "g" 1073741824.0 "t" 1099511627776.0 -}}
+{{- $bytes = mulf (trimSuffix $unit $quantity | float64) (index $factors (lower $unit)) -}}
+{{- else if (regexMatch `^([0-9]+(\.[0-9]*)?|\.[0-9]+)([eE][-+]?[0-9]+)?([KMGTPE]i|[kMGTPE])?$` $quantity) -}}
+{{- $suffix := regexFind `([KMGTPE]i|[kMGTPE])$` $quantity -}}
+{{- $factors := dict "" 1.0 "k" 1e3 "M" 1e6 "G" 1e9 "T" 1e12 "P" 1e15 "E" 1e18 "Ki" 1024.0 "Mi" 1048576.0 "Gi" 1073741824.0 "Ti" 1099511627776.0 "Pi" 1125899906842624.0 "Ei" 1152921504606846976.0 -}}
+{{- $bytes = mulf (trimSuffix $suffix $quantity | float64) (index $factors $suffix) -}}
+{{- else -}}
+{{- fail (printf "%s: '%s' is not a memory size such as 8Gi or 8000Mi" $label $quantity) -}}
+{{- end -}}
+{{- divf $bytes 1048576.0 | floor | int64 -}}
+{{- end -}}
+
+
+
+{{- define "hull.vidispine.addon.library.java.heap" -}}
+{{- $parent := (index . "PARENT_CONTEXT") -}}
+{{- $objectType := (index . "OBJECT_TYPE") | default "" | toString | lower -}}
+{{- $objectInstanceKey := (index . "OBJECT_INSTANCE_KEY") | default "" | toString -}}
+{{- $container := (index . "CONTAINER") | default "" | toString -}}
+{{- $containers := ternary "initContainers" "containers" (default false (index . "INIT_CONTAINER")) -}}
+{{- $settings := default dict (index . "SETTINGS") -}}
+{{- $where := printf "hull.objects.%s.%s.pod.%s.%s" $objectType $objectInstanceKey $containers $container -}}
+{{- $heap := (index $settings "heap") | default "" | toString | trim -}}
+{{- $maxRamPercentage := (index $settings "maxRamPercentage") | default "" | toString | trim -}}
+{{- $containerValues := $parent.Values.hull.objects -}}
+{{- range $key := (list $objectType $objectInstanceKey "pod" $containers $container) -}}
+{{- if (and (hasKey $containerValues $key) (kindIs "map" (index $containerValues $key))) -}}
+{{- $containerValues = index $containerValues $key -}}
+{{- else -}}
+{{- $containerValues = dict -}}
+{{- end -}}
+{{- end -}}
+{{- $node := $containerValues -}}
+{{- range $key := (list "resources" "limits" "memory") -}}
+{{- if (and (kindIs "map" $node) (hasKey $node $key)) -}}
+{{- $node = index $node $key -}}
+{{- else -}}
+{{- $node = "" -}}
+{{- end -}}
+{{- end -}}
+{{- $limit := "" -}}
+{{- if not (or (kindIs "map" $node) (kindIs "slice" $node) (kindIs "invalid" $node)) -}}
+{{- $limit = $node | toString | trim -}}
+{{- end -}}
+{{- $heapFromEnv := false -}}
+{{- $env := index $containerValues "env" -}}
+{{- range $variable := (list "JDK_JAVA_OPTIONS" "JAVA_TOOL_OPTIONS") -}}
+{{- if (and (kindIs "map" $env) (hasKey $env $variable) (kindIs "map" (index $env $variable))) -}}
+{{- if (regexMatch `-Xmx|-XX:MaxHeapSize=|-XX:MaxRAMPercentage=|-XX:MaxRAM=` ((index (index $env $variable) "value") | default "" | toString)) -}}
+{{- $heapFromEnv = true -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- if (hasPrefix "_HT" $limit) -}}
+{{- fail (printf "hull.vidispine.addon.library.java.heap: %s.resources.limits.memory must be a literal value, not the transformation '%s'" $where $limit) -}}
+{{- end -}}
+{{- if (and (eq $limit "") (not (and $objectType $objectInstanceKey $container)) (not (or $heap $maxRamPercentage))) -}}
+{{- fail (printf "hull.vidispine.addon.library.java.heap: OBJECT_TYPE, OBJECT_INSTANCE_KEY and CONTAINER are needed to find the memory limit, got %s" $where) -}}
+{{- end -}}
+{{- if $heapFromEnv -}}
+{{- else if ne $heap "" -}}
+{{- $heapMi := include "hull.vidispine.addon.library.memory.mebibytes" (dict "QUANTITY" $heap "JAVA_SIZES" true "LABEL" "heap") | int64 -}}
+{{- if ne $limit "" -}}
+{{- $limitMi := include "hull.vidispine.addon.library.memory.mebibytes" (dict "QUANTITY" $limit "LABEL" (printf "%s.resources.limits.memory" $where)) | int64 -}}
+{{- if ge $heapMi $limitMi -}}
+{{- fail (printf "hull.vidispine.addon.library.java.heap: heap %s is not below the memory limit %s of %s" $heap $limit $where) -}}
+{{- end -}}
+{{- end -}}
+{{- printf "-Xmx%dm" $heapMi -}}
+{{- else if ne $maxRamPercentage "" -}}
+{{- printf "-XX:MaxRAMPercentage=%s" $maxRamPercentage -}}
+{{- else if ne $limit "" -}}
+{{- $limitMi := include "hull.vidispine.addon.library.memory.mebibytes" (dict "QUANTITY" $limit "LABEL" (printf "%s.resources.limits.memory" $where)) | float64 -}}
+{{- $reserveMi := include "hull.vidispine.addon.library.memory.mebibytes" (dict "QUANTITY" ((index $settings "nativeReserve") | default "1Gi") "JAVA_SIZES" true "LABEL" "nativeReserve") | float64 -}}
+{{- $maxPercentage := (index $settings "maxHeapPercentage") | default 75 | float64 -}}
+{{- $minPercentage := (index $settings "minHeapPercentage") | default 50 | float64 -}}
+{{- $heapMi := subf $limitMi $reserveMi -}}
+{{- $heapMi = minf $heapMi (divf (mulf $limitMi $maxPercentage) 100.0) -}}
+{{- $heapMi = maxf $heapMi (divf (mulf $limitMi $minPercentage) 100.0) -}}
+{{- printf "-Xmx%dm" ($heapMi | floor | int64) -}}
+{{- else -}}
+{{- $defaultHeap := (index $settings "defaultHeap") | default "" | toString | trim -}}
+{{- if eq $defaultHeap "" -}}
+{{- fail (printf "hull.vidispine.addon.library.java.heap: %s has no memory limit and SETTINGS has no defaultHeap" $where) -}}
+{{- end -}}
+{{- printf "-Xmx%sm" (include "hull.vidispine.addon.library.memory.mebibytes" (dict "QUANTITY" $defaultHeap "JAVA_SIZES" true "LABEL" "defaultHeap")) -}}
+{{- end -}}
+{{- end -}}
