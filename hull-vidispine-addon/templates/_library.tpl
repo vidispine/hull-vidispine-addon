@@ -837,7 +837,7 @@ etcssl:
 {{ end }}
 {{ end }}
 {{ end }}
-{{ $configmaps := regexSplit "," ($fromSecrets | trim) -1 }}
+{{ $configmaps := regexSplit "," ($fromConfigmaps | trim) -1 }}
 {{ if $configmaps }}
 {{ range $configmapMapping := $configmaps }}
 {{ $configmap := regexSplit "=" ($configmapMapping | trim) -1}}

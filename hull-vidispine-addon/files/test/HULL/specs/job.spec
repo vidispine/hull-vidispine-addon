@@ -6,7 +6,7 @@ Test creation of objects and features.
 
 ## Render and Validate
 * Render
-* Expected number of "24" objects were rendered
+* Expected number of "25" objects were rendered
 * Validate
 
 ## Metadata
@@ -26,6 +26,25 @@ Test creation of objects and features.
 
 * Test Object has key "spec§template§spec§volumes" with array value that has "2" items
 * Test Object has key "spec§template§spec§volumes§0§name" with value "installation"
+
+## Env from Secrets and ConfigMaps
+* Render
+* Set test object to "release-name-hull-test-env_refs"
+* Test Object has key "spec§template§spec§containers§0§env" with array value that has "4" items
+* Test Object has key "spec§template§spec§containers§0§env§0§name" with value "ENV_1_SECRET"
+* Test Object has key "spec§template§spec§containers§0§env§0§valueFrom§secretKeyRef§name" with value "release-name-hull-test-a-secret"
+* Test Object has key "spec§template§spec§containers§0§env§0§valueFrom§secretKeyRef§key" with value "a-key"
+* Test Object does not have key "spec§template§spec§containers§0§env§0§valueFrom§configMapKeyRef"
+* Test Object has key "spec§template§spec§containers§0§env§1§name" with value "ENV_2_STATIC_SECRET"
+* Test Object has key "spec§template§spec§containers§0§env§1§valueFrom§secretKeyRef§name" with value "b-secret"
+* Test Object has key "spec§template§spec§containers§0§env§1§valueFrom§secretKeyRef§key" with value "b-key"
+* Test Object has key "spec§template§spec§containers§0§env§2§name" with value "ENV_3_CONFIGMAP"
+* Test Object has key "spec§template§spec§containers§0§env§2§valueFrom§configMapKeyRef§name" with value "release-name-hull-test-a-configmap"
+* Test Object has key "spec§template§spec§containers§0§env§2§valueFrom§configMapKeyRef§key" with value "a-key"
+* Test Object does not have key "spec§template§spec§containers§0§env§2§valueFrom§secretKeyRef"
+* Test Object has key "spec§template§spec§containers§0§env§3§name" with value "ENV_4_STATIC_CONFIGMAP"
+* Test Object has key "spec§template§spec§containers§0§env§3§valueFrom§configMapKeyRef§name" with value "b-configmap"
+* Test Object has key "spec§template§spec§containers§0§env§3§valueFrom§configMapKeyRef§key" with value "b-key"
 
 ## Certificates
 * Prepare default test case for this kind including suites "pod,customcacertificates"
