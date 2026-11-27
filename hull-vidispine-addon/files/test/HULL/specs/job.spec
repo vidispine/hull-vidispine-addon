@@ -30,7 +30,7 @@ Test creation of objects and features.
 ## Env from Secrets and ConfigMaps
 * Render
 * Set test object to "release-name-hull-test-env_refs"
-* Test Object has key "spec§template§spec§containers§0§env" with array value that has "4" items
+* Test Object has key "spec§template§spec§containers§0§env" with array value that has "6" items
 * Test Object has key "spec§template§spec§containers§0§env§0§name" with value "ENV_1_SECRET"
 * Test Object has key "spec§template§spec§containers§0§env§0§valueFrom§secretKeyRef§name" with value "release-name-hull-test-a-secret"
 * Test Object has key "spec§template§spec§containers§0§env§0§valueFrom§secretKeyRef§key" with value "a-key"
@@ -45,6 +45,14 @@ Test creation of objects and features.
 * Test Object has key "spec§template§spec§containers§0§env§3§name" with value "ENV_4_STATIC_CONFIGMAP"
 * Test Object has key "spec§template§spec§containers§0§env§3§valueFrom§configMapKeyRef§name" with value "b-configmap"
 * Test Object has key "spec§template§spec§containers§0§env§3§valueFrom§configMapKeyRef§key" with value "b-key"
+* Test Object has key "spec§template§spec§containers§0§env§4§name" with value "ENV_5_STATIC_OPTIONAL_SECRET"
+* Test Object has key "spec§template§spec§containers§0§env§4§valueFrom§secretKeyRef§name" with value "c-secret"
+* Test Object has key "spec§template§spec§containers§0§env§4§valueFrom§secretKeyRef§key" with value "c-key"
+* Test Object has key "spec§template§spec§containers§0§env§4§valueFrom§secretKeyRef§optional" set to true
+* Test Object has key "spec§template§spec§containers§0§env§5§name" with value "ENV_6_STATIC_OPTIONAL_CONFIGMAP"
+* Test Object has key "spec§template§spec§containers§0§env§5§valueFrom§configMapKeyRef§name" with value "c-configmap"
+* Test Object has key "spec§template§spec§containers§0§env§5§valueFrom§configMapKeyRef§key" with value "c-key"
+* Test Object has key "spec§template§spec§containers§0§env§5§valueFrom§configMapKeyRef§optional" set to true
 
 ## Certificates
 * Prepare default test case for this kind including suites "pod,customcacertificates"

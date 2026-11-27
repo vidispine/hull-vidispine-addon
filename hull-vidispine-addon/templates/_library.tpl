@@ -828,7 +828,7 @@ etcssl:
     secretKeyRef:
       name: '{{ index $secret 1 }}'
       key: '{{ index $secret 2 }}'
-{{ if (eq (len $secret) 4) }}
+{{ if (ge (len $secret) 4) }}
       staticName: {{ index $secret 3 }}
 {{ end }}
 {{ if (eq (len $secret) 5) }}
@@ -847,7 +847,7 @@ etcssl:
     configMapKeyRef:
       name: '{{ index $configmap 1 }}'
       key: '{{ index $configmap 2 }}'
-{{ if (eq (len $configmap) 4) }}
+{{ if (ge (len $configmap) 4) }}
       staticName: {{ index $configmap 3 }}
 {{ end }}
 {{ if (eq (len $configmap) 5) }}
