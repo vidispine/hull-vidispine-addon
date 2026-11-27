@@ -4,7 +4,11 @@
 
 ###################################################
 ### CONFIG
-hull: 
+hull:
+  config:
+    specific:
+      components:
+        envtest: {}
   objects:
     job:
       disabled:
@@ -83,5 +87,14 @@ hull:
                 tag: "99.9"
           volumes:
             to_be_removed: null
+
+      env_refs:
+        pod:
+          containers:
+            main:
+              image:
+                repository: my/image/repo
+                tag: "99.9"
+              env: _HT/hull.vidispine.addon.library.component.pod.env:COMPONENT:"envtest":FROM_SECRETS:"ENV_1_SECRET=a-secret=a-key,ENV_2_STATIC_SECRET=b-secret=b-key=true,ENV_5_STATIC_OPTIONAL_SECRET=c-secret=c-key=true=true":FROM_CONFIGMAPS:"ENV_3_CONFIGMAP=a-configmap=a-key,ENV_4_STATIC_CONFIGMAP=b-configmap=b-key=true,ENV_6_STATIC_OPTIONAL_CONFIGMAP=c-configmap=c-key=true=true"
 
   ###################################################

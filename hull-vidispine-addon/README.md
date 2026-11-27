@@ -1241,6 +1241,8 @@ _COMPONENT_: The `component` to create an env section for
 
 _FROM_SECRETS_: Optionally define addtional env vars from secrets keys
 
+_FROM_CONFIGMAPS_: Optionally define additional env vars from ConfigMap keys
+
 Usage:
 
 This function renders the `env` section of a pod in a standardized form that is used by VidiFlow agents mostly. Each VidiFlow agent expects a standard number of environment variables to work as demanded, those are always:
